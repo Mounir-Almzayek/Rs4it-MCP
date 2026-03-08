@@ -1,19 +1,42 @@
 /**
- * Plugin loader: spawn external MCP plugins via NPX, connect as client, manage lifecycle (Phase 04).
+ * Plugin loader: spawn external MCP plugins via NPX, connect as client, manage lifecycle (Phase 04 + 08).
  */
 
 import { loadPluginsConfig } from "../config/load-plugins-config.js";
+import { loadDynamicRegistry } from "../config/dynamic-config.js";
 import type { LoadedPlugin, PluginConfig, PluginTool } from "./types.js";
 import { createPluginClient } from "./client.js";
 
 const loaded = new Map<string, LoadedPlugin>();
 
 /**
+ * Merged plugin configs: static (mcp_plugins.json) + enabled dynamic registry plugins.
+ */
+async function getMergedPluginConfigs(): Promise<PluginConfig[]> {
+  const [staticConfigs, dynamic] = await Promise.all([
+    loadPluginsConfig(),
+    loadDynamicRegistry(),
+  ]);
+  const dynamicConfigs: PluginConfig[] = dynamic.plugins
+    .filter((p) => p.enabled)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      command: p.command,
+      args: p.args,
+      cwd: p.cwd,
+      env: p.env,
+      timeout: p.timeout,
+    }));
+  return [...staticConfigs, ...dynamicConfigs];
+}
+
+/**
  * Load all plugins from config. Call once at startup.
  * Failed plugins are logged and skipped; Hub continues without them.
  */
 export async function loadAllPlugins(): Promise<void> {
-  const configs = await loadPluginsConfig();
+  const configs = await getMergedPluginConfigs();
   for (const config of configs) {
     if (loaded.has(config.id)) continue;
     const clientResult = await createPluginClient(config);

@@ -5,6 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -15,13 +16,13 @@ import { getPort, getBaseUrl } from "../config/transport.js";
 type SessionId = string;
 interface SessionState {
   transport: StreamableHTTPServerTransport;
-  server: ReturnType<typeof createServer>;
+  server: McpServer;
 }
 
 const sessions = new Map<SessionId, SessionState>();
 
-function createSession(): SessionState {
-  const server = createServer();
+async function createSession(): Promise<SessionState> {
+  const server = await createServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (sessionId) => {
@@ -51,7 +52,7 @@ async function handlePost(
     }
 
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
-      const { transport, server } = createSession();
+      const { transport, server } = await createSession();
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
       return;

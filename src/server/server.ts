@@ -1,6 +1,6 @@
 /**
- * MCP Server layer (Phase 01 + 02 + 03 + 05).
- * Builds the McpServer with serverInfo, capabilities, and merged tools (local + skills + plugins).
+ * MCP Server layer (Phase 01 + 02 + 03 + 05 + 08).
+ * Builds the McpServer with serverInfo, capabilities, and merged tools (local + skills + plugins + dynamic).
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -21,14 +21,57 @@ import {
   skillToToolName,
 } from "../skills/index.js";
 import { getLoadedPlugins, callPluginTool } from "../plugins/index.js";
+import { loadDynamicRegistry } from "../config/dynamic-config.js";
+import { PLUGIN_TOOL_PREFIX } from "../plugins/constants.js";
+import type { DynamicSkillStep } from "../types/dynamic-registry.js";
 
 const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
   r as Awaited<ReturnType<Parameters<McpServer["registerTool"]>[2]>>;
 
+async function runDynamicSkillSteps(
+  steps: DynamicSkillStep[],
+  args: Record<string, unknown>
+): Promise<Awaited<ReturnType<typeof executeTool>>> {
+  const results: string[] = [];
+  for (const step of steps) {
+    const stepArgs = step.argsMap
+      ? Object.fromEntries(
+          Object.entries(step.argsMap).map(([k, v]) => [k, args[v] ?? v])
+        )
+      : args;
+    if (step.type === "tool") {
+      const out = await executeTool(step.target, stepArgs);
+      results.push(
+        out.content.map((c) => ("text" in c ? c.text : "")).join("")
+      );
+    } else {
+      const match = step.target.startsWith(PLUGIN_TOOL_PREFIX)
+        ? step.target.slice(PLUGIN_TOOL_PREFIX.length).split(":")
+        : [];
+      if (match.length >= 2) {
+        const [pluginId, ...rest] = match;
+        const originalName = rest.join(":");
+        const out = await callPluginTool(
+          pluginId,
+          originalName,
+          stepArgs as Record<string, unknown>
+        );
+        results.push(
+          out.content.map((c) => c.text ?? "").join("")
+        );
+      }
+    }
+  }
+  return {
+    content: [{ type: "text" as const, text: results.join("\n\n") }],
+    isError: false,
+  };
+}
+
 /**
- * Creates and configures the MCP server: initialize, unified tools/list (local + skills + plugins), tools/call routed by name.
+ * Creates and configures the MCP server: initialize, unified tools/list (local + skills + plugins + dynamic), tools/call routed by name.
  */
-export function createServer(): McpServer {
+export async function createServer(): Promise<McpServer> {
   registerBuiltInTools();
   registerBuiltInSkills();
 
@@ -61,6 +104,40 @@ export function createServer(): McpServer {
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) =>
         toolResultCast(await executeSkill(skill.name, args))
+    );
+  }
+
+  const dynamic = await loadDynamicRegistry();
+  for (const entry of dynamic.tools) {
+    if (!entry.enabled) continue;
+    const handlerRef = entry.handlerRef;
+    server.registerTool(
+      entry.name,
+      {
+        description: entry.description,
+        inputSchema: (entry.inputSchema ?? {}) as Record<string, unknown>,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) =>
+        toolResultCast(await executeTool(handlerRef, args))
+    );
+  }
+  for (const entry of dynamic.skills) {
+    if (!entry.enabled) continue;
+    const steps = entry.steps ?? [];
+    const toolName = skillToToolName(entry.name);
+    server.registerTool(
+      toolName,
+      {
+        description: `[Skill] ${entry.description}`,
+        inputSchema: (entry.inputSchema ?? {}) as Record<string, unknown>,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const result = await runDynamicSkillSteps(
+          steps,
+          (args as Record<string, unknown>) ?? {}
+        );
+        return toolResultCast(result);
+      }
     );
   }
 

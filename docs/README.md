@@ -13,6 +13,7 @@
 | **[security.md](security.md)** | سياسة أمان الأدوات (workspace، blocklist) |
 | **[requirements.md](requirements.md)** | متطلبات التشغيل ومتغيرات البيئة |
 | **[deployment.md](deployment.md)** | استضافة الـ Hub على HTTP في الإنتاج (Phase 07) |
+| **admin/** (مشروع منفصل) | بانل إدارة Phase 08 — Next.js، إدارة Tools + Skills + Plugins |
 | **future/** | توسعات مستقبلية (فهرس، أولويات) وتذكير تحسينات الجودة — [future/README.md](future/README.md) |
 
 ## ترتيب المراحل

@@ -50,6 +50,7 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 - ✅ Phase 05: توجيه موحّد (أدوات + مهارات + إضافات)، اتفاقية تسمية، routeToolCall للمهارات
 - ✅ Phase 06: توثيق التوسعات المستقبلية وتحسينات الجودة (docs/future/)
 - 📋 **التطوّر (07–09):** استضافة على سيرفر، بانل إدارة، أدوار — [docs/evolution-roadmap.md](docs/evolution-roadmap.md)
+- ✅ **Phase 08:** بانل إدارة (Tools + Skills + Plugins) — تطبيق Next.js في **`admin/`**، تشغيل: `cd admin && npm run dev` (منفذ 3001)
 - ✅ هيكلية المجلدات
 
 ---

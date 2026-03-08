@@ -1,0 +1,12 @@
+{
+  "/api/registry/route": "app/api/registry/route.js",
+  "/tools/page": "app/tools/page.js",
+  "/page": "app/page.js",
+  "/registry/page": "app/registry/page.js",
+  "/plugins/page": "app/plugins/page.js",
+  "/status/page": "app/status/page.js",
+  "/api/plugins/route": "app/api/plugins/route.js",
+  "/skills/page": "app/skills/page.js",
+  "/api/tools/route": "app/api/tools/route.js",
+  "/api/skills/route": "app/api/skills/route.js"
+}

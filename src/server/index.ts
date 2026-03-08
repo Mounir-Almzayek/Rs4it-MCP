@@ -10,7 +10,7 @@ import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 async function main(): Promise<void> {
   await loadAllPlugins();
 
-  const server = createServer();
+  const server = await createServer();
   const transport = new StdioServerTransport();
 
   const handleClose = async (): Promise<void> => {
