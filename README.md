@@ -22,7 +22,8 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 1. **مراحل التنفيذ**: اتبع الملفات في **`docs/phases/`** بالترتيب (00 → … → 06 أساس، ثم 07–09 استضافة/بانل/أدوار). الترتيب مهم لأن كل مرحلة تعتمد على سابقتها.
   الفهرس: [docs/README.md](docs/README.md)
 2. **المتطلبات**: إصدار Node.js، الاعتماديات، وطريقة التشغيل موثّقة في [docs/requirements.md](docs/requirements.md).
-3. **الهيكلية الحالية**: المجلدات جاهزة؛ الكود يُضاف حسب كل مرحلة.
+3. **Docker**: لتشغيل الـ Hub والبانل معاً: `cp .env.docker.example .env` ثم عدّل `SESSION_SECRET`، ثم `docker compose up -d`. التفاصيل: [docs/deployment.md](docs/deployment.md).
+4. **الهيكلية الحالية**: المجلدات جاهزة؛ الكود يُضاف حسب كل مرحلة.
   انظر: [PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md)
 
 ## المجلدات الرئيسية

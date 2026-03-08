@@ -55,25 +55,62 @@ pm2 start dist/server/http-entry.js --name rs4it-mcp-hub -i 1 --max-memory-resta
 
 ## تشغيل داخل حاوية (Docker)
 
-مثال `Dockerfile` بسيط:
+المشروع يتضمن **Docker Compose** لتشغيل الـ Hub وبانل الإدارة معاً، مع حجم تخزين مشترك للتكوين.
 
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY dist ./dist
-EXPOSE 3000
-ENV PORT=3000
-CMD ["node", "dist/server/http-entry.js"]
-```
+### المتطلبات
 
-البناء والتشغيل:
+- Docker و Docker Compose (v2)
+- ملف `.env` (انسخ من `.env.docker.example`) مع **SESSION_SECRET** (مطلوب للبانل، 16 حرفاً على الأقل)
+
+### التشغيل السريع
 
 ```bash
-npm run build
+cp .env.docker.example .env
+# عدّل .env وضع SESSION_SECRET (مثلاً: openssl rand -base64 24)
+docker compose up -d
+```
+
+- **Hub (MCP)**: `http://localhost:3000/mcp`
+- **Admin Panel**: `http://localhost:3001` — أول مرة: ادخل إلى `/login` وأنشئ حساب المدير.
+
+### أوامر مفيدة
+
+```bash
+docker compose up -d          # تشغيل في الخلفية
+docker compose ps             # حالة الحاويات
+docker compose logs -f hub    # سجلات الـ Hub
+docker compose logs -f admin  # سجلات البانل
+docker compose down           # إيقاف وحذف الحاويات
+docker compose down -v        # إيقاف وحذف الحاويات وحجم التكوين
+```
+
+### بنية Docker
+
+| المكون | الوصف |
+|--------|--------|
+| **Hub** | صورة من `Dockerfile` (جذر المشروع): بناء TypeScript ثم تشغيل `node dist/server/http-entry.js`. Entrypoint يهيئ مجلد التكوين من قيم افتراضية عند أول تشغيل. |
+| **Admin** | صورة من `admin/Dockerfile`: Next.js standalone على بورت 3001. |
+| **Volume `config_data`** | يُ mont على `/app/config` (Hub) و `/config` (Admin)؛ يخزن `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json` بحيث يتشارك الـ Hub والبانل نفس التكوين. |
+| **Workspace** | اختياري: mount مجلد المضيف على `/workspace` للـ Hub (أدوات الملفات). الافتراضي في `.env`: `WORKSPACE_PATH=./workspace`. |
+
+### متغيرات البيئة (Compose)
+
+راجع `.env.docker.example`. الأهم:
+
+- **SESSION_SECRET**: مطلوب لمصادقة البانل.
+- **HUB_PORT**, **ADMIN_PORT**: بورتات المضيف (الافتراضي 3000، 3001).
+- **MCP_WORKSPACE_ROOT**: داخل الحاوية؛ استخدم mount للملفات المحلية.
+- **WORKSPACE_PATH**: مسار على المضيف لـ mount كـ `/workspace` (لأدوات الملفات).
+
+### تشغيل الـ Hub فقط (بدون البانل)
+
+```bash
 docker build -t rs4it-mcp-hub .
-docker run -p 3000:3000 -e MCP_WORKSPACE_ROOT=/workspace -v /path/to/workspace:/workspace rs4it-mcp-hub
+docker run -d -p 3000:3000 \
+  -v rs4it_config:/app/config \
+  -e MCP_WORKSPACE_ROOT=/workspace \
+  -v /path/to/workspace:/workspace:ro \
+  rs4it-mcp-hub
 ```
 
 ## خلف Reverse Proxy (HTTPS)
