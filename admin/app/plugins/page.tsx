@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
+import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { DynamicPluginEntry } from "@/lib/registry";
+import type { RoleConfig } from "@/lib/roles";
 
 async function fetchPlugins() {
   const res = await fetch("/api/plugins");
@@ -20,11 +22,17 @@ async function fetchPlugins() {
   return res.json() as Promise<DynamicPluginEntry[]>;
 }
 
+async function fetchRoles() {
+  const res = await fetch("/api/roles");
+  if (!res.ok) throw new Error("Failed to fetch roles");
+  return res.json() as Promise<RoleConfig>;
+}
+
 function resolvedCommand(p: DynamicPluginEntry): string {
   return [p.command, ...(p.args ?? [])].join(" ");
 }
 
-export default function PluginsPage() {
+function PluginsContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -37,6 +45,7 @@ export default function PluginsPage() {
     args: ["-y", "package@latest"],
     description: "",
     enabled: true,
+    allowedRoles: [],
   });
   const [argsStr, setArgsStr] = useState('["-y", "package@latest"]');
 
@@ -44,6 +53,11 @@ export default function PluginsPage() {
     queryKey: ["plugins"],
     queryFn: fetchPlugins,
   });
+  const { data: rolesConfig } = useQuery({
+    queryKey: ["roles"],
+    queryFn: fetchRoles,
+  });
+  const roles = rolesConfig?.roles ?? [];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicPluginEntry) => {
@@ -115,6 +129,7 @@ export default function PluginsPage() {
       args: ["-y", "package@latest"],
       description: "",
       enabled: true,
+      allowedRoles: [],
     });
     setArgsStr('["-y", "package@latest"]');
   }
@@ -134,6 +149,7 @@ export default function PluginsPage() {
       args: p.args,
       description: p.description,
       enabled: p.enabled,
+      allowedRoles: p.allowedRoles ?? [],
     });
     setArgsStr(JSON.stringify(p.args ?? [], null, 2));
     setDialogOpen(true);
@@ -149,7 +165,11 @@ export default function PluginsPage() {
       toast.add("error", "Args must be a JSON array of strings");
       return;
     }
-    const payload = { ...form, args };
+    const payload = {
+      ...form,
+      args,
+      allowedRoles: (form.allowedRoles?.length ?? 0) > 0 ? form.allowedRoles : undefined,
+    };
     if (editing) {
       updateMutation.mutate({ id: editing.id, body: payload });
     } else {
@@ -191,6 +211,7 @@ export default function PluginsPage() {
                     <th className="p-3 text-left font-medium">ID</th>
                     <th className="p-3 text-left font-medium">Name</th>
                     <th className="p-3 text-left font-medium">Resolved command</th>
+                    <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
@@ -202,6 +223,15 @@ export default function PluginsPage() {
                       <td className="p-3">{p.name}</td>
                       <td className="max-w-[300px] truncate p-3 font-mono text-muted-foreground" title={resolvedCommand(p)}>
                         {resolvedCommand(p)}
+                      </td>
+                      <td className="p-3">
+                        {(p.allowedRoles?.length ?? 0) > 0
+                          ? (p.allowedRoles ?? []).map((r) => (
+                              <Badge key={r} variant="outline" className="mr-1 mb-1">
+                                {roles.find((x) => x.id === r)?.name ?? r}
+                              </Badge>
+                            ))
+                          : "—"}
                       </td>
                       <td className="p-3">
                         <Badge variant={p.enabled ? "success" : "secondary"}>
@@ -296,6 +326,12 @@ export default function PluginsPage() {
               className="mt-1"
             />
           </div>
+          <AllowedRolesPicker
+            roles={roles}
+            value={form.allowedRoles ?? []}
+            onChange={(v) => setForm((s) => ({ ...s, allowedRoles: v }))}
+            entityLabel="This plugin"
+          />
           <div className="flex items-center gap-2">
             <Switch
               checked={form.enabled ?? true}
@@ -314,5 +350,13 @@ export default function PluginsPage() {
         </form>
       </Dialog>
     </div>
+  );
+}
+
+export default function PluginsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading…</div>}>
+      <PluginsContent />
+    </Suspense>
   );
 }

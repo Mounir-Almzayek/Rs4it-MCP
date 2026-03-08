@@ -7,6 +7,8 @@ import {
   Wrench,
   Sparkles,
   Puzzle,
+  Shield,
+  Grid3X3,
   ListTree,
   Activity,
 } from "lucide-react";
@@ -16,7 +18,9 @@ const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/skills", label: "Skills", icon: Sparkles },
-  { href: "/plugins", label: "MCP Plugins", icon: Puzzle },
+  { href: "/plugins", label: "Plugins", icon: Puzzle },
+  { href: "/roles", label: "Roles", icon: Shield },
+  { href: "/permissions", label: "Permissions Matrix", icon: Grid3X3 },
   { href: "/registry", label: "Registry Preview", icon: ListTree },
   { href: "/status", label: "System Status", icon: Activity },
 ];

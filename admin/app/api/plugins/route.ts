@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       cwd: body.cwd,
       env: body.env,
       timeout: body.timeout,
+      allowedRoles: Array.isArray(body.allowedRoles) ? body.allowedRoles : undefined,
     };
     const registry = await readRegistry();
     if (registry.plugins.some((p) => p.id === entry.id)) {

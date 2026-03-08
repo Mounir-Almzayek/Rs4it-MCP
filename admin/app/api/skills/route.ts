@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       steps: body.steps ?? [],
       enabled: body.enabled ?? true,
       updatedAt: new Date().toISOString(),
+      allowedRoles: Array.isArray(body.allowedRoles) ? body.allowedRoles : undefined,
     };
     const registry = await readRegistry();
     if (registry.skills.some((s) => s.name === entry.name)) {

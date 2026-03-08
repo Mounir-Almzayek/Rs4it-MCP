@@ -21,8 +21,22 @@ interface SessionState {
 
 const sessions = new Map<SessionId, SessionState>();
 
-async function createSession(): Promise<SessionState> {
-  const server = await createServer();
+function getRoleFromRequest(req: IncomingMessage & { body?: unknown }): string | undefined {
+  const h = req.headers["x-mcp-role"];
+  if (typeof h === "string" && h.trim()) return h.trim();
+  const body = req.body;
+  if (body && typeof body === "object" && "params" in body) {
+    const params = (body as { params?: unknown }).params;
+    if (params && typeof params === "object" && "role" in params) {
+      const r = (params as { role?: unknown }).role;
+      if (typeof r === "string" && r.trim()) return r.trim();
+    }
+  }
+  return undefined;
+}
+
+async function createSession(role?: string): Promise<SessionState> {
+  const server = await createServer(role ? { role } : undefined);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (sessionId) => {
@@ -52,7 +66,8 @@ async function handlePost(
     }
 
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
-      const { transport, server } = await createSession();
+      const role = getRoleFromRequest(req);
+      const { transport, server } = await createSession(role);
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
       return;

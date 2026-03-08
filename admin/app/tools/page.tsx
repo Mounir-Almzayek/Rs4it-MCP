@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
+import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { DynamicToolEntry } from "@/lib/registry";
+import type { RoleConfig } from "@/lib/roles";
 
 async function fetchTools() {
   const res = await fetch("/api/tools");
@@ -21,7 +23,13 @@ async function fetchTools() {
   return res.json() as Promise<DynamicToolEntry[]>;
 }
 
-export default function ToolsPage() {
+async function fetchRoles() {
+  const res = await fetch("/api/roles");
+  if (!res.ok) throw new Error("Failed to fetch roles");
+  return res.json() as Promise<RoleConfig>;
+}
+
+function ToolsContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -33,6 +41,7 @@ export default function ToolsPage() {
     inputSchema: {},
     handlerRef: "",
     enabled: true,
+    allowedRoles: [],
   });
   const [schemaJson, setSchemaJson] = useState("{}");
 
@@ -40,6 +49,11 @@ export default function ToolsPage() {
     queryKey: ["tools"],
     queryFn: fetchTools,
   });
+  const { data: rolesConfig } = useQuery({
+    queryKey: ["roles"],
+    queryFn: fetchRoles,
+  });
+  const roles = rolesConfig?.roles ?? [];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicToolEntry) => {
@@ -110,6 +124,7 @@ export default function ToolsPage() {
       inputSchema: {},
       handlerRef: "",
       enabled: true,
+      allowedRoles: [],
     });
     setSchemaJson("{}");
   }
@@ -128,6 +143,7 @@ export default function ToolsPage() {
       inputSchema: t.inputSchema,
       handlerRef: t.handlerRef,
       enabled: t.enabled,
+      allowedRoles: t.allowedRoles ?? [],
     });
     setSchemaJson(JSON.stringify(t.inputSchema ?? {}, null, 2));
     setDialogOpen(true);
@@ -142,7 +158,11 @@ export default function ToolsPage() {
       toast.add("error", "Invalid JSON for input schema");
       return;
     }
-    const payload = { ...form, inputSchema };
+    const payload = {
+      ...form,
+      inputSchema,
+      allowedRoles: (form.allowedRoles?.length ?? 0) > 0 ? form.allowedRoles : undefined,
+    };
     if (editing) {
       updateMutation.mutate({ id: editing.name, body: payload });
     } else {
@@ -184,6 +204,7 @@ export default function ToolsPage() {
                     <th className="p-3 text-left font-medium">Name</th>
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Handler</th>
+                    <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-left font-medium">Updated</th>
                     <th className="p-3 text-right font-medium">Actions</th>
@@ -195,6 +216,15 @@ export default function ToolsPage() {
                       <td className="p-3 font-mono">{t.name}</td>
                       <td className="max-w-[200px] truncate p-3">{t.description}</td>
                       <td className="p-3 font-mono text-muted-foreground">{t.handlerRef}</td>
+                      <td className="p-3">
+                        {(t.allowedRoles?.length ?? 0) > 0
+                          ? (t.allowedRoles ?? []).map((r) => (
+                              <Badge key={r} variant="outline" className="mr-1 mb-1">
+                                {roles.find((x) => x.id === r)?.name ?? r}
+                              </Badge>
+                            ))
+                          : "—"}
+                      </td>
                       <td className="p-3">
                         <Badge variant={t.enabled ? "success" : "secondary"}>
                           {t.enabled ? "Enabled" : "Disabled"}
@@ -285,6 +315,12 @@ export default function ToolsPage() {
               className="mt-1 font-mono text-sm"
             />
           </div>
+          <AllowedRolesPicker
+            roles={roles}
+            value={form.allowedRoles ?? []}
+            onChange={(v) => setForm((s) => ({ ...s, allowedRoles: v }))}
+            entityLabel="This tool"
+          />
           <div className="flex items-center gap-2">
             <Switch
               checked={form.enabled ?? true}
@@ -303,5 +339,13 @@ export default function ToolsPage() {
         </form>
       </Dialog>
     </div>
+  );
+}
+
+export default function ToolsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading…</div>}>
+      <ToolsContent />
+    </Suspense>
   );
 }

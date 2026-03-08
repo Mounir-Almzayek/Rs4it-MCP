@@ -19,6 +19,7 @@ export async function PUT(
       ...body,
       name: body.name ?? existing.name,
       updatedAt: new Date().toISOString(),
+      allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.tools[idx]);

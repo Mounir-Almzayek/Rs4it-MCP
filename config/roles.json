@@ -1,0 +1,12 @@
+{
+  "defaultRole": "developer",
+  "roles": [
+    { "id": "developer", "name": "Developer" },
+    { "id": "web_engineer", "name": "Web Engineer", "inherits": ["developer"] },
+    { "id": "backend_engineer", "name": "Backend Engineer", "inherits": ["developer"] },
+    { "id": "mobile_engineer", "name": "Mobile Engineer", "inherits": ["developer"] },
+    { "id": "full_stack", "name": "Full Stack", "inherits": ["web_engineer", "backend_engineer"] },
+    { "id": "admin", "name": "Admin", "inherits": ["developer"] },
+    { "id": "viewer", "name": "Viewer" }
+  ]
+}

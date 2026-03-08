@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +12,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
+import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import type { DynamicSkillEntry, DynamicSkillStep } from "@/lib/registry";
+import type { RoleConfig } from "@/lib/roles";
 
 async function fetchSkills() {
   const res = await fetch("/api/skills");
   if (!res.ok) throw new Error("Failed to fetch skills");
   return res.json() as Promise<DynamicSkillEntry[]>;
+}
+
+async function fetchRoles() {
+  const res = await fetch("/api/roles");
+  if (!res.ok) throw new Error("Failed to fetch roles");
+  return res.json() as Promise<RoleConfig>;
 }
 
 function StepRow({
@@ -41,7 +49,7 @@ function StepRow({
   );
 }
 
-export default function SkillsPage() {
+function SkillsContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -53,6 +61,7 @@ export default function SkillsPage() {
     inputSchema: {},
     steps: [],
     enabled: true,
+    allowedRoles: [],
   });
   const [schemaJson, setSchemaJson] = useState("{}");
   const [newStepType, setNewStepType] = useState<"tool" | "plugin">("tool");
@@ -62,6 +71,11 @@ export default function SkillsPage() {
     queryKey: ["skills"],
     queryFn: fetchSkills,
   });
+  const { data: rolesConfig } = useQuery({
+    queryKey: ["roles"],
+    queryFn: fetchRoles,
+  });
+  const roles = rolesConfig?.roles ?? [];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicSkillEntry) => {
@@ -132,6 +146,7 @@ export default function SkillsPage() {
       inputSchema: {},
       steps: [],
       enabled: true,
+      allowedRoles: [],
     });
     setSchemaJson("{}");
     setNewStepTarget("");
@@ -151,6 +166,7 @@ export default function SkillsPage() {
       inputSchema: s.inputSchema,
       steps: s.steps ?? [],
       enabled: s.enabled,
+      allowedRoles: s.allowedRoles ?? [],
     });
     setSchemaJson(JSON.stringify(s.inputSchema ?? {}, null, 2));
     setDialogOpen(true);
@@ -181,7 +197,11 @@ export default function SkillsPage() {
       toast.add("error", "Invalid JSON for input schema");
       return;
     }
-    const payload = { ...form, inputSchema };
+    const payload = {
+      ...form,
+      inputSchema,
+      allowedRoles: (form.allowedRoles?.length ?? 0) > 0 ? form.allowedRoles : undefined,
+    };
     if (editing) {
       updateMutation.mutate({ id: editing.name, body: payload });
     } else {
@@ -223,6 +243,7 @@ export default function SkillsPage() {
                     <th className="p-3 text-left font-medium">Name</th>
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Steps</th>
+                    <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
@@ -233,6 +254,15 @@ export default function SkillsPage() {
                       <td className="p-3 font-mono">{s.name}</td>
                       <td className="max-w-[200px] truncate p-3">{s.description}</td>
                       <td className="p-3">{(s.steps ?? []).length} steps</td>
+                      <td className="p-3">
+                        {(s.allowedRoles?.length ?? 0) > 0
+                          ? (s.allowedRoles ?? []).map((r) => (
+                              <Badge key={r} variant="outline" className="mr-1 mb-1">
+                                {roles.find((x) => x.id === r)?.name ?? r}
+                              </Badge>
+                            ))
+                          : "—"}
+                      </td>
                       <td className="p-3">
                         <Badge variant={s.enabled ? "success" : "secondary"}>
                           {s.enabled ? "Enabled" : "Disabled"}
@@ -329,6 +359,12 @@ export default function SkillsPage() {
               className="mt-1 font-mono text-sm"
             />
           </div>
+          <AllowedRolesPicker
+            roles={roles}
+            value={form.allowedRoles ?? []}
+            onChange={(v) => setForm((s) => ({ ...s, allowedRoles: v }))}
+            entityLabel="This skill"
+          />
           <div className="flex items-center gap-2">
             <Switch
               checked={form.enabled ?? true}
@@ -347,5 +383,13 @@ export default function SkillsPage() {
         </form>
       </Dialog>
     </div>
+  );
+}
+
+export default function SkillsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading…</div>}>
+      <SkillsContent />
+    </Suspense>
   );
 }

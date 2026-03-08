@@ -19,6 +19,8 @@ export interface DynamicToolEntry {
   handlerRef: string;
   enabled: boolean;
   updatedAt?: string;
+  /** Role ids that can see/use this tool (Phase 09). Empty = all roles. */
+  allowedRoles?: string[];
 }
 
 export interface DynamicSkillEntry {
@@ -28,6 +30,8 @@ export interface DynamicSkillEntry {
   steps: DynamicSkillStep[];
   enabled: boolean;
   updatedAt?: string;
+  /** Role ids that can see/use this skill (Phase 09). Empty = all roles. */
+  allowedRoles?: string[];
 }
 
 export interface DynamicPluginEntry {
@@ -40,6 +44,8 @@ export interface DynamicPluginEntry {
   cwd?: string;
   env?: Record<string, string>;
   timeout?: number;
+  /** Role ids that can see/use this plugin's tools (Phase 09). Empty = all roles. */
+  allowedRoles?: string[];
 }
 
 export interface DynamicRegistry {

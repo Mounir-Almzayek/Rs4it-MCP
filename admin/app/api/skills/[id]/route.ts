@@ -20,6 +20,7 @@ export async function PUT(
       name: body.name ?? existing.name,
       steps: body.steps ?? existing.steps,
       updatedAt: new Date().toISOString(),
+      allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.skills[idx]);

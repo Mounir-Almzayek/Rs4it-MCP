@@ -21,15 +21,26 @@
       "static/chunks/main-app.js",
       "static/chunks/app/skills/page.js"
     ],
-    "/registry/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/registry/page.js"
-    ],
     "/plugins/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/plugins/page.js"
+    ],
+    "/roles/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/roles/page.css",
+      "static/chunks/app/roles/page.js"
+    ],
+    "/permissions/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/permissions/page.js"
+    ],
+    "/registry/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/registry/page.js"
     ],
     "/status/page": [
       "static/chunks/webpack.js",

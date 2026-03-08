@@ -20,6 +20,7 @@ export async function PUT(
       id: body.id ?? existing.id,
       command: body.command ?? existing.command,
       args: Array.isArray(body.args) ? body.args : existing.args,
+      allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.plugins[idx]);

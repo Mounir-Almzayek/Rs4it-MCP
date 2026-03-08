@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Wrench, Sparkles, Puzzle, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Wrench, Sparkles, Puzzle, Shield, RefreshCw } from "lucide-react";
 
 async function fetchRegistry() {
   const res = await fetch("/api/registry");
@@ -12,11 +13,23 @@ async function fetchRegistry() {
   return res.json();
 }
 
+async function fetchRolesCount() {
+  const res = await fetch("/api/roles");
+  if (!res.ok) return { roles: [] };
+  const data = await res.json();
+  return { roles: data.roles ?? [] };
+}
+
 export default function DashboardPage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
   });
+  const { data: rolesData } = useQuery({
+    queryKey: ["roles"],
+    queryFn: fetchRolesCount,
+  });
+  const rolesCount = rolesData?.roles?.length ?? 0;
 
   const toolsCount = data?.tools?.length ?? 0;
   const skillsCount = data?.skills?.length ?? 0;
@@ -27,9 +40,9 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/registry">Registry Preview</Link>
-          </Button>
+          <Link href="/registry" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            Registry Preview
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -48,7 +61,7 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tools</CardTitle>
@@ -61,9 +74,9 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Dynamic tools in registry
             </p>
-            <Button variant="link" className="mt-2 h-auto p-0" asChild>
-              <Link href="/tools">Manage tools →</Link>
-            </Button>
+            <Link href="/tools" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage tools →
+            </Link>
           </CardContent>
         </Card>
         <Card>
@@ -78,9 +91,9 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Orchestration workflows
             </p>
-            <Button variant="link" className="mt-2 h-auto p-0" asChild>
-              <Link href="/skills">Manage skills →</Link>
-            </Button>
+            <Link href="/skills" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage skills →
+            </Link>
           </CardContent>
         </Card>
         <Card>
@@ -95,9 +108,24 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               External MCP plugins
             </p>
-            <Button variant="link" className="mt-2 h-auto p-0" asChild>
-              <Link href="/plugins">Manage plugins →</Link>
-            </Button>
+            <Link href="/plugins" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage plugins →
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Roles</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{rolesCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Role definitions (visibility)
+            </p>
+            <Link href="/roles" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage roles →
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -107,15 +135,21 @@ export default function DashboardPage() {
           <CardTitle>Quick actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button asChild>
-            <Link href="/tools?create=1">Create Tool</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/skills?create=1">Create Skill</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/plugins?create=1">Add Plugin</Link>
-          </Button>
+          <Link href="/tools?create=1" className={buttonVariants()}>
+            Create Tool
+          </Link>
+          <Link href="/skills?create=1" className={buttonVariants()}>
+            Create Skill
+          </Link>
+          <Link href="/plugins?create=1" className={buttonVariants()}>
+            Add Plugin
+          </Link>
+          <Link href="/roles" className={buttonVariants({ variant: "outline" })}>
+            Roles
+          </Link>
+          <Link href="/permissions" className={buttonVariants({ variant: "outline" })}>
+            Permissions Matrix
+          </Link>
         </CardContent>
       </Card>
     </div>

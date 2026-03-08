@@ -10,7 +10,8 @@ import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 async function main(): Promise<void> {
   await loadAllPlugins();
 
-  const server = await createServer();
+  const role = process.env.MCP_ROLE?.trim();
+  const server = await createServer(role ? { role } : undefined);
   const transport = new StdioServerTransport();
 
   const handleClose = async (): Promise<void> => {

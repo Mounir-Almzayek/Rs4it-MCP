@@ -26,12 +26,15 @@ npm run start:server
 | `BASE_URL` | الرابط الأساسي (للتوثيق أو إعداد العميل) | `http://localhost:${PORT}` |
 | `MCP_WORKSPACE_ROOT` | جذر الـ workspace للأدوات | — |
 | `MCP_PLUGINS_CONFIG` | مسار ملف إعداد الإضافات | `config/mcp_plugins.json` |
+| `MCP_ROLE` | دور الاتصال (Phase 09، اختياري) | — |
+| `MCP_ROLES_CONFIG` | مسار ملف الأدوار (Phase 09) | `config/roles.json` |
 
 ### نقطة النهاية (Endpoint)
 
 - **الرابط**: `http://<host>:<port>/mcp`
 - **البروتوكول**: MCP Streamable HTTP (POST للطلبات، GET لـ SSE، DELETE لإنهاء الجلسة).
 - العميل يرسل طلب `initialize` أولاً (بدون هيدر `mcp-session-id`)، ويستلم من الرد هيدر `mcp-session-id` لاستخدامه في الطلبات التالية وطلب GET لـ SSE.
+- **الأدوار (Phase 09)**: لفلترة الأدوات حسب الدور، أرسل هيدر **`X-MCP-Role`** (مثلاً `web_engineer`) مع طلب `initialize`، أو مرّر **`params.role`** داخل الطلب. الجلسة ستُربط بهذا الدور وتُعرض فقط الأدوات المسموح لها.
 
 ## تشغيل خلف Process Manager (PM2)
 
