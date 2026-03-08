@@ -1,15 +1,10 @@
 {
-  "/api/registry/route": "app/api/registry/route.js",
   "/tools/page": "app/tools/page.js",
-  "/page": "app/page.js",
-  "/api/tools/route": "app/api/tools/route.js",
-  "/api/roles/route": "app/api/roles/route.js",
-  "/skills/page": "app/skills/page.js",
   "/plugins/page": "app/plugins/page.js",
-  "/api/plugins/route": "app/api/plugins/route.js",
-  "/api/skills/route": "app/api/skills/route.js",
+  "/api/registry/route": "app/api/registry/route.js",
   "/roles/page": "app/roles/page.js",
+  "/api/roles/[id]/route": "app/api/roles/[id]/route.js",
+  "/api/roles/route": "app/api/roles/route.js",
   "/permissions/page": "app/permissions/page.js",
-  "/registry/page": "app/registry/page.js",
-  "/status/page": "app/status/page.js"
+  "/page": "app/page.js"
 }
