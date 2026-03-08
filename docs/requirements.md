@@ -29,23 +29,33 @@ node -v
 
 - **`MCP_WORKSPACE_ROOT`** (اختياري): مسار جذر الـ workspace لعمليات الملفات (create_file، read_file). انظر [docs/security.md](security.md).
 - **`MCP_PLUGINS_CONFIG`** (اختياري): مسار ملف إعداد الإضافات الخارجية (JSON). إن لم يُعرّف، يُستخدم `config/mcp_plugins.json` نسبةً لمجلد التشغيل.
-- لاحقاً قد تُستخدم:
-  - `MCP_TRANSPORT`: ناقل الاتصال (مثلاً `stdio` أو `sse`).
+- **للاستضافة على HTTP (Phase 07)**:
+  - **`PORT`** أو **`MCP_PORT`** (اختياري): بورت السيرفر. الافتراضي: `3000`.
+  - **`MCP_TRANSPORT`** (اختياري): `stdio` (افتراضي) أو `http`. يُستخدم عند تشغيل نقطة الدخول المناسبة فقط.
+  - **`BASE_URL`** (اختياري): الرابط الأساسي للـ Hub (مثلاً `https://mcp.example.com`) للتوثيق أو إعداد العميل.
 
-## تشغيل السيرفر (بعد Phase 01)
+## تشغيل السيرفر (بعد Phase 01 و 07)
 
-- **الطريقة الافتراضية**: نقل **stdio** — السيرفر يقرأ من stdin ويكتب إلى stdout (مناسب لـ Cursor وغيره).
-- بديل مستقبلي: نقل **SSE** إذا دعت الحاجة لاتصال عبر HTTP.
+- **نقل stdio (محلي، مناسب لـ Cursor)**:
+  - `npm run start` — تشغيل من `dist/`
+  - `npm run dev` — تشغيل بتطوير سريع (tsx)
+- **نقل HTTP (استضافة على سيرفر، Phase 07)**:
+  - `npm run start:server` — تشغيل السيرفر الشبكي من `dist/`
+  - `npm run dev:server` — تشغيل بتطوير سريع
+  - انظر [docs/deployment.md](deployment.md) للاستضافة في الإنتاج.
 
-أوامر التشغيل:
+أوامر البناء والتشغيل:
 
 ```bash
-npm run build   # بناء المشروع
-npm run start   # تشغيل السيرفر (من dist/)
-npm run dev     # تشغيل بتطوير سريع (tsx، دون بناء)
+npm run build        # بناء المشروع
+npm run start        # تشغيل stdio (محلي)
+npm run start:server # تشغيل HTTP على بورت (مثلاً 3000)
+npm run dev          # تطوير stdio
+npm run dev:server   # تطوير HTTP
 ```
 
 ## التوثيق والمراحل
 
-- مراحل التنفيذ مُعرّفة في **`docs/phases/`** ويجب اتباعها بالترتيب (00 → 01 → … → 06).
+- مراحل التنفيذ مُعرّفة في **`docs/phases/`** ويجب اتباعها بالترتيب (00 → … → 09).
 - الفهرس: [docs/README.md](README.md).
+- استضافة HTTP في الإنتاج: [docs/deployment.md](deployment.md).

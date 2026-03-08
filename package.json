@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server/index.js",
-    "dev": "tsx src/server/index.ts"
+    "start:server": "node dist/server/http-entry.js",
+    "dev": "tsx src/server/index.ts",
+    "dev:server": "tsx src/server/http-entry.ts"
   },
   "engines": {
     "node": ">=20.0.0"
