@@ -25,10 +25,10 @@ node -v
 | `typescript` | الترجمة والأنواع |
 | `tsx` | تشغيل TypeScript أثناء التطوير (`npm run dev`) |
 
-## متغيرات البيئة (لاحقاً)
+## متغيرات البيئة
 
-- حالياً لا يُطلب أي متغير بيئة إلزامي.
-- في مراحل لاحقة قد تُستخدم مثلاً:
+- **`MCP_WORKSPACE_ROOT`** (اختياري): مسار جذر الـ workspace لعمليات الملفات (create_file، read_file). إن لم يُعرّف، يُستخدم `process.cwd()` عند بدء السيرفر. انظر [docs/security.md](security.md).
+- لاحقاً قد تُستخدم:
   - `MCP_PLUGINS_CONFIG`: مسار ملف إعداد الإضافات الخارجية.
   - `MCP_TRANSPORT`: ناقل الاتصال (مثلاً `stdio` أو `sse`).
 

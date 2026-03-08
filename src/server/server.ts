@@ -1,23 +1,26 @@
 /**
- * MCP Server layer (Phase 01).
- * Builds and configures the McpServer with serverInfo, capabilities,
- * and a minimal tool registry (one demo tool for verification).
- * No real tool execution yet — that is Phase 02.
+ * MCP Server layer (Phase 01 + 02).
+ * Builds the McpServer with serverInfo, capabilities, and tools from the registry.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import {
   SERVER_NAME,
   SERVER_VERSION,
   DEFAULT_CAPABILITIES,
 } from "../config/constants.js";
+import {
+  registerBuiltInTools,
+  getAllTools,
+  executeTool,
+} from "../tools/index.js";
 
 /**
- * Creates and configures the MCP server: initialize response (serverInfo, capabilities),
- * tools/list (via registered tools), and tools/call handler (prepared; real execution in Phase 02).
+ * Creates and configures the MCP server: initialize, tools/list from registry, tools/call via executeTool.
  */
 export function createServer(): McpServer {
+  registerBuiltInTools();
+
   const server = new McpServer(
     {
       name: SERVER_NAME,
@@ -26,24 +29,19 @@ export function createServer(): McpServer {
     { capabilities: DEFAULT_CAPABILITIES }
   );
 
-  // Demo tool for Phase 01 verification. Real tools are added in Phase 02.
-  server.registerTool(
-    "ping",
-    {
-      description: "Echo/ping for connectivity check. No side effects.",
-      inputSchema: {
-        message: z.string().optional().describe("Optional message to echo back"),
-      },
-    },
-    async ({ message }) => ({
-      content: [
-        {
-          type: "text" as const,
-          text: message ? `pong: ${message}` : "pong",
-        },
-      ],
-    })
-  );
+  for (const tool of getAllTools()) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: tool.inputSchema as Record<string, unknown>,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) =>
+        (await executeTool(tool.name, args)) as Awaited<
+          ReturnType<Parameters<McpServer["registerTool"]>[2]>
+        >
+    );
+  }
 
   return server;
 }

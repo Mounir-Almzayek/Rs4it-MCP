@@ -43,10 +43,11 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 ## الحالة الحالية
 
 - ✅ Phase 00: إعداد المشروع (package.json، tsconfig، اعتماديات، توثيق)
-- ✅ Phase 01: طبقة MCP Server (stdio، initialize، tools/list، tools/call، أداة تجريبية ping)
+- ✅ Phase 01: طبقة MCP Server (stdio، initialize، tools/list، tools/call)
+- ✅ Phase 02: طبقة الأدوات (create_file، read_file، run_command)، سجل مركزي، أمان workspace و blocklist
 - ✅ هيكلية المجلدات
 - ✅ توثيق مراحل التنفيذ (فاز 0–6)
-- ⏳ Phase 02 وما بعد: أدوات حقيقية، مهارات، إضافات
+- ⏳ Phase 03 وما بعد: مهارات، إضافات، توجيه
 
 ---
 
