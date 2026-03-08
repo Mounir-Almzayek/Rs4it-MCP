@@ -11,6 +11,7 @@
 | **[skill-template.md](skill-template.md)** | قالب إضافة مهارة جديدة دون تعديل قلب السيرفر |
 | **[security.md](security.md)** | سياسة أمان الأدوات (workspace، blocklist) |
 | **[requirements.md](requirements.md)** | متطلبات التشغيل ومتغيرات البيئة |
+| **future/** | توسعات مستقبلية (فهرس، أولويات) وتذكير تحسينات الجودة — [future/README.md](future/README.md) |
 
 ## ترتيب المراحل
 
