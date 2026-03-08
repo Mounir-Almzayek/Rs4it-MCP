@@ -19,7 +19,7 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 
 ## أين أبدأ؟
 
-1. **مراحل التنفيذ**: اتبع الملفات في `**docs/phases/`** بالترتيب (00 → 01 → … → 06). الترتيب مهم لأن كل مرحلة تعتمد على سابقتها.
+1. **مراحل التنفيذ**: اتبع الملفات في **`docs/phases/`** بالترتيب (00 → … → 06 أساس، ثم 07–09 استضافة/بانل/أدوار). الترتيب مهم لأن كل مرحلة تعتمد على سابقتها.
   الفهرس: [docs/README.md](docs/README.md)
 2. **المتطلبات**: إصدار Node.js، الاعتماديات، وطريقة التشغيل موثّقة في [docs/requirements.md](docs/requirements.md).
 3. **الهيكلية الحالية**: المجلدات جاهزة؛ الكود يُضاف حسب كل مرحلة.
@@ -49,6 +49,7 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 - ✅ Phase 04: إضافات MCP خارجية (NPX، stdio)، تحميل وإغلاق مع دورة الحياة
 - ✅ Phase 05: توجيه موحّد (أدوات + مهارات + إضافات)، اتفاقية تسمية، routeToolCall للمهارات
 - ✅ Phase 06: توثيق التوسعات المستقبلية وتحسينات الجودة (docs/future/)
+- 📋 **التطوّر (07–09):** استضافة على سيرفر، بانل إدارة، أدوار — [docs/evolution-roadmap.md](docs/evolution-roadmap.md)
 - ✅ هيكلية المجلدات
 
 ---
