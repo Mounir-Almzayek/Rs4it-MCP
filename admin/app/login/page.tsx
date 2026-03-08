@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Shield } from "lucide-react";
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from") ?? "/";
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -41,8 +40,8 @@ function LoginContent() {
         setError((data as { error?: string }).error ?? "Invalid credentials");
         return;
       }
-      router.push(from);
-      router.refresh();
+      window.location.href = from;
+      return;
     } finally {
       setLoading(false);
     }
@@ -71,8 +70,8 @@ function LoginContent() {
         setError((data as { error?: string }).error ?? "Setup failed");
         return;
       }
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
+      return;
     } finally {
       setLoading(false);
     }

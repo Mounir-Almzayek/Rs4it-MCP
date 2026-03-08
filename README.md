@@ -54,6 +54,34 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 - ✅ **Phase 08:** بانل إدارة (Tools + Skills + Plugins) — تطبيق Next.js في **`admin/`**، تشغيل: `cd admin && npm run dev` (منفذ 3001)
 - ✅ هيكلية المجلدات
 
+## لقطات الشاشة (Screenshots)
+
+جميع اللقطات من مجلد [docs/screen](docs/screen) وتُعرض مباشرة أدناه.
+
+### 1 — Dashboard
+
+![Dashboard](docs/screen/Screenshot%202026-03-08%20155253.png)
+
+### 2
+
+![Screenshot 2](docs/screen/Screenshot%202026-03-08%20155312.png)
+
+### 3
+
+![Screenshot 3](docs/screen/Screenshot%202026-03-08%20155332.png)
+
+### 4
+
+![Screenshot 4](docs/screen/Screenshot%202026-03-08%20155357.png)
+
+### 5
+
+![Screenshot 5](docs/screen/Screenshot%202026-03-08%20155413.png)
+
+### 6
+
+![Screenshot 6](docs/screen/Screenshot%202026-03-08%20155427.png)
+
 ---
 
 *المشروع مبني على تقرير المعمارية: Company MCP Platform — System Architecture.*

@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import { verifySessionCookieEdge } from "@/lib/auth-edge";
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/setup", "/api/auth/status"];
-const AUTH_API_PREFIX = "/api/auth/";
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -12,8 +15,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  if (isPublic) {
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -22,7 +24,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Server misconfigured: SESSION_SECRET required" }, { status: 503 });
     }
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.url), 302);
   }
 
   const cookieValue = request.cookies.get("admin_session")?.value;
@@ -34,12 +36,12 @@ export async function middleware(request: NextRequest) {
     }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(loginUrl, 302);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/", "/login", "/tools", "/skills", "/plugins", "/roles", "/permissions", "/registry", "/status", "/settings", "/api/:path*"],
 };
