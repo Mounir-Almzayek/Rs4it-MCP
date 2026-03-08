@@ -141,7 +141,47 @@ location /mcp {
 
 ## ربط Cursor أو عميل MCP آخر
 
-- **Cursor**: حالياً يدعم Cursor الاتصال عبر **stdio** (تشغيل `npm run start` وإضافة السيرفر في إعدادات MCP). عند دعم Cursor لـ MCP عبر HTTP، يمكن إضافة رابط الـ Hub (مثل `https://your-domain/mcp`) في إعدادات العميل.
+بعد استضافة الـ Hub على سيرفر (مثلاً `https://your-domain.com/mcp` أو `http://your-server:3000/mcp`)، يمكنك إضافةه كـ **MCP مخصّص (Custom MCP)** في Cursor كالتالي.
+
+### من واجهة Cursor (مُفضّل)
+
+1. افتح **الإعدادات**: `Ctrl + ,` (Windows/Linux) أو `Cmd + ,` (macOS).
+2. اذهب إلى **Tools & MCP** (أدوات و MCP).
+3. اضغط **"Add new MCP server"** (إضافة سيرفر MCP جديد).
+4. املأ الحقول:
+   - **Name**: اسم تعريفي، مثلاً `rs4it-hub`.
+   - **Type**: اختر **`streamableHttp`** (للسيرفرات المعتمدة على HTTP).
+   - **URL**: رابط نقطة الـ MCP على السيرفر، مثلاً:
+     - `https://your-domain.com/mcp` (إذا الـ Hub خلف reverse proxy مع HTTPS)
+     - أو `http://your-server-ip:3000/mcp` (اتصال مباشر).
+   - **Headers** (اختياري): إذا احتجت هيدر دور (Phase 09) أضف مثلاً:
+     - `X-MCP-Role`: `web_engineer` (أو أي دور معرّف في `roles.json`).
+5. احفظ ثم **أعد تشغيل Cursor بالكامل** حتى يظهر السيرفر ويُستخدم.
+
+### من ملف التكوين (لمشروع معيّن)
+
+يمكن وضع تكوين MCP خاص بالمشروع في `.cursor/mcp.json` في جذر المشروع:
+
+```json
+{
+  "mcpServers": {
+    "rs4it-hub": {
+      "url": "https://your-domain.com/mcp",
+      "transport": "streamableHttp",
+      "headers": {
+        "X-MCP-Role": "web_engineer"
+      }
+    }
+  }
+}
+```
+
+- غيّر `url` إلى رابط الـ Hub الفعلي بعد الاستضافة.
+- `headers` و `X-MCP-Role` اختياريان (لفلترة الأدوات حسب الدور).
+
+### ملاحظات
+
+- **Cursor** يدعم أيضاً الاتصال عبر **stdio** (تشغيل محلي: `npm run start` وإضافة السيرفر في MCP كأمر `node`/`npx`).
 - أي عميل MCP يدعم **Streamable HTTP** يمكنه الاتصال برابط `BASE_URL/mcp` واتباع تدفق initialize ثم الطلبات مع `mcp-session-id`.
 
 ## التحقق من العمل

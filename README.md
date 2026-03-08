@@ -212,6 +212,20 @@ rs4it mcp/
 
 ---
 
+## بعد النشر (Deployment): الربط مع Cursor
+
+بعد استضافة الـ Hub على سيرفر (Docker أو PM2 أو Node مباشرة)، نربطه في **Cursor** كسيرفر MCP مخصّص:
+
+1. **Cursor** → الإعدادات (`Ctrl + ,`) → **Tools & MCP** → **Add new MCP server**
+2. **Type**: `streamableHttp`
+3. **URL**: رابط نقطة الـ MCP (مثلاً `https://your-domain.com/mcp` أو `http://your-server:3000/mcp`)
+4. **Headers** (اختياري): `X-MCP-Role` إذا استخدمت الأدوار
+5. حفظ ثم **إعادة تشغيل Cursor** بالكامل
+
+للتفاصيل (واجهة Cursor وملف `.cursor/mcp.json`): [docs/deployment.md — ربط Cursor أو عميل MCP آخر](docs/deployment.md#ربط-cursor-أو-عميل-mcp-آخر).
+
+---
+
 ## الترخيص والحالة
 
 - **الترخيص**: UNLICENSED (استخدام داخلي حسب سياسة المشروع).
