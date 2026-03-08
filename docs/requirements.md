@@ -27,9 +27,9 @@ node -v
 
 ## متغيرات البيئة
 
-- **`MCP_WORKSPACE_ROOT`** (اختياري): مسار جذر الـ workspace لعمليات الملفات (create_file، read_file). إن لم يُعرّف، يُستخدم `process.cwd()` عند بدء السيرفر. انظر [docs/security.md](security.md).
+- **`MCP_WORKSPACE_ROOT`** (اختياري): مسار جذر الـ workspace لعمليات الملفات (create_file، read_file). انظر [docs/security.md](security.md).
+- **`MCP_PLUGINS_CONFIG`** (اختياري): مسار ملف إعداد الإضافات الخارجية (JSON). إن لم يُعرّف، يُستخدم `config/mcp_plugins.json` نسبةً لمجلد التشغيل.
 - لاحقاً قد تُستخدم:
-  - `MCP_PLUGINS_CONFIG`: مسار ملف إعداد الإضافات الخارجية.
   - `MCP_TRANSPORT`: ناقل الاتصال (مثلاً `stdio` أو `sse`).
 
 ## تشغيل السيرفر (بعد Phase 01)

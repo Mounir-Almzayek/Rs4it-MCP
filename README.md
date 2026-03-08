@@ -46,9 +46,10 @@ Cursor AI  →  Company MCP Hub  →  Tools + Skills + External MCP Plugins
 - ✅ Phase 01: طبقة MCP Server (stdio، initialize، tools/list، tools/call)
 - ✅ Phase 02: طبقة الأدوات (create_file، read_file، run_command)، سجل مركزي، أمان workspace و blocklist
 - ✅ Phase 03: سجل المهارات، مهارة create_api_endpoint، عرض المهارات كأدوات (skill:)
+- ✅ Phase 04: إضافات MCP خارجية (NPX، stdio)، تحميل وإغلاق مع دورة الحياة
 - ✅ هيكلية المجلدات
 - ✅ توثيق مراحل التنفيذ (فاز 0–6)
-- ⏳ Phase 04 وما بعد: إضافات خارجية، توجيه موحّد
+- ⏳ Phase 05: توجيه موحّد (أدوات + مهارات + إضافات)
 
 ---
 

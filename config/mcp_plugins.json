@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "id": "hello",
+      "name": "MCP Hello World (test plugin)",
+      "command": "npx",
+      "args": ["-y", "mcp-hello-world@latest"]
+    }
+  ]
+}
