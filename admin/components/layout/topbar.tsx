@@ -1,6 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 export function Topbar({
   title,
@@ -9,7 +13,14 @@ export function Topbar({
   title?: string;
   className?: string;
 }) {
+  const router = useRouter();
   const env = process.env.NODE_ENV ?? "development";
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header
@@ -22,6 +33,11 @@ export function Topbar({
         {title ?? "RS4IT MCP Hub — Admin"}
       </h1>
       <div className="flex items-center gap-4">
+        <Link href="/settings">
+          <Button variant="ghost" size="sm">
+            Settings
+          </Button>
+        </Link>
         <span
           className={cn(
             "rounded-full px-2.5 py-0.5 text-xs font-medium",
@@ -32,6 +48,9 @@ export function Topbar({
         >
           {env}
         </span>
+        <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
+          <LogOut className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );

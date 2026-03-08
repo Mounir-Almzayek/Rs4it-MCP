@@ -6,13 +6,14 @@
 
 | المجلد / الملف | الوصف |
 |----------------|--------|
-| **[evolution-roadmap.md](evolution-roadmap.md)** | خارطة التطوّر: استضافة على سيرفر، بانل إدارة، أدوار (Phase 07–09) |
-| **phases/** | مراحل التنفيذ: ٠٠–٠٦ (أساس) ثم ٠٧–٠٩ (استضافة، بانل، أدوار) — اتبع الترتيب |
+| **[evolution-roadmap.md](evolution-roadmap.md)** | خارطة التطوّر: استضافة على سيرفر، بانل إدارة، أدوار، مصادقة (Phase 07–10) |
+| **phases/** | مراحل التنفيذ: ٠٠–٠٦ (أساس) ثم ٠٧–١٠ (استضافة، بانل، أدوار، مصادقة البانل) — اتبع الترتيب |
 | **[architecture.md](architecture.md)** | قرارات التصميم (عرض المهارات كأدوات ببادئة `skill:`) والطبقات |
 | **[skill-template.md](skill-template.md)** | قالب إضافة مهارة جديدة دون تعديل قلب السيرفر |
 | **[security.md](security.md)** | سياسة أمان الأدوات (workspace، blocklist) |
 | **[requirements.md](requirements.md)** | متطلبات التشغيل ومتغيرات البيئة |
 | **[deployment.md](deployment.md)** | استضافة الـ Hub على HTTP في الإنتاج (Phase 07) |
+| **[admin-auth.md](admin-auth.md)** | مصادقة البانل (Phase 10): تسجيل الدخول، تغيير الاعتماد، SESSION_SECRET |
 | **admin/** (مشروع منفصل) | بانل إدارة Phase 08 — Next.js، إدارة Tools + Skills + Plugins |
 | **future/** | توسعات مستقبلية (فهرس، أولويات) وتذكير تحسينات الجودة — [future/README.md](future/README.md) |
 
@@ -30,13 +31,14 @@
 6. **[05 - Integration & Routing](phases/05-phase-integration-routing.md)** — التكامل وتوجيه الطلبات
 7. **[06 - Extensions & Future](phases/06-phase-extensions-future.md)** — التوسعات والسيناريوهات المستقبلية
 
-### التطوّر (07–09) — استضافة، بانل، أدوار
+### التطوّر (07–10) — استضافة، بانل، أدوار، مصادقة
 
 انظر **[evolution-roadmap.md](evolution-roadmap.md)** للسياق والأهداف.
 
 8. **[07 - Server Hosting](phases/07-phase-server-hosting.md)** — استضافة الـ Hub على سيرفر (HTTP/SSE)
 9. **[08 - Admin Panel](phases/08-phase-admin-panel.md)** — بانل إدارة Tools + Skills + Plugins
 10. **[09 - Roles & Visibility](phases/09-phase-roles-and-visibility.md)** — أدوار وفلترة الأدوات (مفيد لـ Cursor)
+11. **[10 - Admin Authentication](phases/10-phase-admin-authentication.md)** — مصادقة آمنة للبانل (تسجيل دخول، حماية API، تغيير الاعتماد)
 
 ## الهيكلية المقابلة في الكود
 
@@ -44,7 +46,7 @@
 rs4it mcp/
 ├── docs/              ← أنت هنا
 │   ├── evolution-roadmap.md   ← خارطة 07–09
-│   ├── phases/        ← 00–09
+│   ├── phases/        ← 00–10
 │   └── future/
 ├── src/
 │   ├── server/        ← Phase 01, 07 (http-entry)

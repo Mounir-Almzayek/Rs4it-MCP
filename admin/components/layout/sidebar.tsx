@@ -11,6 +11,7 @@ import {
   Grid3X3,
   ListTree,
   Activity,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const nav = [
   { href: "/permissions", label: "Permissions Matrix", icon: Grid3X3 },
   { href: "/registry", label: "Registry Preview", icon: ListTree },
   { href: "/status", label: "System Status", icon: Activity },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
