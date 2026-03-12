@@ -1,55 +1,55 @@
-# مصادقة بانل الإدارة (Admin Authentication) — Phase 10
+# Admin Panel Authentication — Phase 10
 
-هذا المستند يوضح كيفية إعداد واستخدام نظام تسجيل الدخول للبانل.
+This document describes how to set up and use the login system for the admin panel.
 
-## المتطلبات
+## Requirements
 
-- **SESSION_SECRET** (أو **ADMIN_SESSION_SECRET**): مفتاح سري لتعيين وتوقيع جلسة تسجيل الدخول. يجب أن يكون طوله 16 حرفاً على الأقل. **مطلوب** لتفعيل المصادقة.
-- **ADMIN_CREDENTIALS_PATH** (اختياري): مسار ملف تخزين الاعتماد (اسم المستخدم وهاش كلمة المرور). إن لم يُحدد، يُستخدم `../config/admin-credentials.json` نسبةً لمجلد تشغيل البانل.
+- **SESSION_SECRET** (or **ADMIN_SESSION_SECRET**): Secret key for creating and signing the login session. Must be at least 16 characters. **Required** to enable authentication.
+- **ADMIN_CREDENTIALS_PATH** (optional): Path to the credentials file (username and password hash). If not set, `../config/admin-credentials.json` is used relative to the panel’s working directory.
 
-## الإعداد الأولي
+## Initial Setup
 
-1. عيّن متغير البيئة **SESSION_SECRET** (أو ADMIN_SESSION_SECRET) قبل تشغيل البانل:
+1. Set the **SESSION_SECRET** (or ADMIN_SESSION_SECRET) environment variable before starting the panel:
    ```bash
    export SESSION_SECRET="your-secret-at-least-16-chars"
    ```
-   أو في ملف `.env.local` داخل مجلد `admin/`:
+   Or in `.env.local` inside the `admin/` folder:
    ```
    SESSION_SECRET=your-secret-at-least-16-chars
    ```
 
-2. شغّل البانل (مثلاً `npm run dev` من مجلد `admin/`).
+2. Start the panel (e.g. `npm run dev` from the `admin/` folder).
 
-3. افتح `/login` في المتصفح. إن لم يكن هناك ملف اعتماد بعد، ستظهر صفحة **إنشاء حساب المدير** (اسم مستخدم + كلمة مرور). أدخل البيانات واضغط "Create account".
+3. Open `/login` in the browser. If no credentials file exists yet, you will see the **Create admin account** page (username + password). Enter the details and click "Create account".
 
-4. بعد إنشاء الحساب يتم تسجيل دخولك تلقائياً وإعادة توجيهك إلى البانل.
+4. After creating the account you are logged in automatically and redirected to the panel.
 
-## تسجيل الدخول لاحقاً
+## Logging In Later
 
-- من أي صفحة محمية دون جلسة صالحة يتم توجيهك إلى `/login`.
-- أدخل اسم المستخدم وكلمة المرور ثم "Sign in".
-- الجلسة صالحة لمدة **24 ساعة** ثم تحتاج لتسجيل الدخول مرة أخرى.
+- From any protected page without a valid session you are redirected to `/login`.
+- Enter username and password then "Sign in".
+- The session is valid for **24 hours** after which you need to log in again.
 
-## تغيير اسم المستخدم وكلمة المرور
+## Changing Username and Password
 
-1. من البانل، ادخل إلى **Settings** (من الشريط الجانبي أو من الهيدر).
-2. **تغيير اسم المستخدم**: أدخل كلمة المرور الحالية والاسم الجديد ثم "Update username".
-3. **تغيير كلمة المرور**: أدخل كلمة المرور الحالية وكلمة المرور الجديدة وتأكيدها (6 أحرف على الأقل) ثم "Update password".
+1. From the panel, go to **Settings** (from the sidebar or header).
+2. **Change username**: Enter current password and the new username then "Update username".
+3. **Change password**: Enter current password, new password and confirmation (at least 6 characters) then "Update password".
 
-جميع التغييرات تُحفظ فوراً؛ كلمات المرور تُخزَّن كـ **هاش فقط** (bcrypt) ولا يُخزَن النص الواضح أبداً.
+All changes are saved immediately; passwords are stored as **hash only** (bcrypt) and plain text is never stored.
 
-## تسجيل الخروج
+## Logging Out
 
-استخدم زر **Log out** في الهيدر (أعلى اليمين) لإنهاء الجلسة. سيتم توجيهك إلى `/login`.
+Use the **Log out** button in the header (top right) to end the session. You will be redirected to `/login`.
 
-## حماية الـ API
+## API Protection
 
-- جميع مسارات `/api/*` ما عدا `/api/auth/login`, `/api/auth/logout`, `/api/auth/setup`, `/api/auth/status` تتطلب جلسة صالحة.
-- الطلبات غير المصادقة تُرجع **401 Unauthorized**.
+- All `/api/*` routes except `/api/auth/login`, `/api/auth/logout`, `/api/auth/setup`, and `/api/auth/status` require a valid session.
+- Unauthenticated requests return **401 Unauthorized**.
 
-## توصيات أمان
+## Security Recommendations
 
-- استخدم **HTTPS** في الإنتاج حتى لا تُنقل الجلسة أو كلمة المرور على قناة غير مشفّرة.
-- لا تعرّض البانل للإنترنت دون مصادقة؛ المصادقة مدمجة في البانل نفسه.
-- احمِ ملف الاعتماد (`admin-credentials.json` أو المسار المُعرَّف في ADMIN_CREDENTIALS_PATH): صلاحيات قراءة/كتابة للمعالج فقط.
-- اختر **SESSION_SECRET** عشوائياً وقوياً (مثلاً 32 حرفاً) ولا تشاركه أو ترفعه إلى المستودع.
+- Use **HTTPS** in production so the session and password are not sent over an unencrypted channel.
+- Do not expose the panel to the internet without authentication; authentication is built into the panel.
+- Protect the credentials file (`admin-credentials.json` or the path in ADMIN_CREDENTIALS_PATH): read/write only for the process.
+- Choose a **SESSION_SECRET** that is random and strong (e.g. 32 characters) and do not share it or commit it to the repository.

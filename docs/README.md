@@ -1,51 +1,51 @@
 # Company MCP Platform — Documentation
 
-هذا المجلد يحتوي على توثيق المشروع ومراحل التنفيذ.
+This folder contains the project documentation and implementation phases.
 
-## المحتويات
+## Contents
 
-| المجلد / الملف | الوصف |
-|----------------|--------|
-| **[evolution-roadmap.md](evolution-roadmap.md)** | خارطة التطوّر: استضافة على سيرفر، بانل إدارة، أدوار، مصادقة (Phase 07–10) |
-| **phases/** | مراحل التنفيذ: ٠٠–٠٦ (أساس) ثم ٠٧–١٠ (استضافة، بانل، أدوار، مصادقة البانل) — اتبع الترتيب |
-| **[architecture.md](architecture.md)** | قرارات التصميم (عرض المهارات كأدوات ببادئة `skill:`) والطبقات |
-| **[skill-template.md](skill-template.md)** | قالب إضافة مهارة جديدة دون تعديل قلب السيرفر |
-| **[security.md](security.md)** | سياسة أمان الأدوات (workspace، blocklist) |
-| **[requirements.md](requirements.md)** | متطلبات التشغيل ومتغيرات البيئة |
-| **[deployment.md](deployment.md)** | استضافة الـ Hub على HTTP في الإنتاج (Phase 07) |
-| **[admin-auth.md](admin-auth.md)** | مصادقة البانل (Phase 10): تسجيل الدخول، تغيير الاعتماد، SESSION_SECRET |
-| **admin/** (مشروع منفصل) | بانل إدارة Phase 08 — Next.js، إدارة Tools + Skills + Plugins |
-| **future/** | توسعات مستقبلية (فهرس، أولويات) وتذكير تحسينات الجودة — [future/README.md](future/README.md) |
+| Folder / File | Description |
+|---------------|-------------|
+| **[evolution-roadmap.md](evolution-roadmap.md)** | Evolution roadmap: server hosting, admin panel, roles, authentication (Phase 07–10) |
+| **phases/** | Implementation phases: 00–06 (foundation) then 07–10 (hosting, panel, roles, panel auth) — follow in order |
+| **[architecture.md](architecture.md)** | Design decisions (exposing skills as tools with `skill:` prefix) and layers |
+| **[skill-template.md](skill-template.md)** | Template for adding a new skill without changing the server core |
+| **[security.md](security.md)** | Tool security policy (workspace, blocklist) |
+| **[requirements.md](requirements.md)** | Runtime requirements and environment variables |
+| **[deployment.md](deployment.md)** | Hosting the Hub over HTTP in production (Phase 07) |
+| **[admin-auth.md](admin-auth.md)** | Panel authentication (Phase 10): login, credential change, SESSION_SECRET |
+| **admin/** (separate project) | Phase 08 admin panel — Next.js, managing Tools + Skills + Plugins |
+| **future/** | Future extensions (index, priorities) and quality improvement reminders — [future/README.md](future/README.md) |
 
-## ترتيب المراحل
+## Phase Order
 
-المراحل مصممة لتُنفَّذ بالترتيب لأن كل مرحلة تعتمد على سابقتها.
+Phases are designed to be executed in order because each phase depends on the previous one.
 
-### الأساس (00–06) — مكتمل
+### Foundation (00–06) — Complete
 
-1. **[00 - Overview & Setup](phases/00-overview-and-setup.md)** — نظرة عامة، المتطلبات، وإعداد المشروع
-2. **[01 - MCP Server Layer](phases/01-phase-mcp-server.md)** — طبقة السيرفر ونقطة الدخول
-3. **[02 - Tool Layer](phases/02-phase-tool-layer.md)** — طبقة الأدوات الذرية
-4. **[03 - Skills Registry & Dynamic Skills](phases/03-phase-skills-registry.md)** — سجل المهارات والمهارات الديناميكية
-5. **[04 - External MCP Plugins & NPX](phases/04-phase-external-plugins.md)** — الإضافات الخارجية وتشغيلها عبر NPX
-6. **[05 - Integration & Routing](phases/05-phase-integration-routing.md)** — التكامل وتوجيه الطلبات
-7. **[06 - Extensions & Future](phases/06-phase-extensions-future.md)** — التوسعات والسيناريوهات المستقبلية
+1. **[00 - Overview & Setup](phases/00-overview-and-setup.md)** — Overview, requirements, and project setup
+2. **[01 - MCP Server Layer](phases/01-phase-mcp-server.md)** — Server layer and entry point
+3. **[02 - Tool Layer](phases/02-phase-tool-layer.md)** — Atomic tools layer
+4. **[03 - Skills Registry & Dynamic Skills](phases/03-phase-skills-registry.md)** — Skills registry and dynamic skills
+5. **[04 - External MCP Plugins & NPX](phases/04-phase-external-plugins.md)** — External plugins and running them via NPX
+6. **[05 - Integration & Routing](phases/05-phase-integration-routing.md)** — Integration and request routing
+7. **[06 - Extensions & Future](phases/06-phase-extensions-future.md)** — Extensions and future scenarios
 
-### التطوّر (07–10) — استضافة، بانل، أدوار، مصادقة
+### Evolution (07–10) — Hosting, panel, roles, auth
 
-انظر **[evolution-roadmap.md](evolution-roadmap.md)** للسياق والأهداف.
+See **[evolution-roadmap.md](evolution-roadmap.md)** for context and goals.
 
-8. **[07 - Server Hosting](phases/07-phase-server-hosting.md)** — استضافة الـ Hub على سيرفر (HTTP/SSE)
-9. **[08 - Admin Panel](phases/08-phase-admin-panel.md)** — بانل إدارة Tools + Skills + Plugins
-10. **[09 - Roles & Visibility](phases/09-phase-roles-and-visibility.md)** — أدوار وفلترة الأدوات (مفيد لـ Cursor)
-11. **[10 - Admin Authentication](phases/10-phase-admin-authentication.md)** — مصادقة آمنة للبانل (تسجيل دخول، حماية API، تغيير الاعتماد)
+8. **[07 - Server Hosting](phases/07-phase-server-hosting.md)** — Hosting the Hub on a server (HTTP/SSE)
+9. **[08 - Admin Panel](phases/08-phase-admin-panel.md)** — Admin panel for Tools + Skills + Plugins
+10. **[09 - Roles & Visibility](phases/09-phase-roles-and-visibility.md)** — Roles and tool filtering (useful for Cursor)
+11. **[10 - Admin Authentication](phases/10-phase-admin-authentication.md)** — Secure panel authentication (login, API protection, credential change)
 
-## الهيكلية المقابلة في الكود
+## Corresponding Code Structure
 
 ```
 rs4it mcp/
-├── docs/              ← أنت هنا
-│   ├── evolution-roadmap.md   ← خارطة 07–09
+├── docs/              ← You are here
+│   ├── evolution-roadmap.md   ← Roadmap for 07–09
 │   ├── phases/        ← 00–10
 │   └── future/
 ├── src/
@@ -54,11 +54,11 @@ rs4it mcp/
 │   ├── skills/        ← Phase 03
 │   ├── plugins/       ← Phase 04
 │   ├── config/        ← Phase 01, 05
-│   ├── types/         ← مشترك، Phase 09 (roles)
-│   └── admin/         ← Phase 08 (بانل/تكوين ديناميكي)
-└── config/            ← إعدادات التشغيل (plugins, etc.)
+│   ├── types/         ← Shared, Phase 09 (roles)
+│   └── admin/         ← Phase 08 (panel/dynamic config)
+└── config/            ← Runtime config (plugins, etc.)
 ```
 
 ---
 
-*آخر تحديث: حسب مراحل التنفيذ في `phases/`*
+*Last updated: per implementation phases in `phases/`*

@@ -1,34 +1,31 @@
-# توسعات مستقبلية — RS4IT MCP Hub
+# Future Extensions — RS4IT MCP Hub
 
-هذا المجلد مرجع للتوسعات المخططة. **لا يُنفَّذ فيها كود في Phase 06**؛ الوثائق جاهزة للاستخدام لاحقاً.
+This folder is a reference for planned extensions. **No code is implemented in Phase 06**; the docs are ready for later use.
 
-المصدر الموحّد لتفاصيل كل توسعة: **[../phases/06-phase-extensions-future.md](../phases/06-phase-extensions-future.md)** (الهدف، المتطلبات، التبعيات، الخطوات المقترحة).
-
----
-
-## قائمة التوسعات (مع أولوية مقترحة)
-
-
-| الأولوية | التوسعة                     | الهدف المختصر                                             |
-| -------- | --------------------------- | --------------------------------------------------------- |
-| 1        | **6.1 سقالة المشاريع**      | مهارة/مهارات لإنشاء هيكل مشروع (Next.js، API، مكتبة)      |
-| 2        | **6.2 توليد مخطط DB**       | مهارة لوصف entities/relations وتوليد migrations أو schema |
-| 3        | **6.3 توليد صفحات الواجهة** | مهارة لإنشاء صفحة/مكوّن (React) من وصف أو Figma           |
-| 4        | **6.4 أتمتة النشر**         | أدوات/مهارات لنشر، التحقق من الحالة، والتراجع (أمان عالٍ) |
-| 5        | **6.5 أدوات داخلية للشركة** | أدوات/مهارات خاصة (استعلامات، تقارير، إلخ)                |
-
+The single source for each extension’s details: **[../phases/06-phase-extensions-future.md](../phases/06-phase-extensions-future.md)** (goal, requirements, dependencies, suggested steps).
 
 ---
 
-## تحسينات الجودة
+## Extension List (with suggested priority)
 
-تذكير بتحسينات الجودة (اختبارات، مراقبة، أمان، إصدارات، توثيق): **[quality.md](quality.md)**.
+| Priority | Extension | Short goal |
+|----------|-----------|------------|
+| 1 | **6.1 Project scaffolding** | Skill(s) to create project structure (Next.js, API, library) |
+| 2 | **6.2 DB schema generation** | Skill to describe entities/relations and generate migrations or schema |
+| 3 | **6.3 Frontend page generation** | Skill to create a page/component (React) from description or Figma |
+| 4 | **6.4 Deployment automation** | Tools/skills for deploy, status check, and rollback (high security) |
+| 5 | **6.5 Internal company tools** | Company-specific tools/skills (queries, reports, etc.) |
 
 ---
 
-## عند إضافة توسعة جديدة
+## Quality Improvements
 
-1. إضافتها في [../phases/06-phase-extensions-future.md](../phases/06-phase-extensions-future.md) (الهدف، المتطلبات، التبعيات، خطوات مقترحة).
-2. تحديث الجدول أعلاه في هذا الملف.
-3. يمكن لاحقاً تقسيم كل توسعة إلى مراحل فرعية (6.1.1, 6.1.2, …) عند البدء بالتنفيذ.
+Reminder for quality improvements (tests, monitoring, security, versions, documentation): **[quality.md](quality.md)**.
 
+---
+
+## When Adding a New Extension
+
+1. Add it in [../phases/06-phase-extensions-future.md](../phases/06-phase-extensions-future.md) (goal, requirements, dependencies, suggested steps).
+2. Update the table above in this file.
+3. Later, each extension can be split into sub-phases (6.1.1, 6.1.2, …) when implementation starts.

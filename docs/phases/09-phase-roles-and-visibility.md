@@ -1,80 +1,77 @@
-# Phase 09 — الأدوار وظهور الأدوات (Roles & Visibility)
+# Phase 09 — Roles & Visibility
 
-## الهدف
+## Goal
 
-إدخال مفهوم **أدوار (Roles)** وربط الأدوات والمهارات والإضافات بأدوار، بحيث يمكن للـ Hub إرجاع قائمة أدوات مُفلترة حسب دور المتصل (مثلاً Cursor يمرّر دور المستخدم)، فيتحقق تحكم أفضل وواجهة أوضح للـ AI وتقليل التعرض لأدوات حساسة.
-
----
-
-## المخرجات المتوقعة
-
-- نموذج **أدوار** (مثلاً: `developer`, `admin`, `viewer`) معرّف في التكوين أو في البانل.
-- لكل أداة/مهارة/إضافة إمكانية ربطها **بأدوار مسموح لها** (أو "الكل" إذا لم يُحدد).
-- عند طلب `tools/list` (أو عند initialize): العميل يمرّر **معرف الدور** (header، حقل في params، أو مصادقة تُستنتج منها الأدوار).
-- الـ Hub يفلتر القائمة ويرجع فقط الأدوات المسموح بها لهذا الدور.
-- توثيق كيف يضيف المستخدم/الفريق دور الاتصال في Cursor (إن أمكن) أو في عميل آخر.
+Introduce **roles** and bind tools, skills, and plugins to roles so the Hub can return a filtered tool list by the connecting client’s role (e.g. Cursor passes the user’s role), enabling better control, a clearer interface for the AI, and reduced exposure of sensitive tools.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 9.1 نموذج الأدوار والتخزين
-
-- تعريف أدوار افتراضية (مثلاً `default`, `developer`, `admin`) وقابلية إضافة أدوار من البانل لاحقاً.
-- تخزين صلاحيات "من يمكنه رؤية/استدعاء ماذا": إما في التكوين (ملف، DB) أو مرفقة بكل أداة/مهارة/إضافة كقائمة أدوار.
-- قرار: هل الأدوار مرتبطة بـ "مستخدم" (مصادقة) أم يمرّرها العميل صراحة (مثلاً header `X-MCP-Role: developer`). التوثيق يوضح الفرق والأمان.
-
-### 9.2 استقبال معرف الدور من العميل
-
-- اتفاقية بين الـ Hub والعميل: كيف يُمرَّر الدور (مثلاً header HTTP، حقل في طلب initialize، أو من token مصادقة).
-- في الـ Hub: استخراج الدور من الطلب/الجلسة واستخدامه لاحقاً في فلترة `tools/list` و (اختياري) التحقق عند `tools/call`.
-
-### 9.3 فلترة tools/list حسب الدور
-
-- عند تجميع قائمة الأدوات (محلي + مهارات + إضافات): استبعاد أي أداة غير مسموح لها للدور الحالي.
-- إرجاع النتيجة نفس التنسيق؛ العميل (Cursor) يرى فقط الأدوات المسموح بها.
-
-### 9.4 التحقق عند tools/call (اختياري)
-
-- عند استدعاء أداة: التحقق من أن دور الجلسة مسموح له بهذه الأداة؛ إن لم يكن، إرجاع خطأ واضح دون تنفيذ.
-
-### 9.5 Cursor والعميل
-
-- توثيق: إن كان Cursor (أو العميل المستخدم) يدعم تمرير headers أو params مخصصة، كيف يضيف المستخدم دور الاتصال (مثلاً إعداد في Cursor لـ Hub معيّن).
-- إن لم يدعم العميل تمرير الدور: توثيق أن الـ Hub يمكنه العمل بدون أدوار (يرجع كل الأدوات) أو استخدام دور افتراضي.
+- **Roles** model (e.g. `developer`, `admin`, `viewer`) defined in config or in the panel.
+- For each tool/skill/plugin, the ability to bind **allowed roles** (or “all” if not set).
+- On `tools/list` (or on initialize): the client passes a **role id** (header, field in params, or derived from auth).
+- The Hub filters the list and returns only tools allowed for that role.
+- Documentation on how the user/team sets the connection role in Cursor (if possible) or in another client.
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- إعداد أدوار وربط أدوات/مهارات/إضافات بأدوار.
-- عند تمرير دور معيّن، `tools/list` يعيد فقط الأدوات المسموح بها لذلك الدور.
-- استدعاء أداة غير مسموح لها (إن فُعّل التحقق) يُرجع خطأ واضحاً.
+### 9.1 Roles model and storage
+
+- Define default roles (e.g. `default`, `developer`, `admin`) and ability to add roles from the panel later.
+- Store “who can see/call what”: either in config (file, DB) or attached to each tool/skill/plugin as a role list.
+- Decision: are roles tied to a “user” (auth) or passed explicitly by the client (e.g. header `X-MCP-Role: developer`). Documentation should clarify the difference and security implications.
+
+### 9.2 Receiving role id from the client
+
+- Agreement between Hub and client: how the role is passed (e.g. HTTP header, field in initialize request, or from auth token).
+- In the Hub: extract role from request/session and use it when filtering `tools/list` and (optionally) when validating `tools/call`.
+
+### 9.3 Filtering tools/list by role
+
+- When building the tool list (local + skills + plugins): exclude any tool not allowed for the current role.
+- Return the same response format; the client (Cursor) sees only allowed tools.
+
+### 9.4 Validation on tools/call (optional)
+
+- On tool call: verify that the session’s role is allowed for that tool; if not, return a clear error without executing.
+
+### 9.5 Cursor and the client
+
+- Document: if Cursor (or the client in use) supports custom headers or params, how the user sets the connection role (e.g. Cursor config for a given Hub).
+- If the client does not support passing the role: document that the Hub can run without roles (return all tools) or use a default role.
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 07** (استضافة على سيرفر) عملياً مطلوب لاستخدام الأدوار مع عملاء متعددين؛ نقل stdio لا يحمل عادةً سياق "مستخدم" أو "دور" إلا إن مرّرته البيئة.
-- **Phase 08** (بانل) مفيد لإدارة ربط الأدوار بالأدوات من واجهة بدل تعديل التكوين يدوياً.
-
----
-
-## الملفات المقترحة
-
-
-| الملف                                           | الغرض                                        |
-| ----------------------------------------------- | -------------------------------------------- |
-| `src/types/roles.ts`                            | أنواع الأدوار وصلاحيات الأدوات               |
-| `src/config/roles.ts` أو من البانل              | تحميل/تعديل ربط أدوار ↔ أدوات/مهارات/إضافات  |
-| تعديل تجميع `tools/list` (في السيرفر أو router) | تطبيق الفلترة حسب الدور                      |
-| `docs/architecture.md`                          | تحديث بسيط يذكر الأدوار واتفاقية تمرير الدور |
-
+- Roles are configured and tools/skills/plugins are bound to roles.
+- When a role is passed, `tools/list` returns only tools allowed for that role.
+- Calling a tool not allowed (if validation is enabled) returns a clear error.
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- الأدوار تحسّن تجربة Cursor: قائمة أدوات أقصر وأكثر صلة بدور المبرمج، وأدوات إدارية أو خطرة محصورة بصلاحيات أعلى.
-- يمكن البدء بدور افتراضي واحد (مثلاً `default`) يعادل "كل الأدوات" ثم إضافة فلترة لاحقاً عند وجود أدوار متعددة.
+- **Phase 07** (server hosting) is practically required to use roles with multiple clients; stdio transport usually does not carry “user” or “role” context unless passed via environment.
+- **Phase 08** (panel) is useful to manage role–tool binding from the UI instead of editing config by hand.
 
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/roles.ts` | Role types and tool permissions |
+| `src/config/roles.ts` or from panel | Load/edit role ↔ tool/skill/plugin bindings |
+| Update `tools/list` aggregation (in server or router) | Apply filtering by role |
+| `docs/architecture.md` | Short update describing roles and role-passing convention |
+
+---
+
+## Notes
+
+- Roles improve the Cursor experience: a shorter, more relevant tool list for the developer’s role, with administrative or dangerous tools limited to higher permissions.
+- You can start with a single default role (e.g. `default`) meaning “all tools” and add filtering later when multiple roles exist.

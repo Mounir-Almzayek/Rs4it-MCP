@@ -1,68 +1,68 @@
-# متطلبات المشروع — RS4IT MCP Hub
+# Project Requirements — RS4IT MCP Hub
 
-## إصدار Node.js
+## Node.js Version
 
-- **مطلوب**: Node.js **20.x** LTS أو أحدث (مثلاً 20.x، 22.x).
-- يُفضّل استخدام [nvm](https://github.com/nvm-sh/nvm) أو [fnm](https://github.com/Schniz/fnm) لإدارة الإصدارات.
+- **Required**: Node.js **20.x** LTS or newer (e.g. 20.x, 22.x).
+- Prefer [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage versions.
 
-التحقق من الإصدار:
+Check version:
 
 ```bash
 node -v
 ```
 
-## اللغة والبناء
+## Language and Build
 
-- **TypeScript** للمشروع بالكامل.
-- البناء: `tsc` (خارج من `tsconfig.json`).
-- التطوير: `tsx` لتشغيل ملفات `.ts` مباشرة دون بناء مسبق.
+- **TypeScript** for the entire project.
+- Build: `tsc` (from `tsconfig.json`).
+- Development: `tsx` to run `.ts` files directly without a prior build.
 
-## الاعتماديات المخططة
+## Planned Dependencies
 
-| الحزمة | الاستخدام |
-|--------|-----------|
-| `@modelcontextprotocol/sdk` | مكتبة MCP الرسمية لبناء السيرفر (Phase 01+) |
-| `typescript` | الترجمة والأنواع |
-| `tsx` | تشغيل TypeScript أثناء التطوير (`npm run dev`) |
+| Package | Usage |
+|---------|--------|
+| `@modelcontextprotocol/sdk` | Official MCP library for building the server (Phase 01+) |
+| `typescript` | Compilation and types |
+| `tsx` | Running TypeScript during development (`npm run dev`) |
 
-## متغيرات البيئة
+## Environment Variables
 
-- **`MCP_WORKSPACE_ROOT`** (اختياري): مسار جذر الـ workspace لعمليات الملفات (create_file، read_file). انظر [docs/security.md](security.md).
-- **`MCP_PLUGINS_CONFIG`** (اختياري): مسار ملف إعداد الإضافات الخارجية (JSON). إن لم يُعرّف، يُستخدم `config/mcp_plugins.json` نسبةً لمجلد التشغيل.
-- **الأدوار (Phase 09)**:
-  - **`MCP_ROLE`** (اختياري، stdio): دور الاتصال (مثلاً `web_engineer`, `full_stack`). عند تعيينه، الـ Hub يعرض فقط الأدوات/المهارات/الإضافات المسموح لها لهذا الدور (مع الوراثة). إن لم يُعرّف، تُعرض كل الأدوات.
-  - **`MCP_ROLES_CONFIG`** (اختياري): مسار ملف تعريف الأدوار والوراثة (JSON). إن لم يُعرّف، يُستخدم `config/roles.json`.
-  - **HTTP**: العميل يمرّر الدور عبر هيدر **`X-MCP-Role`** أو عبر حقل **`params.role`** في طلب `initialize`؛ نفس الجلسة تستخدم هذا الدور طوال الاتصال.
-- **بانل الإدارة (Phase 10)**:
-  - **`SESSION_SECRET`** أو **`ADMIN_SESSION_SECRET`** (مطلوب لتفعيل المصادقة): مفتاح سري لتعيين الجلسة، 16 حرفاً على الأقل. انظر [docs/admin-auth.md](admin-auth.md).
-  - **`ADMIN_CREDENTIALS_PATH`** (اختياري): مسار ملف اعتماد المدير (اسم المستخدم + هاش كلمة المرور). الافتراضي: `../config/admin-credentials.json`.
-- **للاستضافة على HTTP (Phase 07)**:
-  - **`PORT`** أو **`MCP_PORT`** (اختياري): بورت السيرفر. الافتراضي: `3000`.
-  - **`MCP_TRANSPORT`** (اختياري): `stdio` (افتراضي) أو `http`. يُستخدم عند تشغيل نقطة الدخول المناسبة فقط.
-  - **`BASE_URL`** (اختياري): الرابط الأساسي للـ Hub (مثلاً `https://mcp.example.com`) للتوثيق أو إعداد العميل.
+- **`MCP_WORKSPACE_ROOT`** (optional): Workspace root path for file operations (create_file, read_file). See [docs/security.md](security.md).
+- **`MCP_PLUGINS_CONFIG`** (optional): Path to external plugins config file (JSON). If not set, `config/mcp_plugins.json` is used relative to the working directory.
+- **Roles (Phase 09)**:
+  - **`MCP_ROLE`** (optional, stdio): Connection role (e.g. `web_engineer`, `full_stack`). When set, the Hub exposes only tools/skills/plugins allowed for that role (with inheritance). If not set, all tools are exposed.
+  - **`MCP_ROLES_CONFIG`** (optional): Path to roles definition file (JSON). If not set, `config/roles.json` is used.
+  - **HTTP**: Client passes the role via header **`X-MCP-Role`** or via **`params.role`** in the `initialize` request; the same session uses this role for the whole connection.
+- **Admin panel (Phase 10)**:
+  - **`SESSION_SECRET`** or **`ADMIN_SESSION_SECRET`** (required to enable auth): Secret key for the session, at least 16 characters. See [docs/admin-auth.md](admin-auth.md).
+  - **`ADMIN_CREDENTIALS_PATH`** (optional): Path to admin credentials file (username + password hash). Default: `../config/admin-credentials.json`.
+- **For HTTP hosting (Phase 07)**:
+  - **`PORT`** or **`MCP_PORT`** (optional): Server port. Default: `3000`.
+  - **`MCP_TRANSPORT`** (optional): `stdio` (default) or `http`. Used when running the appropriate entry point only.
+  - **`BASE_URL`** (optional): Base URL for the Hub (e.g. `https://mcp.example.com`) for documentation or client setup.
 
-## تشغيل السيرفر (بعد Phase 01 و 07)
+## Running the Server (after Phase 01 and 07)
 
-- **نقل stdio (محلي، مناسب لـ Cursor)**:
-  - `npm run start` — تشغيل من `dist/`
-  - `npm run dev` — تشغيل بتطوير سريع (tsx)
-- **نقل HTTP (استضافة على سيرفر، Phase 07)**:
-  - `npm run start:server` — تشغيل السيرفر الشبكي من `dist/`
-  - `npm run dev:server` — تشغيل بتطوير سريع
-  - انظر [docs/deployment.md](deployment.md) للاستضافة في الإنتاج.
+- **stdio transport (local, suitable for Cursor)**:
+  - `npm run start` — run from `dist/`
+  - `npm run dev` — run with fast development (tsx)
+- **HTTP transport (server hosting, Phase 07)**:
+  - `npm run start:server` — run the network server from `dist/`
+  - `npm run dev:server` — run with fast development
+  - See [docs/deployment.md](deployment.md) for production hosting.
 
-أوامر البناء والتشغيل:
+Build and run commands:
 
 ```bash
-npm run build        # بناء المشروع
-npm run start        # تشغيل stdio (محلي)
-npm run start:server # تشغيل HTTP على بورت (مثلاً 3000)
-npm run dev          # تطوير stdio
-npm run dev:server   # تطوير HTTP
+npm run build        # Build the project
+npm run start        # Run stdio (local)
+npm run start:server # Run HTTP on port (e.g. 3000)
+npm run dev          # Development stdio
+npm run dev:server   # Development HTTP
 ```
 
-## التوثيق والمراحل
+## Documentation and Phases
 
-- مراحل التنفيذ مُعرّفة في **`docs/phases/`** ويجب اتباعها بالترتيب (00 → … → 09).
-- الفهرس: [docs/README.md](README.md).
-- استضافة HTTP في الإنتاج: [docs/deployment.md](deployment.md).
+- Implementation phases are defined in **`docs/phases/`** and should be followed in order (00 → … → 09).
+- Index: [docs/README.md](README.md).
+- HTTP hosting in production: [docs/deployment.md](deployment.md).

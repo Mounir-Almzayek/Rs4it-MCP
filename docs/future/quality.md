@@ -1,39 +1,39 @@
-# تحسينات الجودة (مستمرة أو لاحقة)
+# Quality Improvements (Ongoing or Later)
 
-تذكير ببنود الجودة التي يمكن تنفيذها بعد Phase 00–05. لا إلزام بتنفيذها في Phase 06.
-
----
-
-## الاختبارات
-
-- [ ] **وحدة**: اختبار كل أداة (create_file، read_file، run_command) بشكل منفصل.
-- [ ] **تكامل**: اختبار السجل، المهارات، والتوجيه (router، callPluginTool).
-- [ ] **E2E**: اختبار مع عميل MCP (مثل Cursor أو عميل اختبار) — tools/list و tools/call من كل مصدر.
+Reminder of quality items that can be done after Phase 00–05. Not mandatory to implement in Phase 06.
 
 ---
 
-## المراقبة والسجلات
+## Testing
 
-- [ ] تسجيل استدعاءات الأدوات والمهارات (اسم، نجاح/فشل، مدة) للتشخيص.
-- [ ] تسجيل أخطاء الإضافات وإعادة الاتصال دون تسريب بيانات حساسة أو أسرار في السجلات.
-
----
-
-## الأمان
-
-- [ ] مراجعة صلاحيات الملفات (workspace، resolveWithinWorkspace) والأوامر (blocklist، allowlist).
-- [ ] قوائم بيضاء لحزم NPX المسموح بها (إن وُجدت).
-- [ ] عدم تسريب أسرار أو tokens في السجلات أو رسائل الخطأ.
+- [ ] **Unit**: Test each tool (create_file, read_file, run_command) in isolation.
+- [ ] **Integration**: Test registry, skills, and routing (router, callPluginTool).
+- [ ] **E2E**: Test with an MCP client (e.g. Cursor or test client) — tools/list and tools/call from every source.
 
 ---
 
-## الإصدارات
+## Monitoring and Logging
 
-- [ ] توافق مع إصدارات محددة من إضافات NPX (مثلاً `package@1.2.3` بدل `@latest`) في الإعداد للاستقرار.
+- [ ] Log tool and skill calls (name, success/failure, duration) for diagnostics.
+- [ ] Log plugin errors and reconnection without leaking sensitive data or secrets in logs.
 
 ---
 
-## التوثيق
+## Security
 
-- [ ] تحديث `README` و `docs/` عند كل مرحلة أو توسعة.
-- [ ] إبقاء قائمة الأدوات والمهارات والإضافات محدثة (يدوياً أو تلقائياً).
+- [ ] Review file permissions (workspace, resolveWithinWorkspace) and commands (blocklist, allowlist).
+- [ ] Allowlists for allowed NPX packages (if any).
+- [ ] Do not leak secrets or tokens in logs or error messages.
+
+---
+
+## Versions
+
+- [ ] Support specific versions of NPX plugins in config (e.g. `package@1.2.3` instead of `@latest`) for stability.
+
+---
+
+## Documentation
+
+- [ ] Update `README` and `docs/` with each phase or extension.
+- [ ] Keep the list of tools, skills, and plugins up to date (manually or automatically).

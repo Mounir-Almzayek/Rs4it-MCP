@@ -1,79 +1,80 @@
 # RS4IT MCP Hub
 
-**منصة موحّدة** تعرض قدرات الشركة لأدوات الذكاء الاصطناعي (مثل Cursor) عبر **بروتوكول MCP** (Model Context Protocol). نقطة اتصال واحدة تجمع أدوات محلية، مهارات مركّبة، وإضافات MCP خارجية مع إدارة كاملة من بانل ويب وضبط ظهور الأدوات حسب الأدوار.
+A **unified platform** that exposes the company's capabilities to AI tools (e.g. Cursor) via the **MCP** (Model Context Protocol). A single entry point that aggregates local tools, composite skills, and external MCP plugins, with full management from a web panel and visibility control by role.
 
 ---
 
-## أهمية المشروع
+## Why This Project
 
-- **طبقة واحدة للـ AI**: عميل واحد (Cursor أو غيره) يتصل بـ Hub واحد فيحصل على كل الأدوات والمهارات والإضافات دون توزيع الإعداد على عدة سيرفرات.
-- **معيار MCP**: توافق مع [Model Context Protocol](https://modelcontextprotocol.io/) لضمان عمل الأدوات مع أي عميل داعم (stdio أو HTTP).
-- **مرونة التشغيل**: تشغيل محلي (stdio) لـ Cursor، أو استضافة على HTTP لفرق متعددة مع أدوار وصلاحيات.
-- **إدارة بلا كود**: إضافة أدوات ومهارات وإضافات وتعديل الأدوار من البانل دون إعادة نشر التطبيق.
-
----
-
-## ما الذي يوفّره المشروع؟
-
-| المكوّن | الوصف |
-|--------|--------|
-| **أدوات ذرية (Tools)** | عمليات بسيطة: إنشاء/قراءة ملف، تشغيل أمر، استعلام؛ مع أمان workspace وblocklist. |
-| **مهارات (Skills)** | سير عمل مركّبة تستدعي أدوات (مثل إنشاء API endpoint كامل)؛ تظهر كأدوات بأسماء `skill:<name>`. |
-| **إضافات MCP (Plugins)** | دمج سيرفرات MCP خارجية عبر NPX؛ أدواتها تظهر بادئة `plugin:<id>:<name>`. |
-| **أدوار وظهور (Roles)** | أدوار مع وراثة (مثل `full_stack` ← `web_engineer` + `backend_engineer`)؛ فلترة الأدوات حسب دور المتصل. |
-| **بانل إدارة (Admin)** | تطبيق Next.js لإدارة Tools، Skills، Plugins، Roles، ومصفوفة الصلاحيات مع مصادقة آمنة. |
-| **استضافة HTTP** | تشغيل الـ Hub كخدمة شبكية (Streamable HTTP) للوصول عن بُعد. |
+- **Single AI layer**: One client (Cursor or others) connects to one Hub and gets all tools, skills, and plugins without spreading configuration across multiple servers.
+- **MCP standard**: Compliant with [Model Context Protocol](https://modelcontextprotocol.io/) so tools work with any supporting client (stdio or HTTP).
+- **Flexible deployment**: Run locally (stdio) for Cursor, or host over HTTP for multiple teams with roles and permissions.
+- **No-code management**: Add tools, skills, and plugins and adjust roles from the panel without redeploying the app.
 
 ---
 
-## الهيكلية والتدفق
+## What Does the Project Provide?
+
+| Component | Description |
+|-----------|-------------|
+| **Atomic tools** | Simple operations: create/read file, run command, query; with workspace safety and blocklist. |
+| **Skills** | Composite workflows that call tools (e.g. create a full API endpoint); exposed as tools with names `skill:<name>`. |
+| **MCP plugins** | Integration of external MCP servers via NPX; their tools appear with prefix `plugin:<id>:<name>`. |
+| **Roles & visibility** | Roles with inheritance (e.g. `full_stack` ← `web_engineer` + `backend_engineer`); tools filtered by the connecting role. |
+| **Admin panel** | Next.js app to manage Tools, Skills, Plugins, Roles, and the permission matrix, with secure authentication. |
+| **HTTP hosting** | Run the Hub as a network service (Streamable HTTP) for remote access. |
+
+---
+
+## Architecture and Flow
 
 ```
-┌─────────────┐     MCP (stdio أو HTTP)      ┌──────────────────┐
-│  Cursor /   │ ◄──────────────────────────► │  RS4IT MCP Hub   │
-│  عميل AI    │   tools/list · tools/call    │  (سيرفر موحّد)   │
+┌─────────────┐     MCP (stdio or HTTP)      ┌──────────────────┐
+│  Cursor /   │ ◄──────────────────────────► │  RS4IT MCP Hub    │
+│  AI client  │   tools/list · tools/call   │  (unified server) │
 └─────────────┘                              └────────┬─────────┘
                                                       │
                     ┌─────────────────────────────────┼─────────────────────────────────┐
                     ▼                                 ▼                                 ▼
              ┌─────────────┐                   ┌─────────────┐                   ┌─────────────┐
-             │   Tools     │                   │   Skills     │                   │   Plugins    │
-             │  (محلي)     │                   │  (سير عمل)  │                   │  (خارجي)    │
+             │   Tools     │                   │   Skills    │                   │   Plugins   │
+             │  (local)    │                   │  (workflow) │                   │  (external) │
              └─────────────┘                   └─────────────┘                   └─────────────┘
                     │                                 │                                 │
                     └─────────────────────────────────┼─────────────────────────────────┘
                                                       ▼
                                              ┌──────────────────┐
                                              │  Admin Panel     │
-                                             │  (إدارة + أدوار) │
+                                             │  (management +   │
+                                             │   roles)         │
                                              └──────────────────┘
 ```
 
-- **العميل** يرسل طلبات `initialize` ثم `tools/list` و `tools/call`.
-- **الـ Hub** يجمّع القوائم من الأدوات المحلية + المهارات (كأدوات) + أدوات الإضافات، ويفلتر حسب الدور إن وُجد.
-- **البانل** يقرأ/يكتب التكوين الديناميكي (أدوات، مهارات، إضافات، أدوار) ويشارك الملفات مع الـ Hub.
+- The **client** sends `initialize` then `tools/list` and `tools/call`.
+- The **Hub** aggregates lists from local tools + skills (as tools) + plugin tools, and filters by role when applicable.
+- The **panel** reads/writes dynamic config (tools, skills, plugins, roles) and shares files with the Hub.
 
 ---
 
-## التقنيات المستخدمة
+## Tech Stack
 
-| الطبقة | التقنية |
-|--------|---------|
-| **Hub (Core)** | Node.js 20+، TypeScript، [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) |
-| **البانل** | Next.js 14، React، Tailwind CSS، TanStack Query، React Flow (رسم الأدوار) |
-| **المصادقة** | جلسة موقّعة (HMAC)، bcrypt لكلمات المرور |
-| **التشغيل** | stdio (محلي)، Streamable HTTP (استضافة)، Docker Compose |
+| Layer | Technology |
+|-------|------------|
+| **Hub (core)** | Node.js 20+, TypeScript, [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) |
+| **Panel** | Next.js 14, React, Tailwind CSS, TanStack Query, React Flow (role graph) |
+| **Auth** | Signed session (HMAC), bcrypt for passwords |
+| **Deployment** | stdio (local), Streamable HTTP (hosted), Docker Compose |
 
 ---
 
-## البدء السريع
+## Quick Start
 
-### المتطلبات
+### Requirements
 
-- **Node.js 20.x** أو أحدث  
-- تفاصيل إضافية: [docs/requirements.md](docs/requirements.md)
+- **Node.js 20.x** or newer  
+- Details: [docs/requirements.md](docs/requirements.md)
 
-### تشغيل الـ Hub (محلي — stdio لـ Cursor)
+### Run the Hub (local — stdio for Cursor)
 
 ```bash
 npm install
@@ -81,110 +82,110 @@ npm run build
 npm run start
 ```
 
-أو في وضع التطوير:
+Or in development:
 
 ```bash
 npm run dev
 ```
 
-### تشغيل بانل الإدارة
+### Run the Admin Panel
 
 ```bash
 cd admin
 npm install
 cp .env.example .env
-# عدّل .env وضع SESSION_SECRET (16 حرفاً على الأقل)
+# Edit .env and set SESSION_SECRET (at least 16 characters)
 npm run dev
 ```
 
-البانل يعمل على **http://localhost:3001**. أول مرة: ادخل إلى `/login` وأنشئ حساب المدير.
+The panel runs at **http://localhost:3001**. First time: go to `/login` and create the admin account.
 
-### تشغيل الـ Hub كخدمة HTTP
+### Run the Hub as HTTP Service
 
 ```bash
 npm run build
 npm run start:server
 ```
 
-الـ Hub يستمع على المنفذ **3000**؛ نقطة MCP: `http://localhost:3000/mcp`.
+The Hub listens on port **3000**; MCP endpoint: `http://localhost:3000/mcp`.
 
-### تشغيل كل شيء بـ Docker
+### Run Everything with Docker
 
 ```bash
 cp .env.docker.example .env
-# عدّل .env وضع SESSION_SECRET (مثلاً: openssl rand -base64 24)
+# Edit .env and set SESSION_SECRET (e.g.: openssl rand -base64 24)
 docker compose up -d
 ```
 
 - **Hub**: http://localhost:3000/mcp  
 - **Admin**: http://localhost:3001  
-التفاصيل: [docs/deployment.md](docs/deployment.md).
+Details: [docs/deployment.md](docs/deployment.md).
 
 ---
 
-## هيكل المشروع
+## Project Structure
 
 ```
 rs4it mcp/
-├── src/                    # قلب الـ Hub
-│   ├── server/             # نقطة الدخول (stdio + HTTP)، تجميع الأدوات وتوجيه الطلبات
-│   ├── tools/              # أدوات ذرية (create_file، read_file، run_command)
-│   ├── skills/             # سجل المهارات و handlers
-│   ├── plugins/             # تحميل وإدارة إضافات MCP الخارجية
-│   ├── config/             # تحميل التكوين (ديناميكي، أدوار، إضافات)
-│   ├── types/              # أنواع TypeScript المشتركة
-│   └── router.ts           # توجيه tools/call حسب الاسم
-├── admin/                  # بانل إدارة (Next.js)
-│   ├── app/                # الصفحات و API (login، tools، skills، roles، permissions، إلخ)
-│   ├── components/         # واجهة المستخدم (layout، أدوار، مصفوفة صلاحيات)
-│   └── lib/                # اتصال بالتكوين (registry، roles، credentials)
-├── config/                 # إعدادات التشغيل (roles.json، dynamic-registry، mcp_plugins، إلخ)
-├── docs/                    # التوثيق والمراحل
-│   ├── phases/             # مراحل التنفيذ 00–10
-│   ├── architecture.md     # المعمارية وقرارات التصميم
-│   ├── deployment.md       # الاستضافة و Docker
-│   └── admin-auth.md       # مصادقة البانل
-└── scripts/                # سكربتات (مثل docker entrypoint)
+├── src/                    # Hub core
+│   ├── server/             # Entry point (stdio + HTTP), tool aggregation and request routing
+│   ├── tools/              # Atomic tools (create_file, read_file, run_command)
+│   ├── skills/              # Skills registry and handlers
+│   ├── plugins/             # Loading and managing external MCP plugins
+│   ├── config/             # Loading config (dynamic, roles, plugins)
+│   ├── types/              # Shared TypeScript types
+│   └── router.ts           # tools/call routing by name
+├── admin/                  # Admin panel (Next.js)
+│   ├── app/                # Pages and API (login, tools, skills, roles, permissions, etc.)
+│   ├── components/         # UI (layout, roles, permission matrix)
+│   └── lib/                # Config access (registry, roles, credentials)
+├── config/                 # Runtime config (roles.json, dynamic-registry, mcp_plugins, etc.)
+├── docs/                   # Documentation and phases
+│   ├── phases/             # Implementation phases 00–10
+│   ├── architecture.md     # Architecture and design decisions
+│   ├── deployment.md       # Hosting and Docker
+│   └── admin-auth.md       # Panel authentication
+└── scripts/                # Scripts (e.g. docker entrypoint)
 ```
 
 ---
 
-## التوثيق والمراحل
+## Documentation and Phases
 
-| المستند | المحتوى |
-|---------|---------|
-| [docs/README.md](docs/README.md) | فهرس التوثيق وترتيب المراحل |
-| [docs/requirements.md](docs/requirements.md) | المتطلبات ومتغيرات البيئة |
-| [docs/architecture.md](docs/architecture.md) | المعمارية، التسمية، الأدوار |
-| [docs/deployment.md](docs/deployment.md) | الاستضافة، Docker، reverse proxy |
-| [docs/admin-auth.md](docs/admin-auth.md) | مصادقة البانل والإعداد الأولي |
-| [docs/phases/](docs/phases/) | مراحل التنفيذ 00–10 (نظرة عامة، MCP، أدوات، مهارات، إضافات، توجيه، استضافة، بانل، أدوار، مصادقة) |
+| Document | Content |
+|----------|---------|
+| [docs/README.md](docs/README.md) | Docs index and phase order |
+| [docs/requirements.md](docs/requirements.md) | Requirements and environment variables |
+| [docs/architecture.md](docs/architecture.md) | Architecture, naming, roles |
+| [docs/deployment.md](docs/deployment.md) | Hosting, Docker, reverse proxy |
+| [docs/admin-auth.md](docs/admin-auth.md) | Panel auth and initial setup |
+| [docs/phases/](docs/phases/) | Implementation phases 00–10 (overview, MCP, tools, skills, plugins, routing, hosting, panel, roles, auth) |
 
-المراحل مُصمَّمة لتُنفَّذ بالترتيب؛ كل مرحلة تعتمد على سابقتها.
-
----
-
-## حالة التنفيذ
-
-| المرحلة | الوصف | الحالة |
-|---------|--------|--------|
-| 00 | نظرة عامة وإعداد المشروع | ✅ |
-| 01 | طبقة MCP Server (stdio، initialize، tools/list، tools/call) | ✅ |
-| 02 | طبقة الأدوات، أمان workspace و blocklist | ✅ |
-| 03 | سجل المهارات، عرض المهارات كأدوات `skill:*` | ✅ |
-| 04 | إضافات MCP خارجية (NPX، stdio) | ✅ |
-| 05 | توجيه موحّد واتفاقية تسمية | ✅ |
-| 06 | توثيق التوسعات المستقبلية | ✅ |
-| 07 | استضافة الـ Hub على HTTP/SSE | ✅ |
-| 08 | بانل إدارة (Tools، Skills، Plugins) | ✅ |
-| 09 | أدوار وظهور (وراثة، فلترة حسب الدور) | ✅ |
-| 10 | مصادقة البانل (تسجيل دخول، تغيير الاعتماد) | ✅ |
+Phases are meant to be followed in order; each builds on the previous.
 
 ---
 
-## لقطات الشاشة (Screenshots)
+## Implementation Status
 
-لقطات من واجهة البانل — من [docs/screen](docs/screen).
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 00 | Overview and project setup | ✅ |
+| 01 | MCP Server layer (stdio, initialize, tools/list, tools/call) | ✅ |
+| 02 | Tool layer, workspace safety and blocklist | ✅ |
+| 03 | Skills registry, skills exposed as `skill:*` tools | ✅ |
+| 04 | External MCP plugins (NPX, stdio) | ✅ |
+| 05 | Unified routing and naming convention | ✅ |
+| 06 | Future extensions documentation | ✅ |
+| 07 | Hub hosting over HTTP/SSE | ✅ |
+| 08 | Admin panel (Tools, Skills, Plugins) | ✅ |
+| 09 | Roles and visibility (inheritance, filter by role) | ✅ |
+| 10 | Panel authentication (login, credential change) | ✅ |
+
+---
+
+## Screenshots
+
+Screens from the panel UI — from [docs/screen](docs/screen).
 
 ### 1 — Dashboard
 
@@ -212,21 +213,21 @@ rs4it mcp/
 
 ---
 
-## بعد النشر (Deployment): الربط مع Cursor
+## After Deployment: Connecting Cursor
 
-بعد استضافة الـ Hub على سيرفر (Docker أو PM2 أو Node مباشرة)، نربطه في **Cursor** كسيرفر MCP مخصّص:
+After hosting the Hub on a server (Docker, PM2, or Node directly), add it in **Cursor** as a custom MCP server:
 
-1. **Cursor** → الإعدادات (`Ctrl + ,`) → **Tools & MCP** → **Add new MCP server**
+1. **Cursor** → Settings (`Ctrl + ,`) → **Tools & MCP** → **Add new MCP server**
 2. **Type**: `streamableHttp`
-3. **URL**: رابط نقطة الـ MCP (مثلاً `https://your-domain.com/mcp` أو `http://your-server:3000/mcp`)
-4. **Headers** (اختياري): `X-MCP-Role` إذا استخدمت الأدوار
-5. حفظ ثم **إعادة تشغيل Cursor** بالكامل
+3. **URL**: Your MCP endpoint (e.g. `https://your-domain.com/mcp` or `http://your-server:3000/mcp`)
+4. **Headers** (optional): `X-MCP-Role` if you use roles
+5. Save and **restart Cursor** completely
 
-للتفاصيل (واجهة Cursor وملف `.cursor/mcp.json`): [docs/deployment.md — ربط Cursor أو عميل MCP آخر](docs/deployment.md#ربط-cursor-أو-عميل-mcp-آخر).
+For details (Cursor UI and `.cursor/mcp.json`): [docs/deployment.md — Connecting Cursor or another MCP client](docs/deployment.md#connecting-cursor-or-another-mcp-client).
 
 ---
 
-## الترخيص والحالة
+## License and Status
 
-- **الترخيص**: UNLICENSED (استخدام داخلي حسب سياسة المشروع).
-- المشروع مبني على تقرير المعمارية **Company MCP Platform — System Architecture** ويُحدَّث مع كل مرحلة في `docs/phases/`.
+- **License**: UNLICENSED (internal use per project policy).
+- The project is based on the **Company MCP Platform — System Architecture** report and is updated with each phase in `docs/phases/`.

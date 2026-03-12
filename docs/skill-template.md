@@ -1,14 +1,14 @@
-# قالب إضافة مهارة جديدة
+# Template for Adding a New Skill
 
-لإضافة مهارة جديدة دون تعديل قلب السيرفر:
+To add a new skill without modifying the server core:
 
-## 1. إنشاء ملف المهارة
+## 1. Create the skill file
 
-أنشئ ملفاً في `src/skills/` (مثلاً `src/skills/my-skill.ts`) على غرار المثال التالي.
+Create a file in `src/skills/` (e.g. `src/skills/my-skill.ts`) following this example.
 
 ```ts
 /**
- * وصف مختصر للمهارة.
+ * Short description of the skill.
  */
 import { z } from "zod";
 import type { SkillDefinition } from "../types/skills.js";
@@ -18,15 +18,15 @@ import { executeTool } from "../tools/index.js";
 export const MY_SKILL_NAME = "my_skill" as const;
 
 const inputSchema = {
-  param1: z.string().describe("وصف المعامل"),
-  param2: z.number().optional().describe("معامل اختياري"),
+  param1: z.string().describe("Parameter description"),
+  param2: z.number().optional().describe("Optional parameter"),
 };
 
 export type MySkillArgs = z.infer<z.ZodObject<typeof inputSchema>>;
 
 async function handler(args: MySkillArgs): Promise<ToolCallResult> {
   try {
-    // استدعاء أدوات من الطبقة 02، مثلاً:
+    // Call tools from layer 02, e.g.:
     const result = await executeTool("create_file", {
       path: "output.txt",
       content: `Result: ${args.param1}`,
@@ -34,7 +34,7 @@ async function handler(args: MySkillArgs): Promise<ToolCallResult> {
     if (result.isError) return result;
 
     return {
-      content: [{ type: "text", text: "تم تنفيذ المهارة بنجاح." }],
+      content: [{ type: "text", text: "Skill executed successfully." }],
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -47,24 +47,24 @@ async function handler(args: MySkillArgs): Promise<ToolCallResult> {
 
 export const mySkill: SkillDefinition<MySkillArgs> = {
   name: MY_SKILL_NAME,
-  description: "وصف يظهر للـ AI عند tools/list.",
+  description: "Description shown to the AI in tools/list.",
   inputSchema,
   handler,
 };
 ```
 
-## 2. تسجيل المهارة في السجل
+## 2. Register the skill in the registry
 
-في `src/skills/index.ts`:
+In `src/skills/index.ts`:
 
-1. استورد المهارة:  
+1. Import the skill:  
    `import { mySkill } from "./my-skill.js";`
-2. أضفها داخل `registerBuiltInSkills()`:  
+2. Add it inside `registerBuiltInSkills()`:  
    `registerSkill(mySkill);`
 
-## 3. النتيجة
+## 3. Result
 
-- ستظهر المهارة في `tools/list` تحت الاسم `skill:my_skill`.
-- استدعاء `tools/call` بالاسم `skill:my_skill` ومعاملات صحيحة سينفّذ الـ handler ويرجع النتيجة.
+- The skill will appear in `tools/list` under the name `skill:my_skill`.
+- Calling `tools/call` with name `skill:my_skill` and valid arguments will run the handler and return the result.
 
-لا حاجة لتعديل `src/server/server.ts` أو أي منطق MCP آخر.
+No need to change `src/server/server.ts` or any other MCP logic.

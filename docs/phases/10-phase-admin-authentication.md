@@ -1,101 +1,101 @@
-# Phase 10 — مصادقة بانل الإدارة (Admin Authentication)
+# Phase 10 — Admin Panel Authentication
 
-## الهدف
+## Goal
 
-إدخال **نظام تسجيل دخول آمن** لبانل الإدارة يحمي واجهة البانل وجميع نقاط الـ API التابعة لها، ويسمح للمدراء بتسجيل الدخول باسم مستخدم وكلمة مرور وتغيير بيانات الاعتماد من داخل البانل نفسه، دون تخزين كلمات المرور بنص واضح.
-
----
-
-## المخرجات المتوقعة
-
-- **تسجيل دخول المدير**: إمكانية الدخول إلى البانل عبر اسم مستخدم وكلمة مرور.
-- **تخزين آمن**: كلمات المرور مُهاشة فقط (bcrypt أو argon2)، ولا يُخزَن أبداً نص كلمة المرور.
-- **تغيير بيانات الاعتماد**: من داخل البانل (بعد تسجيل الدخول) يمكن تغيير اسم المستخدم و/أو كلمة المرور.
-- **حماية نقاط النهاية**: جميع مسارات API البانل (مثل `/api/tools`, `/api/skills`, `/api/plugins`, `/api/roles`, `/api/registry`) تتطلب مصادقة؛ الطلبات غير المصادقة تُرجع خطأ (مثلاً 401).
-- **مصادقة بالجلسة أو بالتوكن**: استخدام إما جلسة (session) مع كوكي آمن أو توكن (JWT أو غيره) يُمرَّر في الهيدر؛ التوثيق يوضح الآلية المختارة.
-- **إعادة توجيه للدخول**: عند زيارة أي صفحة من البانل دون مصادقة، يُعاد توجيه المستخدم إلى صفحة تسجيل الدخول.
-- **توثيق**: توثيق كيفية الإعداد الأولي لبيانات الاعتماد، تغييرها، ومتغيرات البيئة إن وُجدت.
+Introduce a **secure login system** for the admin panel that protects the panel UI and all its API endpoints, and allows admins to log in with username and password and change credentials from within the panel, without storing passwords in plain text.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 10.1 تخزين بيانات الاعتماد
-
-- [ ] اختيار مصدر التخزين: ملف تكوين مشفّر أو قاعدة بيانات (SQLite، إلخ) أو متغيرات بيئة للقيم الحساسة فقط.
-- [ ] تخزين **اسم المستخدم** و**هاش كلمة المرور** فقط؛ عدم تخزين كلمة المرور بنص واضح أبداً.
-- [ ] استخدام **bcrypt** أو **argon2** لهاش كلمات المرور (مقاومة للـ rainbow tables والاختبارات القوية).
-- [ ] تحديد مسار أو متغير بيئة لملف/قاعدة بيانات الاعتماد (مثلاً `ADMIN_CREDENTIALS_PATH` أو `ADMIN_DB_PATH`).
-
-### 10.2 واجهة تسجيل الدخول
-
-- [ ] صفحة **تسجيل الدخول** (مثلاً `/login`): حقل اسم المستخدم، حقل كلمة المرور، زر الدخول.
-- [ ] عند نجاح الدخول: إنشاء جلسة أو إصدار توكن، ثم إعادة التوجيه إلى البانل (مثلاً `/` أو `/dashboard`).
-- [ ] عند فشل الدخول: عرض رسالة خطأ واضحة دون كشف إن كان الخطأ في الاسم أو كلمة المرور (تفضيل أمان).
-- [ ] معالجة حالات مثل تعطيل JavaScript أو انتهاء الجلسة (إعادة توجيه للدخول).
-
-### 10.3 حماية مسارات البانل والـ API
-
-- [ ] **Middleware أو HOC**: التحقق من وجود جلسة/توكن صالح قبل السماح بالوصول إلى أي صفحة محمية (ما عدا `/login`).
-- [ ] **حماية API**: كل مسار تحت `/api/*` (ما عدا مثلاً `/api/auth/login` وربما `/api/auth/health`) يتحقق من المصادقة؛ إن لم تكن صالحة يُرجع 401 Unauthorized.
-- [ ] توحيد آلية التحقق (قراءة الكوكي أو هيدر `Authorization: Bearer <token>`) في مكان واحد (مثلاً middleware أو مساعد في API routes).
-
-### 10.4 الجلسة أو التوكن
-
-- [ ] **خيار الجلسة**: استخدام كوكي HTTP-only، Secure في الإنتاج، مع مفتاح سري (secret) لتوقيع الجلسة؛ تخزين معرف الجلسة في الخادم أو في جلسة مشفّرة (مثلاً Next.js أو express-session).
-- [ ] **خيار التوكن**: إصدار JWT (أو توكن مماثل) بعد تسجيل الدخول الناجح؛ العميل يرسله في هيدر `Authorization`؛ التحقق من التوقيع وانتهاء الصلاحية في كل طلب API محمي.
-- [ ] تحديد مدة صلاحية الجلسة/التوكن وتوثيقها (مثلاً 24 ساعة أو 7 أيام مع إمكانية تجديد).
-
-### 10.5 تغيير اسم المستخدم وكلمة المرور
-
-- [ ] من داخل البانل (بعد الدخول): صفحة أو قسم **إعدادات الحساب** أو **تغيير بيانات الاعتماد**.
-- [ ] نموذج لتغيير **اسم المستخدم**: الحقل الجديد + تأكيد كلمة المرور الحالية (أو كلمة المرور الحالية فقط)؛ بعد التحقق تحديث التخزين وإعادة تسجيل الدخول إن لزم.
-- [ ] نموذج لتغيير **كلمة المرور**: كلمة المرور الحالية، كلمة المرور الجديدة، تأكيد كلمة المرور الجديدة؛ هاش الجديدة ثم حفظها في التخزين.
-- [ ] API محمي (مثلاً `PUT /api/auth/credentials` أو `PATCH /api/admin/me`) لتطبيق التغييرات؛ التحقق من المصادقة وكلمة المرور الحالية قبل التحديث.
-
-### 10.6 التوثيق والأمان
-
-- [ ] توثيق في `docs/` (مثلاً `docs/admin-auth.md` أو قسم في `docs/deployment.md`): كيفية الإعداد الأولي لبيانات الاعتماد (أول تشغيل أو سكربت إعداد).
-- [ ] توثيق تغيير اسم المستخدم وكلمة المرور من البانل.
-- [ ] توصيات: استخدام HTTPS في الإنتاج، عدم تعريض البانل للإنترنت دون مصادقة، تأمين ملف/قاعدة بيانات الاعتماد (صلاحيات قراءة للمعالج فقط).
+- **Admin login**: Ability to access the panel via username and password.
+- **Secure storage**: Passwords are hashed only (bcrypt or argon2); plain text is never stored.
+- **Credential change**: From inside the panel (after login) admins can change username and/or password.
+- **Endpoint protection**: All panel API routes (e.g. `/api/tools`, `/api/skills`, `/api/plugins`, `/api/roles`, `/api/registry`) require authentication; unauthenticated requests return an error (e.g. 401).
+- **Session or token auth**: Use either a session with a secure cookie or a token (JWT or other) passed in the header; documentation explains the chosen mechanism.
+- **Redirect to login**: Visiting any panel page without auth redirects the user to the login page.
+- **Documentation**: How to do initial credential setup, change them, and any environment variables.
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- تسجيل الدخول إلى البانل يعمل باسم مستخدم وكلمة مرور؛ كلمات المرور مُهاشة (bcrypt أو argon2) ولا تُخزَن بنص واضح.
-- جميع مسارات API البانل (ما عدا تسجيل الدخول والضروريات المعلنة) تتطلب مصادقة وتُرجع 401 عند غيابها أو عدم صحتها.
-- زيارة أي صفحة محمية دون مصادقة تُعيد التوجيه إلى صفحة تسجيل الدخول.
-- من داخل البانل يمكن تغيير اسم المستخدم وكلمة المرور؛ التغييرات تُحفظ بشكل آمن.
-- توثيق واضح للإعداد الأولي وتغيير بيانات الاعتماد.
+### 10.1 Credential storage
+
+- [ ] Choose storage: encrypted config file, database (SQLite, etc.), or env vars for sensitive values only.
+- [ ] Store **username** and **password hash** only; never store plain password.
+- [ ] Use **bcrypt** or **argon2** for password hashing (resistant to rainbow tables and brute force).
+- [ ] Define path or env var for credentials file/DB (e.g. `ADMIN_CREDENTIALS_PATH` or `ADMIN_DB_PATH`).
+
+### 10.2 Login UI
+
+- [ ] **Login page** (e.g. `/login`): username field, password field, login button.
+- [ ] On success: create session or issue token, then redirect to the panel (e.g. `/` or `/dashboard`).
+- [ ] On failure: show a clear error without revealing whether the mistake was username or password (security preference).
+- [ ] Handle cases like disabled JavaScript or expired session (redirect to login).
+
+### 10.3 Protecting panel and API routes
+
+- [ ] **Middleware or HOC**: Check for valid session/token before allowing access to any protected page (except `/login`).
+- [ ] **API protection**: Every route under `/api/*` (except e.g. `/api/auth/login` and maybe `/api/auth/health`) checks auth; if invalid return 401 Unauthorized.
+- [ ] Centralize the check (read cookie or `Authorization: Bearer <token>` header) in one place (e.g. middleware or API route helper).
+
+### 10.4 Session or token
+
+- [ ] **Session option**: Use HTTP-only, Secure cookie in production, with a secret to sign the session; store session id on server or in encrypted session (e.g. Next.js or express-session).
+- [ ] **Token option**: Issue JWT (or similar) after successful login; client sends it in `Authorization` header; verify signature and expiry on each protected API request.
+- [ ] Define session/token lifetime and document it (e.g. 24 hours or 7 days with refresh).
+
+### 10.5 Changing username and password
+
+- [ ] From inside the panel (after login): page or section for **account settings** or **change credentials**.
+- [ ] Form to change **username**: new value + confirm current password (or current password only); after verification update storage and re-login if needed.
+- [ ] Form to change **password**: current password, new password, confirm new password; hash the new one and save.
+- [ ] Protected API (e.g. `PUT /api/auth/credentials` or `PATCH /api/admin/me`) to apply changes; verify auth and current password before update.
+
+### 10.6 Documentation and security
+
+- [ ] Document in `docs/` (e.g. `docs/admin-auth.md` or a section in `docs/deployment.md`): how to do initial credential setup (first run or setup script).
+- [ ] Document changing username and password from the panel.
+- [ ] Recommendations: use HTTPS in production, do not expose the panel to the internet without auth, secure the credentials file/DB (readable only by the process).
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 08** (بانل الإدارة) مكتمل: وجود تطبيق البانل ونقاط API للإدارة (أدوات، مهارات، إضافات، إلخ).
-- **Phase 09** (الأدوار وظهور الأدوات) مفيد للسياق؛ مصادقة البانل مستقلة عن أدوار الـ MCP (أدوار البانل = مدير واحد أو أكثر حسب التصميم).
-
----
-
-## الملفات المقترحة
-
-| الملف / المجلد | الغرض |
-|----------------|--------|
-| `admin/app/login/page.tsx` (أو `admin/app/auth/login/page.tsx`) | صفحة تسجيل الدخول |
-| `admin/app/api/auth/login/route.ts` | POST: التحقق من الاعتماد وإصدار جلسة/توكن |
-| `admin/app/api/auth/logout/route.ts` | POST: إنهاء الجلسة أو إبطال التوكن |
-| `admin/app/api/auth/credentials/route.ts` (أو `admin/.../me`) | GET/PUT: قراءة أو تحديث اسم المستخدم وكلمة المرور (محمي) |
-| `admin/middleware.ts` (Next.js) | التحقق من المصادقة وإعادة التوجيه لـ `/login` إن لزم |
-| `admin/lib/auth.ts` (أو `admin/lib/session.ts`) | التحقق من الجلسة/التوكن، قراءة المستخدم، مساعدات للمصادقة |
-| `admin/lib/credentials.ts` (أو في الخادم فقط) | قراءة/كتابة هاش كلمة المرور واسم المستخدم (bcrypt/argon2) |
-| `config/admin-credentials.json` أو DB | تخزين آمن لاسم المستخدم والهاش (مسار يُحدد بمتغير بيئة) |
-| `docs/admin-auth.md` | توثيق مصادقة البانل، الإعداد الأولي، وتغيير الاعتماد |
+- Logging into the panel with username and password works; passwords are hashed (bcrypt or argon2) and never stored in plain text.
+- All panel API routes (except login and declared essentials) require auth and return 401 when missing or invalid.
+- Visiting any protected page without auth redirects to the login page.
+- From inside the panel, username and password can be changed; changes are stored securely.
+- Clear documentation for initial setup and credential changes.
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- الإعداد الأولي: عند عدم وجود ملف/قاعدة بيانات الاعتماد، يمكن توفير سكربت أو صفحة إعداد لإنشاء أول مدير (اسم مستخدم + كلمة مرور) ثم تفعيل الحماية.
-- مدير واحد مقابل عدة مدراء: يمكن البدء بحساب مدير واحد؛ لاحقاً يمكن توسيع النموذج لدعم عدة مستخدمين مع أدوار (مدير، مشاهد، إلخ) إن رُغب.
-- التكامل مع Phase 09: أدوار الـ MCP (مثل `developer`, `admin`) تحكم ظهور الأدوات للعملاء؛ مصادقة البانل تحكم من يصل إلى واجهة الإدارة فقط.
+- **Phase 08** (admin panel) complete: panel app and API endpoints for managing tools, skills, plugins, etc.
+- **Phase 09** (roles and visibility) is useful for context; panel auth is independent of MCP roles (panel roles = one or more admins per design).
+
+---
+
+## Suggested Files
+
+| File / Folder | Purpose |
+|---------------|---------|
+| `admin/app/login/page.tsx` (or `admin/app/auth/login/page.tsx`) | Login page |
+| `admin/app/api/auth/login/route.ts` | POST: verify credentials and issue session/token |
+| `admin/app/api/auth/logout/route.ts` | POST: end session or invalidate token |
+| `admin/app/api/auth/credentials/route.ts` (or `admin/.../me`) | GET/PUT: read or update username and password (protected) |
+| `admin/middleware.ts` (Next.js) | Check auth and redirect to `/login` if needed |
+| `admin/lib/auth.ts` (or `admin/lib/session.ts`) | Verify session/token, read user, auth helpers |
+| `admin/lib/credentials.ts` (or server-only) | Read/write password hash and username (bcrypt/argon2) |
+| `config/admin-credentials.json` or DB | Secure storage for username and hash (path from env) |
+| `docs/admin-auth.md` | Panel auth docs, initial setup, credential change |
+
+---
+
+## Notes
+
+- Initial setup: when no credentials file/DB exists, provide a script or setup page to create the first admin (username + password) then enable protection.
+- Single admin vs multiple: can start with one admin account; the model can later be extended to multiple users with roles (admin, viewer, etc.) if desired.
+- Relation to Phase 09: MCP roles (e.g. `developer`, `admin`) control tool visibility for clients; panel auth controls who can access the management UI only.

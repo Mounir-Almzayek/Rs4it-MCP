@@ -1,108 +1,108 @@
-# استضافة الـ Hub في الإنتاج (Phase 07)
+# Hosting the Hub in Production (Phase 07)
 
-هذا الملف يوضح كيفية تشغيل واستضافة الـ Hub كخدمة شبكية (Streamable HTTP) في بيئة إنتاج.
+This document describes how to run and host the Hub as a network service (Streamable HTTP) in a production environment.
 
-## المتطلبات
+## Requirements
 
-- Node.js 20.x أو أحدث
-- بناء المشروع: `npm run build`
+- Node.js 20.x or newer
+- Project built: `npm run build`
 
-## تشغيل الخدمة
+## Running the Service
 
-### تشغيل مباشر (Node)
+### Direct run (Node)
 
 ```bash
 npm run build
 npm run start:server
 ```
 
-السيرفر سيعمل على البورت المُعرّف في `PORT` أو `MCP_PORT` (الافتراضي: `3000`).
+The server will listen on the port defined by `PORT` or `MCP_PORT` (default: `3000`).
 
-### متغيرات البيئة
+### Environment variables
 
-| المتغير | الوصف | الافتراضي |
-|--------|--------|-----------|
-| `PORT` أو `MCP_PORT` | بورت الاستماع | `3000` |
-| `BASE_URL` | الرابط الأساسي (للتوثيق أو إعداد العميل) | `http://localhost:${PORT}` |
-| `MCP_WORKSPACE_ROOT` | جذر الـ workspace للأدوات | — |
-| `MCP_PLUGINS_CONFIG` | مسار ملف إعداد الإضافات | `config/mcp_plugins.json` |
-| `MCP_ROLE` | دور الاتصال (Phase 09، اختياري) | — |
-| `MCP_ROLES_CONFIG` | مسار ملف الأدوار (Phase 09) | `config/roles.json` |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` or `MCP_PORT` | Listen port | `3000` |
+| `BASE_URL` | Base URL (for docs or client setup) | `http://localhost:${PORT}` |
+| `MCP_WORKSPACE_ROOT` | Workspace root for tools | — |
+| `MCP_PLUGINS_CONFIG` | Path to plugins config | `config/mcp_plugins.json` |
+| `MCP_ROLE` | Connection role (Phase 09, optional) | — |
+| `MCP_ROLES_CONFIG` | Path to roles file (Phase 09) | `config/roles.json` |
 
-### نقطة النهاية (Endpoint)
+### Endpoint
 
-- **الرابط**: `http://<host>:<port>/mcp`
-- **البروتوكول**: MCP Streamable HTTP (POST للطلبات، GET لـ SSE، DELETE لإنهاء الجلسة).
-- العميل يرسل طلب `initialize` أولاً (بدون هيدر `mcp-session-id`)، ويستلم من الرد هيدر `mcp-session-id` لاستخدامه في الطلبات التالية وطلب GET لـ SSE.
-- **الأدوار (Phase 09)**: لفلترة الأدوات حسب الدور، أرسل هيدر **`X-MCP-Role`** (مثلاً `web_engineer`) مع طلب `initialize`، أو مرّر **`params.role`** داخل الطلب. الجلسة ستُربط بهذا الدور وتُعرض فقط الأدوات المسموح لها.
+- **URL**: `http://<host>:<port>/mcp`
+- **Protocol**: MCP Streamable HTTP (POST for requests, GET for SSE, DELETE to end session).
+- The client sends an `initialize` request first (without `mcp-session-id` header), receives `mcp-session-id` in the response, and uses it for subsequent requests and the GET request for SSE.
+- **Roles (Phase 09)**: To filter tools by role, send header **`X-MCP-Role`** (e.g. `web_engineer`) with the `initialize` request, or pass **`params.role`** in the request body. The session will be bound to that role and only tools allowed for it will be exposed.
 
-## تشغيل خلف Process Manager (PM2)
+## Running Behind a Process Manager (PM2)
 
-مثال تشغيل باستخدام [PM2](https://pm2.keymetrics.io/):
+Example using [PM2](https://pm2.keymetrics.io/):
 
 ```bash
 npm run build
 pm2 start dist/server/http-entry.js --name rs4it-mcp-hub
 pm2 save
-pm2 startup  # إن لزم، لبدء PM2 عند إقلاع النظام
+pm2 startup  # If needed, to start PM2 on boot
 ```
 
-تعديل عدد النسخ أو الذاكرة حسب الحاجة، مثلاً:
+Adjust instance count or memory as needed, e.g.:
 
 ```bash
 pm2 start dist/server/http-entry.js --name rs4it-mcp-hub -i 1 --max-memory-restart 300M
 ```
 
-## تشغيل داخل حاوية (Docker)
+## Running in Docker
 
-المشروع يتضمن **Docker Compose** لتشغيل الـ Hub وبانل الإدارة معاً، مع حجم تخزين مشترك للتكوين.
+The project includes **Docker Compose** to run the Hub and admin panel together, with a shared config volume.
 
-### المتطلبات
+### Requirements
 
-- Docker و Docker Compose (v2)
-- ملف `.env` (انسخ من `.env.docker.example`) مع **SESSION_SECRET** (مطلوب للبانل، 16 حرفاً على الأقل)
+- Docker and Docker Compose (v2)
+- `.env` file (copy from `.env.docker.example`) with **SESSION_SECRET** (required for the panel, at least 16 characters)
 
-### التشغيل السريع
+### Quick run
 
 ```bash
 cp .env.docker.example .env
-# عدّل .env وضع SESSION_SECRET (مثلاً: openssl rand -base64 24)
+# Edit .env and set SESSION_SECRET (e.g.: openssl rand -base64 24)
 docker compose up -d
 ```
 
 - **Hub (MCP)**: `http://localhost:3000/mcp`
-- **Admin Panel**: `http://localhost:3001` — أول مرة: ادخل إلى `/login` وأنشئ حساب المدير.
+- **Admin Panel**: `http://localhost:3001` — First time: go to `/login` and create the admin account.
 
-### أوامر مفيدة
+### Useful commands
 
 ```bash
-docker compose up -d          # تشغيل في الخلفية
-docker compose ps             # حالة الحاويات
-docker compose logs -f hub    # سجلات الـ Hub
-docker compose logs -f admin  # سجلات البانل
-docker compose down           # إيقاف وحذف الحاويات
-docker compose down -v        # إيقاف وحذف الحاويات وحجم التكوين
+docker compose up -d          # Run in background
+docker compose ps             # Container status
+docker compose logs -f hub    # Hub logs
+docker compose logs -f admin  # Panel logs
+docker compose down           # Stop and remove containers
+docker compose down -v        # Stop and remove containers and config volume
 ```
 
-### بنية Docker
+### Docker layout
 
-| المكون | الوصف |
-|--------|--------|
-| **Hub** | صورة من `Dockerfile` (جذر المشروع): بناء TypeScript ثم تشغيل `node dist/server/http-entry.js`. Entrypoint يهيئ مجلد التكوين من قيم افتراضية عند أول تشغيل. |
-| **Admin** | صورة من `admin/Dockerfile`: Next.js standalone على بورت 3001. |
-| **Volume `config_data`** | يُ mont على `/app/config` (Hub) و `/config` (Admin)؛ يخزن `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json` بحيث يتشارك الـ Hub والبانل نفس التكوين. |
-| **Workspace** | اختياري: mount مجلد المضيف على `/workspace` للـ Hub (أدوات الملفات). الافتراضي في `.env`: `WORKSPACE_PATH=./workspace`. |
+| Component | Description |
+|-----------|-------------|
+| **Hub** | Image from root `Dockerfile`: build TypeScript then run `node dist/server/http-entry.js`. Entrypoint initializes config directory from defaults on first run. |
+| **Admin** | Image from `admin/Dockerfile`: Next.js standalone on port 3001. |
+| **Volume `config_data`** | Mounted at `/app/config` (Hub) and `/config` (Admin); stores `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json` so Hub and panel share the same config. |
+| **Workspace** | Optional: mount host directory at `/workspace` for the Hub (file tools). Default in `.env`: `WORKSPACE_PATH=./workspace`. |
 
-### متغيرات البيئة (Compose)
+### Environment variables (Compose)
 
-راجع `.env.docker.example`. الأهم:
+See `.env.docker.example`. Key ones:
 
-- **SESSION_SECRET**: مطلوب لمصادقة البانل.
-- **HUB_PORT**, **ADMIN_PORT**: بورتات المضيف (الافتراضي 3000، 3001).
-- **MCP_WORKSPACE_ROOT**: داخل الحاوية؛ استخدم mount للملفات المحلية.
-- **WORKSPACE_PATH**: مسار على المضيف لـ mount كـ `/workspace` (لأدوات الملفات).
+- **SESSION_SECRET**: Required for panel authentication.
+- **HUB_PORT**, **ADMIN_PORT**: Host ports (default 3000, 3001).
+- **MCP_WORKSPACE_ROOT**: Inside the container; use a mount for local files.
+- **WORKSPACE_PATH**: Host path to mount as `/workspace` (for file tools).
 
-### تشغيل الـ Hub فقط (بدون البانل)
+### Running the Hub only (no panel)
 
 ```bash
 docker build -t rs4it-mcp-hub .
@@ -113,15 +113,15 @@ docker run -d -p 3000:3000 \
   rs4it-mcp-hub
 ```
 
-## خلف Reverse Proxy (HTTPS)
+## Behind a Reverse Proxy (HTTPS)
 
-لتقديم الخدمة عبر HTTPS أو نطاق معيّن، ضع الـ Hub خلف reverse proxy (مثل Nginx أو Caddy):
+To serve over HTTPS or a specific domain, put the Hub behind a reverse proxy (e.g. Nginx or Caddy):
 
-- الـ Hub يعمل على `localhost:3000` (أو البورت المختار).
-- الـ proxy يوجه الطلبات إلى `http://127.0.0.1:3000/mcp` (أو المسار الذي تعرّفه).
-- إعداد SSL على مستوى الـ proxy؛ الـ Hub يبقى HTTP داخلياً.
+- The Hub runs on `localhost:3000` (or the chosen port).
+- The proxy forwards requests to `http://127.0.0.1:3000/mcp` (or the path you define).
+- Configure SSL at the proxy; the Hub stays HTTP internally.
 
-مثال إعداد Nginx (مقتضب):
+Minimal Nginx example:
 
 ```nginx
 location /mcp {
@@ -134,33 +134,33 @@ location /mcp {
 }
 ```
 
-## الأمان
+## Security
 
-- عند تعريض الخدمة للشبكة العامة: استخدم **HTTPS** (عبر reverse proxy) وتجنب تشغيل الـ Hub مباشرة على 0.0.0.0 دون حماية.
-- المصادقة والصلاحيات ستُفصّل لاحقاً (مثلاً في Phase 09 مع الأدوار).
+- When exposing the service on the public network: use **HTTPS** (via reverse proxy) and avoid running the Hub directly on 0.0.0.0 without protection.
+- Authentication and authorization will be detailed later (e.g. Phase 09 with roles).
 
-## ربط Cursor أو عميل MCP آخر
+## Connecting Cursor or Another MCP Client
 
-بعد استضافة الـ Hub على سيرفر (مثلاً `https://your-domain.com/mcp` أو `http://your-server:3000/mcp`)، يمكنك إضافةه كـ **MCP مخصّص (Custom MCP)** في Cursor كالتالي.
+After hosting the Hub on a server (e.g. `https://your-domain.com/mcp` or `http://your-server:3000/mcp`), add it as a **Custom MCP** server in Cursor as follows.
 
-### من واجهة Cursor (مُفضّل)
+### From Cursor UI (recommended)
 
-1. افتح **الإعدادات**: `Ctrl + ,` (Windows/Linux) أو `Cmd + ,` (macOS).
-2. اذهب إلى **Tools & MCP** (أدوات و MCP).
-3. اضغط **"Add new MCP server"** (إضافة سيرفر MCP جديد).
-4. املأ الحقول:
-   - **Name**: اسم تعريفي، مثلاً `rs4it-hub`.
-   - **Type**: اختر **`streamableHttp`** (للسيرفرات المعتمدة على HTTP).
-   - **URL**: رابط نقطة الـ MCP على السيرفر، مثلاً:
-     - `https://your-domain.com/mcp` (إذا الـ Hub خلف reverse proxy مع HTTPS)
-     - أو `http://your-server-ip:3000/mcp` (اتصال مباشر).
-   - **Headers** (اختياري): إذا احتجت هيدر دور (Phase 09) أضف مثلاً:
-     - `X-MCP-Role`: `web_engineer` (أو أي دور معرّف في `roles.json`).
-5. احفظ ثم **أعد تشغيل Cursor بالكامل** حتى يظهر السيرفر ويُستخدم.
+1. Open **Settings**: `Ctrl + ,` (Windows/Linux) or `Cmd + ,` (macOS).
+2. Go to **Tools & MCP**.
+3. Click **"Add new MCP server"**.
+4. Fill in:
+   - **Name**: A descriptive name, e.g. `rs4it-hub`.
+   - **Type**: Choose **`streamableHttp`** (for HTTP-based servers).
+   - **URL**: Your MCP endpoint, e.g.:
+     - `https://your-domain.com/mcp` (if the Hub is behind a reverse proxy with HTTPS)
+     - or `http://your-server-ip:3000/mcp` (direct).
+   - **Headers** (optional): For role (Phase 09) add e.g.:
+     - `X-MCP-Role`: `web_engineer` (or any role defined in `roles.json`).
+5. Save and **restart Cursor completely** so the server appears and is used.
 
-### من ملف التكوين (لمشروع معيّن)
+### From config file (project-specific)
 
-يمكن وضع تكوين MCP خاص بالمشروع في `.cursor/mcp.json` في جذر المشروع:
+You can put MCP config in `.cursor/mcp.json` at the project root:
 
 ```json
 {
@@ -176,20 +176,20 @@ location /mcp {
 }
 ```
 
-- غيّر `url` إلى رابط الـ Hub الفعلي بعد الاستضافة.
-- `headers` و `X-MCP-Role` اختياريان (لفلترة الأدوات حسب الدور).
+- Change `url` to your actual Hub URL after deployment.
+- `headers` and `X-MCP-Role` are optional (for filtering tools by role).
 
-### ملاحظات
+### Notes
 
-- **Cursor** يدعم أيضاً الاتصال عبر **stdio** (تشغيل محلي: `npm run start` وإضافة السيرفر في MCP كأمر `node`/`npx`).
-- أي عميل MCP يدعم **Streamable HTTP** يمكنه الاتصال برابط `BASE_URL/mcp` واتباع تدفق initialize ثم الطلبات مع `mcp-session-id`.
+- **Cursor** also supports **stdio** (local run: `npm run start` and add the server in MCP as a `node`/`npx` command).
+- Any MCP client that supports **Streamable HTTP** can connect to `BASE_URL/mcp` and follow the initialize-then-requests flow with `mcp-session-id`.
 
-## التحقق من العمل
+## Verifying It Works
 
-بعد التشغيل:
+After starting:
 
-1. إرسال طلب `initialize` (POST إلى `/mcp` بجسم JSON-RPC لـ initialize).
-2. استلام الرد مع هيدر `mcp-session-id`.
-3. استدعاء `tools/list` و `tools/call` باستخدام نفس الهيدر.
+1. Send an `initialize` request (POST to `/mcp` with JSON-RPC body for initialize).
+2. Receive the response with `mcp-session-id` header.
+3. Call `tools/list` and `tools/call` using the same header.
 
-يمكن استخدام عميل MCP أو أداة مثل `curl` أو سكربت اختبار للتحقق من `tools/list` واستدعاء أداة.
+You can use an MCP client or a tool like `curl` or a test script to verify `tools/list` and calling a tool.

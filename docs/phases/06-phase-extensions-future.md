@@ -1,86 +1,86 @@
 # Phase 06 — Extensions & Future
 
-## الهدف
+## Goal
 
-توثيق التوسعات المخططة والسيناريوهات المستقبلية دون إلزام تنفيذها فوراً، وتجهيز الهيكلية والوثائق بحيث يمكن تنفيذها لاحقاً دون إعادة تصميم كبير.
-
----
-
-## المخرجات المتوقعة
-
-- قائمة توسعات مقترحة مع أولويات (اختياري)
-- وثائق قصيرة لكل توسعة: الهدف، المتطلبات، التبعيات، الخطوات المقترحة
-- (اختياري) تذكير بتحسينات الجودة: اختبارات، مراقبة، أمان، إصدارات
-
-**الفهرس والأولويات وتذكير الجودة:** [docs/future/README.md](../future/README.md) و [docs/future/quality.md](../future/quality.md).
+Document planned extensions and future scenarios without requiring immediate implementation, and prepare structure and docs so they can be implemented later without major redesign.
 
 ---
 
-## توسعات مقترحة (للمستقبل)
+## Expected Outputs
 
-### 6.1 سقالة المشاريع (Project scaffolding) — أولوية 1
+- List of suggested extensions with priorities (optional)
+- Short doc per extension: goal, requirements, dependencies, suggested steps
+- (optional) Reminder for quality improvements: tests, monitoring, security, versions
 
-- **الهدف**: مهارة أو مجموعة مهارات لإنشاء هيكل مشروع جديد (مثلاً Next.js، API، مكتبة)
-- **المتطلبات**: قوالب أو مولدات، أدوات create_file وربما استدعاء CLI
-- **التبعيات**: Phase 02, 03, 05
-- **الخطوات المقترحة**: (يُفصَّل لاحقاً عند البدء)
-
-### 6.2 توليد مخطط قاعدة البيانات (Database schema generation) — أولوية 2
-
-- **الهدف**: مهارة تأخذ وصفاً (مثلاً entities/relations) وتولّد migrations أو schema
-- **المتطلبات**: أداة أو تكامل مع أداة DB (مثلاً query أو migration runner)، قد تحتاج إضافة خارجية
-- **التبعيات**: Phase 02, 03, 05
-- **الخطوات المقترحة**: (يُفصَّل لاحقاً)
-
-### 6.3 توليد صفحات الواجهة (Frontend page generation) — أولوية 3
-
-- **الهدف**: مهارة لإنشاء صفحة أو مكوّن واجهة (مثلاً React) من وصف أو من Figma
-- **المتطلبات**: أدوات ملفات، ربما إضافة تصميم أو مولد مكوّنات
-- **التبعيات**: Phase 02, 03, 04, 05
-- **الخطوات المقترحة**: (يُفصَّل لاحقاً)
-
-### 6.4 أتمتة النشر (Deployment automation) — أولوية 4
-
-- **الهدف**: مهارات أو أدوات لبدء نشر، التحقق من الحالة، أو التراجع
-- **المتطلبات**: تكامل مع CI/CD أو APIs النشر، أمان عالٍ (قائمة بيضاء، تحقق)
-- **التبعيات**: Phase 02, 03, 05
-- **الخطوات المقترحة**: (يُفصَّل لاحقاً)
-
-### 6.5 أدوات داخلية للشركة (Internal company tools) — أولوية 5
-
-- **الهدف**: أدوات أو مهارات خاصة بالشركة (استعلامات داخلية، تقارير، إلخ)
-- **المتطلبات**: إعدادات خاصة، ربما إضافة MCP داخلية أو APIs
-- **التبعيات**: Phase 02, 03, 04, 05
-- **الخطوات المقترحة**: (يُفصَّل لاحقاً)
+**Index, priorities, and quality reminder:** [docs/future/README.md](../future/README.md) and [docs/future/quality.md](../future/quality.md).
 
 ---
 
-## تحسينات الجودة (مستمرة أو لاحقة)
+## Suggested Extensions (for the future)
 
-للتفاصيل والتذكير: [docs/future/quality.md](../future/quality.md).
+### 6.1 Project scaffolding — Priority 1
 
-- [ ] **اختبارات**: وحدة وتكامل لأدوات، مهارات، وتوجيه؛ اختبار E2E مع عميل MCP
-- [ ] **المراقبة والسجلات**: تسجيل استدعاءات الأدوات/المهارات، أخطاء، وأوقات التنفيذ (للتشخيص دون تسريب بيانات حساسة)
-- [ ] **الأمان**: مراجعة صلاحيات الملفات والأوامر، قوائم بيضاء للإضافات NPX، عدم تسريب أسرار في السجلات
-- [ ] **الإصدارات**: توافق مع إصدارات محددة من إضافات NPX (مثلاً `package@1.2.3` بدل `@latest`) للاستقرار
-- [ ] **التوثيق**: تحديث `README` و `docs/` عند كل مرحلة، وإبقاء قائمة الأدوات والمهارات محدثة (يدوياً أو تلقائياً)
+- **Goal**: Skill or set of skills to create a new project structure (e.g. Next.js, API, library)
+- **Requirements**: Templates or generators, create_file tool and possibly CLI calls
+- **Dependencies**: Phase 02, 03, 05
+- **Suggested steps**: (to be detailed when starting)
+
+### 6.2 Database schema generation — Priority 2
+
+- **Goal**: Skill that takes a description (e.g. entities/relations) and generates migrations or schema
+- **Requirements**: DB tool or integration (e.g. query or migration runner), may need external plugin
+- **Dependencies**: Phase 02, 03, 05
+- **Suggested steps**: (to be detailed later)
+
+### 6.3 Frontend page generation — Priority 3
+
+- **Goal**: Skill to create a page or UI component (e.g. React) from description or Figma
+- **Requirements**: File tools, possibly design or component generator plugin
+- **Dependencies**: Phase 02, 03, 04, 05
+- **Suggested steps**: (to be detailed later)
+
+### 6.4 Deployment automation — Priority 4
+
+- **Goal**: Skills or tools to trigger deploy, check status, or rollback
+- **Requirements**: Integration with CI/CD or deploy APIs, high security (allowlist, verification)
+- **Dependencies**: Phase 02, 03, 05
+- **Suggested steps**: (to be detailed later)
+
+### 6.5 Internal company tools — Priority 5
+
+- **Goal**: Company-specific tools or skills (internal queries, reports, etc.)
+- **Requirements**: Custom config, possibly internal MCP plugin or APIs
+- **Dependencies**: Phase 02, 03, 04, 05
+- **Suggested steps**: (to be detailed later)
 
 ---
 
-## معايير الإكمال (لهذه المرحلة)
+## Quality Improvements (ongoing or later)
 
-- كل توسعة مستقبلية مذكورة في وثيقة واحدة (هذا الملف أو ملفات فرعية في `docs/future/`) مع هدف ومتطلبات وتبعيات
-- لا إلزام بتنفيذ كود في Phase 06 — المرحلة توثيقية وتخطيطية
+For details and reminder: [docs/future/quality.md](../future/quality.md).
+
+- [ ] **Testing**: Unit and integration for tools, skills, and routing; E2E with MCP client
+- [ ] **Monitoring and logging**: Log tool/skill calls, errors, and execution time (for diagnostics without leaking sensitive data)
+- [ ] **Security**: Review file and command permissions, allowlists for NPX plugins, no secrets in logs
+- [ ] **Versions**: Support specific NPX plugin versions in config (e.g. `package@1.2.3` instead of `@latest`) for stability
+- [ ] **Documentation**: Update README and docs with each phase; keep tool and skill lists up to date (manually or automatically)
 
 ---
 
-## التبعيات
+## Completion Criteria (for this phase)
 
-- **Phase 00–05** مكتملة؛ النظام يعمل كـ Company MCP Hub موحّد.
+- Every future extension is described in one document (this file or under `docs/future/`) with goal, requirements, and dependencies
+- No requirement to implement code in Phase 06 — the phase is documentation and planning
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- يمكن تقسيم كل توسعة لاحقاً إلى مراحل فرعية (6.1.1, 6.1.2, …) عند البدء بالتنفيذ.
-- يُفضّل تحديث هذا الملف عند إضافة فكرة توسعة جديدة ليبقى مرجعاً واحداً للمستقبل.
+- **Phase 00–05** complete; the system works as a unified Company MCP Hub.
+
+---
+
+## Notes
+
+- Each extension can later be split into sub-phases (6.1.1, 6.1.2, …) when implementation starts.
+- Prefer updating this file when adding a new extension idea so it stays the single reference for the future.

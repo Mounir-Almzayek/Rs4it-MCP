@@ -1,59 +1,59 @@
-# معمارية المنصة — RS4IT MCP Hub
+# Platform Architecture — RS4IT MCP Hub
 
-## نظرة عامة
+## Overview
 
-المنصة تجمع بين **أدوات** (عمليات ذرية) و**مهارات** (سير عمل مركّبة) تحت واجهة MCP واحدة.
+The platform combines **tools** (atomic operations) and **skills** (composite workflows) under a single MCP interface.
 
-## عرض المهارات للعميل (Phase 03)
+## Exposing Skills to the Client (Phase 03)
 
-**القرار**: المهارات تظهر كأدوات في `tools/list` ببادئة مميزة.
+**Decision**: Skills are exposed as tools in `tools/list` with a distinct prefix.
 
-- **صيغة الاسم**: `skill:<skill_name>` (مثلاً `skill:create_api_endpoint`).
-- **الفائدة**: عميل واحد (مثل Cursor) يستدعي `tools/list` فيحصل على أدوات عادية + مهارات دون حاجة لـ `skills/list` أو `skills/call` منفصل.
-- **التنفيذ**: عند استدعاء أداة اسمها يبدأ بـ `skill:`، السيرفر يستخرج اسم المهارة ويستدعي `executeSkill(name, args)` ويرجع النتيجة بنفس تنسيق أدوات MCP.
+- **Name format**: `skill:<skill_name>` (e.g. `skill:create_api_endpoint`).
+- **Benefit**: A single client (e.g. Cursor) calls `tools/list` and gets regular tools plus skills without a separate `skills/list` or `skills/call`.
+- **Implementation**: When a tool name starts with `skill:`, the server extracts the skill name, calls `executeSkill(name, args)`, and returns the result in the same MCP tool format.
 
-لا توجد حالياً قدرة منفصلة (مثل `skills/list`)؛ كل شيء عبر `tools/list` و `tools/call`.
+There is no separate capability (e.g. `skills/list`); everything goes through `tools/list` and `tools/call`.
 
-## الطبقات
+## Layers
 
-| الطبقة | المحتوى |
-|--------|---------|
-| **Tools** | أدوات ذرية (create_file، read_file، run_command) مسجّلة في السجل؛ تُستدعى من المهارات أو من العميل. |
-| **Skills** | سير عمل مركّبة تستدعي أدوات (محلية أو إضافات عبر `routeToolCall`)؛ معروضة كأدوات بأسماء `skill:*`. |
-| **Plugins** | إضافات MCP خارجية؛ أدواتها معروضة بأسماء `plugin:<id>:<name>`. |
-| **Server** | يسجّل كل المصادر (أدوات + مهارات + أدوات إضافات) على McpServer؛ رد موحّد لـ `tools/list` وتوجيه `tools/call` حسب الاسم (راجع `src/types/routing.ts` و `src/router.ts`). |
+| Layer | Content |
+|-------|---------|
+| **Tools** | Atomic tools (create_file, read_file, run_command) registered in the registry; called from skills or from the client. |
+| **Skills** | Composite workflows that call tools (local or plugins via `routeToolCall`); exposed as tools with names `skill:*`. |
+| **Plugins** | External MCP plugins; their tools are exposed with names `plugin:<id>:<name>`. |
+| **Server** | Registers all sources (tools + skills + plugin tools) on McpServer; unified response for `tools/list` and routing of `tools/call` by name (see `src/types/routing.ts` and `src/router.ts`). |
 
-## الإضافات الخارجية (Phase 04)
+## External Plugins (Phase 04)
 
-- الإضافات تُحمّل عند بدء الـ Hub من `config/mcp_plugins.json` (أو من مسار `MCP_PLUGINS_CONFIG`).
-- كل إضافة تُشغّل كعملية فرعية (مثلاً `npx -y package@latest`) ويتواصل الـ Hub معها عبر **stdio** كعميل MCP.
-- قوائم أدوات الإضافات مخزّنة بأسماء ذات بادئة `plugin:<id>:<tool_name>` لدمجها في Phase 05.
-- إغلاق الـ Hub يوقف كل عمليات الإضافات.
+- Plugins are loaded at Hub startup from `config/mcp_plugins.json` (or from `MCP_PLUGINS_CONFIG` path).
+- Each plugin runs as a subprocess (e.g. `npx -y package@latest`) and the Hub communicates with it via **stdio** as an MCP client.
+- Plugin tool lists are stored with names prefixed `plugin:<id>:<tool_name>` for integration in Phase 05.
+- Closing the Hub stops all plugin processes.
 
-## اتفاقية التسمية والتوجيه الموحّد (Phase 05)
+## Naming Convention and Unified Routing (Phase 05)
 
-### اسم الأداة → المصدر
+### Tool name → Source
 
-| المصدر | صيغة الاسم | أمثلة |
-|--------|------------|--------|
-| **محلي** | اسم مباشر | `create_file`, `run_command`, `read_file` |
-| **مهارة** | `skill:<skill_name>` | `skill:create_api_endpoint` |
-| **إضافة** | `plugin:<plugin_id>:<original_tool_name>` | `plugin:hello:echo` |
+| Source | Name format | Examples |
+|--------|-------------|----------|
+| **Local** | Direct name | `create_file`, `run_command`, `read_file` |
+| **Skill** | `skill:<skill_name>` | `skill:create_api_endpoint` |
+| **Plugin** | `plugin:<plugin_id>:<original_tool_name>` | `plugin:hello:echo` |
 
-- **tools/list**: رد واحد موحّد يجمع أدوات محلية + مهارات (كأدوات) + أدوات كل إضافة محمّلة، بدون تكرار أسماء. الوصف ومخطط المدخلات يُحفظ لكل أداة.
-- **tools/call**: يُحدَّد المصدر من اسم الأداة (محلي / مهارة / إضافة)، ثم يُستدعى السجل أو عميل الإضافة المناسب وتُرجَع النتيجة. أداة غير موجودة أو إضافة غير متاحة → رسالة خطأ واضحة دون تعطيل السيرفر.
+- **tools/list**: Single unified response aggregating local tools + skills (as tools) + each loaded plugin’s tools, with no duplicate names. Description and input schema are preserved per tool.
+- **tools/call**: Source is determined from the tool name (local / skill / plugin), then the appropriate registry or plugin client is invoked and the result returned. Unknown tool or unavailable plugin → clear error message without crashing the server.
 
-### مهارات تستدعي أدوات من عدة مصادر (اختياري)
+### Skills calling tools from multiple sources (optional)
 
-- يمكن لـ handler المهارة استدعاء أي أداة مسجّلة (محلية أو إضافة) عبر الواجهة الموحّة **`routeToolCall(name, args)`** في `src/router.ts`، بحيث يوجّه الـ Hub إلى المصدر الصحيح.
+- A skill handler can call any registered tool (local or plugin) via the unified **`routeToolCall(name, args)`** interface in `src/router.ts`, so the Hub routes to the correct source.
 
-## الأدوار والظهور (Phase 09)
+## Roles and Visibility (Phase 09)
 
-- **الأدوار**: معرّفة في `config/roles.json` (أو `MCP_ROLES_CONFIG`). لكل دور: `id` واختياريًا `inherits` (قائمة أدوار يرث منها). أمثلة: `developer`, `web_engineer`, `backend_engineer`, `full_stack` (يرث web + backend), `admin`, `viewer`.
-- **الوراثة**: المستخدم الذي يتصل بدور معيّن يرى كل ما يُسمح به لدوره **ولكل الأدوار الموروثة**. الدالة `getEffectiveRoles(roleId)` تُرجع الدور وجميع الأدوار الموروثة (بشكل متعدّي).
-- **ربط الصلاحيات**: لكل أداة/مهارة/إضافة في السجل الديناميكي يمكن تحديد `allowedRoles` (قائمة أدوار مسموح لها). إن كانت فارغة أو غير معرّفة → الظهور لجميع الأدوار. الأدوات والمهارات المدمجة (built-in) تظهر للجميع.
-- **تمرير الدور من العميل**:
-  - **HTTP**: هيدر `X-MCP-Role` أو حقل `params.role` في طلب `initialize`.
-  - **stdio**: متغير بيئة `MCP_ROLE`.
-- عند إنشاء الجلسة (أو بدء stdio)، الـ Hub يفلتر ما يُسجَّل: يُسجَّل فقط الأدوات/المهارات/الإضافات المسموح لها للدور الفعّال. إن لم يُمرَّر دور، تُعرض كل الأدوات (سلوك قديم).
-- **الأمان**: تمرير الدور من العميل (header/env) لا يغني عن المصادقة؛ يمكن لاحقاً ربط الأدوار بمصادقة (مثلاً من token) إذا توفرت.
+- **Roles**: Defined in `config/roles.json` (or `MCP_ROLES_CONFIG`). Each role has `id` and optionally `inherits` (list of roles to inherit from). Examples: `developer`, `web_engineer`, `backend_engineer`, `full_stack` (inherits web + backend), `admin`, `viewer`.
+- **Inheritance**: A user connecting with a given role sees everything allowed for that role **and all inherited roles**. The function `getEffectiveRoles(roleId)` returns the role and all inherited roles (transitively).
+- **Permission binding**: Each tool/skill/plugin in the dynamic registry can have `allowedRoles` (list of allowed roles). If empty or undefined → visible to all roles. Built-in tools and skills are visible to everyone.
+- **Passing role from client**:
+  - **HTTP**: Header `X-MCP-Role` or `params.role` in the `initialize` request.
+  - **stdio**: Environment variable `MCP_ROLE`.
+- When the session is created (or stdio starts), the Hub filters what is registered: only tools/skills/plugins allowed for the effective role are registered. If no role is passed, all tools are exposed (legacy behaviour).
+- **Security**: Passing the role from the client (header/env) does not replace authentication; roles can later be tied to authentication (e.g. from a token) if available.

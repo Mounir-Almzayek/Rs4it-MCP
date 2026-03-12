@@ -1,58 +1,58 @@
 # Phase 00 — Overview & Setup
 
-## الهدف
+## Goal
 
-إعداد بيئة المشروع والاعتماديات دون كتابة منطق الـ MCP Hub، والتأكد من وجود بنية مشروع واضحة وجاهزة للتنفيذ.
-
----
-
-## المخرجات المتوقعة
-
-- مشروع Node.js/TypeScript جاهز للتطوير
-- هيكلية المجلدات كما في التقرير المعماري
-- ملفات الاعتماديات (package.json) مع الإصدارات المناسبة
-- دليل قراءة سريع للمراحل التالية
+Set up the project environment and dependencies without writing MCP Hub logic, and ensure a clear project structure ready for implementation.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 0.1 اختيار الـ Runtime واللغة
+- Node.js/TypeScript project ready for development
+- Folder structure as in the architecture report
+- Dependency files (package.json) with appropriate versions
+- Quick reading guide for the following phases
 
-- [ ] تحديد: Node.js (إصدار LTS مدعوم، مثلاً 20.x)
-- [ ] تحديد: TypeScript للمشروع بالكامل
-- [ ] توثيق المتطلبات في `README.md` أو `docs/requirements.md`
+---
 
-### 0.2 تهيئة المشروع
+## Sub-tasks
 
-- [ ] إنشاء أو تحديث `package.json`:
-  - اسم المشروع (مثلاً `company-mcp-hub` أو `rs4it-mcp`)
-  - نوع المشروع: `"type": "module"` إذا كان ES Modules
-  - سكربتات: `build`, `start`, `dev`
-- [ ] إضافة `tsconfig.json` مع إعدادات مناسبة (target, module, outDir, strict)
-- [ ] عدم إضافة كود MCP فعلي في هذه المرحلة — فقط الهيكلية
+### 0.1 Choose runtime and language
 
-### 0.3 الاعتماديات الأساسية (بدون تنفيذ كود MCP بعد)
+- [ ] Decide: Node.js (supported LTS version, e.g. 20.x)
+- [ ] Decide: TypeScript for the entire project
+- [ ] Document requirements in `README.md` or `docs/requirements.md`
 
-- [ ] اختيار وتوثيق مكتبة MCP الرسمية للـ Server:
-  - مثلاً: `@modelcontextprotocol/sdk` (أو البديل المعتمد في الشركة)
-- [ ] إضافة كاعتماديات تطوير:
+### 0.2 Initialize the project
+
+- [ ] Create or update `package.json`:
+  - Project name (e.g. `company-mcp-hub` or `rs4it-mcp`)
+  - Project type: `"type": "module"` if using ES Modules
+  - Scripts: `build`, `start`, `dev`
+- [ ] Add `tsconfig.json` with suitable settings (target, module, outDir, strict)
+- [ ] Do not add actual MCP code in this phase — structure only
+
+### 0.3 Core dependencies (no MCP code yet)
+
+- [ ] Choose and document the official MCP Server library:
+  - e.g. `@modelcontextprotocol/sdk` (or company-approved alternative)
+- [ ] Add as dev dependencies:
   - `typescript`
-  - أداة بناء مثل `tsup` أو `esbuild` أو `tsc`
-  - أداة تشغيل مثل `tsx` للتطوير
-- [ ] توثيق الاعتماديات المخططة في `docs/phases/00-overview-and-setup.md` أو في جدول في الـ README
+  - Build tool such as `tsup`, `esbuild`, or `tsc`
+  - Run tool such as `tsx` for development
+- [ ] Document planned dependencies in `docs/phases/00-overview-and-setup.md` or in a table in the README
 
-**اعتماديات Phase 00 (مطبّقة):**
+**Phase 00 dependencies (applied):**
 
-| الحزمة | النوع | الاستخدام |
-|--------|--------|-----------|
-| `@modelcontextprotocol/sdk` | dependency | سيرفر MCP (Phase 01+) |
-| `typescript` | devDependency | البناء والأنواع |
-| `tsx` | devDependency | تشغيل TS أثناء التطوير |
+| Package | Type | Usage |
+|---------|------|--------|
+| `@modelcontextprotocol/sdk` | dependency | MCP server (Phase 01+) |
+| `typescript` | devDependency | Build and types |
+| `tsx` | devDependency | Run TS during development |
 
-### 0.4 الهيكلية النهائية للمجلدات
+### 0.4 Final folder structure
 
-التأكد من وجود المجلدات التالية (بدون كود داخلي أو مع `.gitkeep` فقط):
+Ensure the following folders exist (empty or with `.gitkeep` only):
 
 ```
 rs4it mcp/
@@ -78,33 +78,33 @@ rs4it mcp/
 └── tsconfig.json
 ```
 
-- [ ] التحقق من أن كل مجلد موجود وموثّق الغرض منه في هذا الملف أو في `docs/README.md`
+- [ ] Verify each folder exists and its purpose is documented in this file or in `docs/README.md`
 
-### 0.5 التوثيق والمراجع
+### 0.5 Documentation and references
 
-- [ ] إضافة ملف `docs/requirements.md` (اختياري) يلخص:
-  - إصدار Node.js المطلوب
-  - متغيرات البيئة إن وجدت
-  - طريقة تشغيل السيرفر لاحقاً (مثلاً stdio vs SSE)
-- [ ] الإشارة في الـ README الرئيسي إلى أن مراحل التنفيذ موجودة في `docs/phases/` وأن الترتيب مهم
-
----
-
-## معايير الإكمال
-
-- يمكن تشغيل `npm install` و `npm run build` (حتى لو البناء لا ينتج تنفيذ فعلي بعد)
-- لا يوجد كود MCP أو أدوات أو مهارات — فقط الهيكلية والاعتماديات والتوثيق
-- أي مطوّر يفتح المشروع يفهم من الـ README و `docs/` أين يبدأ (Phase 00 ثم 01، 02، ...)
+- [ ] Add file `docs/requirements.md` (optional) summarizing:
+  - Required Node.js version
+  - Environment variables if any
+  - How to run the server later (e.g. stdio vs SSE)
+- [ ] In the main README, point to implementation phases in `docs/phases/` and that order matters
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- لا توجد تبعيات على مراحل أخرى (هذه أول مرحلة).
+- `npm install` and `npm run build` run (even if the build does not produce a real executable yet)
+- No MCP code, tools, or skills — only structure, dependencies, and documentation
+- Any developer opening the project understands from the README and `docs/` where to start (Phase 00 then 01, 02, ...)
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- يمكن لاحقاً إضافة ESLint، Prettier، واختبارات في نهاية Phase 00 أو ضمن مرحلة مستقلة.
-- إعداد Cursor أو أي عميل MCP للاتصال بالسيرفر يتم لاحقاً بعد Phase 01/05.
+- None on other phases (this is the first phase).
+
+---
+
+## Notes
+
+- ESLint, Prettier, and tests can be added later at the end of Phase 00 or in a separate phase.
+- Configuring Cursor or any MCP client to connect to the server is done after Phase 01/05.

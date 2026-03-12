@@ -1,72 +1,72 @@
-# Phase 07 — استضافة الـ Hub على سيرفر (Server Hosting)
+# Phase 07 — Server Hosting
 
-## الهدف
+## Goal
 
-تشغيل الـ Hub كخدمة شبكية يمكن الوصول إليها عبر HTTP (أو SSE) بدل stdio فقط، بحيث يمكن للمبرمجين والعمليات الاتصال بنفس الـ Hub المستضاف على سيرفر واحد.
-
----
-
-## المخرجات المتوقعة
-
-- الـ Hub يدعم نقل **Streamable HTTP** أو **SSE** (إضافةً إلى stdio أو بديلاً عنه حسب الإعداد).
-- تشغيل الـ Hub كعملية دائمة تستمع على بورت (مثلاً 3000) أو عبر reverse proxy.
-- أي عميل MCP (مثل Cursor عند دعمه لـ HTTP) يمكنه الاتصال برابط السيرفر والحصول على نفس `tools/list` و `tools/call`.
-- توثيق تشغيل السيرفر (متغيرات بيئة، بورت، إلخ).
+Run the Hub as a network service reachable over HTTP (or SSE) instead of stdio only, so developers and processes can connect to the same hosted Hub on a single server.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 7.1 اختيار النقل الشبكي
-
-- [ ] اختيار نقل مدعوم من الـ SDK: **Streamable HTTP** (موصى به) أو **SSE**.
-- [ ] مراجعة وثائق `@modelcontextprotocol/sdk` لـ Server مع Streamable HTTP / SSE.
-- [ ] تحديد نقطة دخول جديدة (مثلاً `src/server/http-entry.ts` أو شرط في `index.ts`) لبدء السيرفر مع النقل المختار.
-
-### 7.2 تنفيذ نقطة دخول HTTP/SSE
-
-- [ ] إنشاء أو تكييف السيرفر لاستقبال اتصالات على مسار معيّن (مثلاً `/mcp` أو `/sse`).
-- [ ] ربط نفس منطق الـ Hub (createServer، أدوات، مهارات، إضافات) بالنقل الشبكي.
-- [ ] إدارة دورة الحياة: إغلاق نظيف عند SIGTERM، عدم ترك اتصالات مفتوحة.
-
-### 7.3 الإعداد والتشغيل
-
-- [ ] متغيرات بيئة (مثلاً `PORT`, `MCP_TRANSPORT=http`, `BASE_URL`).
-- [ ] سكربت تشغيل للإنتاج (مثلاً `npm run start:server` أو `node dist/server/http-entry.js`).
-- [ ] توثيق في `docs/requirements.md` أو `docs/deployment.md`: كيف تُستضاف الخدمة (Node مباشر، PM2، Docker، خلف reverse proxy).
-
-### 7.4 التوافق مع العميل (Cursor وغيره)
-
-- [ ] توثيق كيف يضيف المبرمج في Cursor (أو عميل آخر) رابط الـ Hub المستضاف إن كان العميل يدعم HTTP.
-- [ ] إن كان Cursor حالياً يدعم stdio فقط: توثيق أن الاستضافة تخدم عملاء آخرين أو استخدامات مستقبلية.
+- Hub supports **Streamable HTTP** or **SSE** transport (in addition to or instead of stdio per config).
+- Hub runs as a long-lived process listening on a port (e.g. 3000) or behind a reverse proxy.
+- Any MCP client (e.g. Cursor when it supports HTTP) can connect to the server URL and get the same `tools/list` and `tools/call`.
+- Documentation for running the server (environment variables, port, etc.).
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- تشغيل الـ Hub على بورت معيّن والرد على طلبات MCP عبر HTTP/SSE.
-- عميل اختبار يتصل بالرابط ويستلم `tools/list` ويمكنه استدعاء أداة بنجاح.
-- توثيق واضح للتشغيل والإعداد.
+### 7.1 Choose network transport
+
+- [ ] Choose a transport supported by the SDK: **Streamable HTTP** (recommended) or **SSE**.
+- [ ] Review `@modelcontextprotocol/sdk` docs for Server with Streamable HTTP / SSE.
+- [ ] Define a new entry point (e.g. `src/server/http-entry.ts` or a branch in `index.ts`) to start the server with the chosen transport.
+
+### 7.2 Implement HTTP/SSE entry point
+
+- [ ] Create or adapt the server to accept connections on a path (e.g. `/mcp` or `/sse`).
+- [ ] Attach the same Hub logic (createServer, tools, skills, plugins) to the network transport.
+- [ ] Lifecycle: clean shutdown on SIGTERM, no open connections left behind.
+
+### 7.3 Config and running
+
+- [ ] Environment variables (e.g. `PORT`, `MCP_TRANSPORT=http`, `BASE_URL`).
+- [ ] Run script for production (e.g. `npm run start:server` or `node dist/server/http-entry.js`).
+- [ ] Document in `docs/requirements.md` or `docs/deployment.md`: how to host the service (Node directly, PM2, Docker, behind reverse proxy).
+
+### 7.4 Client compatibility (Cursor and others)
+
+- [ ] Document how a developer adds the hosted Hub URL in Cursor (or another client) if the client supports HTTP.
+- [ ] If Cursor currently supports stdio only: document that hosting serves other clients or future use.
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 00–06** مكتملة (الـ Hub يعمل على stdio مع أدوات ومهارات وإضافات وتوجيه).
-
----
-
-## الملفات المقترحة
-
-| الملف | الغرض |
-|-------|--------|
-| `src/server/http-entry.ts` أو `server-http.ts` | نقطة دخول لبدء السيرفر مع نقل HTTP/SSE |
-| `src/config/transport.ts` (اختياري) | اختيار النقل حسب الإعداد (stdio vs http) |
-| `docs/deployment.md` (اختياري) | تشغيل واستضافة الـ Hub في الإنتاج |
+- Hub runs on a given port and responds to MCP requests over HTTP/SSE.
+- A test client connects to the URL and receives `tools/list` and can call a tool successfully.
+- Clear documentation for running and configuration.
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- الإبقاء على دعم stdio للاستخدام المحلي (Cursor محلي) إن أمكن.
-- الأمان: عند التعرض للشبكة، مراعاة HTTPS وربما مصادقة (تُفصّل لاحقاً أو في Phase 09 مع الأدوار).
+- **Phase 00–06** complete (Hub runs on stdio with tools, skills, plugins, and routing).
+
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `src/server/http-entry.ts` or `server-http.ts` | Entry point to start server with HTTP/SSE transport |
+| `src/config/transport.ts` (optional) | Choose transport from config (stdio vs http) |
+| `docs/deployment.md` (optional) | Running and hosting the Hub in production |
+
+---
+
+## Notes
+
+- Keep stdio support for local use (local Cursor) if possible.
+- Security: when exposed to the network, consider HTTPS and possibly authentication (to be detailed later or in Phase 09 with roles).

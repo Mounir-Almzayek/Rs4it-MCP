@@ -1,104 +1,104 @@
 # Phase 02 — Tool Layer
 
-## الهدف
+## Goal
 
-تنفيذ طبقة الأدوات الذرية: تعريف وتنفيذ أدوات بسيطة وقابلة لإعادة الاستخدام، وتسجيلها في السيرفر بحيث يظهرها `tools/list` وينفذها `tools/call`.
-
----
-
-## المخرجات المتوقعة
-
-- مجموعة أدوات أساسية معرّفة (واجهة + مخطط مدخلات)
-- تنفيذ فعلي لكل أداة (handler)
-- تسجيل الأدوات في السيرفر بحيث يستطيع العميل اكتشافها واستدعاءها
-- معيار لاحقاً لإضافة أدوات جديدة دون تعديل قلب السيرفر
+Implement the atomic tools layer: define and implement simple, reusable tools and register them with the server so `tools/list` exposes them and `tools/call` runs them.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 2.1 نموذج تعريف الأداة
+- A set of base tools with defined interface and input schema
+- Actual implementation (handler) for each tool
+- Tools registered with the server so the client can discover and call them
+- A pattern for adding new tools later without changing the server core
 
-- [ ] توحيد شكل الأداة في الكود:
-  - `name`: معرف فريد (مثلاً `create_file`, `run_command`)
-  - `description`: نص يوضح للـ AI ماذا تفعل الأداة
-  - `inputSchema`: مخطط JSON Schema للمعاملات (مثلاً path, content لـ create_file)
-- [ ] نوع TypeScript لكل أداة (في `src/types/`) ومصدر واحد للحقيقة لـ name و schema
+---
 
-### 2.2 أدوات أساسية مقترحة (اختيار مجموعة للتنفيذ أولاً)
+## Sub-tasks
 
-تنفيذ على الأقل 2–3 أدوات للتحقق من الطبقة؛ الباقي يمكن إضافته لاحقاً:
+### 2.1 Tool definition model
+
+- [ ] Unify the tool shape in code:
+  - `name`: unique id (e.g. `create_file`, `run_command`)
+  - `description`: text explaining to the AI what the tool does
+  - `inputSchema`: JSON Schema for parameters (e.g. path, content for create_file)
+- [ ] TypeScript type for each tool (in `src/types/`) and single source of truth for name and schema
+
+### 2.2 Suggested base tools (choose a set to implement first)
+
+Implement at least 2–3 tools to validate the layer; the rest can be added later:
 
 - [ ] **create_file**
-  - المدخلات: مسار الملف، المحتوى (ونص اختياري مثل encoding)
-  - السلوك: إنشاء ملف في مسار معيّن (ضمن حدود آمنة، مثلاً داخل workspace)
-  - الأخطاء: مسار خارج workspace، صلاحيات، إلخ.
+  - Inputs: file path, content (and optional encoding)
+  - Behaviour: create a file at the given path (within safe bounds, e.g. inside workspace)
+  - Errors: path outside workspace, permissions, etc.
 
 - [ ] **run_command**
-  - المدخلات: الأمر (سطر واحد أو مصفوفة)، مجلد العمل الاختياري، timeout اختياري
-  - السلوك: تنفيذ أمر shell (مع قائمة بيضاء للأوامر المسموحة إن لزم)
-  - الأخطاء: timeout، أمر غير مسموح، كود خروج غير صفري
+  - Inputs: command (single line or array), optional working directory, optional timeout
+  - Behaviour: run a shell command (with allowlist if needed)
+  - Errors: timeout, disallowed command, non-zero exit code
 
-- [ ] **read_file** (اختياري)
-  - المدخلات: مسار الملف
-  - السلوك: قراءة محتوى الملف وإرجاعه
-  - الأخطاء: ملف غير موجود، خارج workspace
+- [ ] **read_file** (optional)
+  - Inputs: file path
+  - Behaviour: read file content and return it
+  - Errors: file not found, outside workspace
 
-يمكن لاحقاً: `query_database`, `call_internal_api`, `git_commit`, إلخ.
+Later: `query_database`, `call_internal_api`, `git_commit`, etc.
 
-### 2.3 تسجيل الأدوات في السيرفر
+### 2.3 Register tools with the server
 
-- [ ] إنشاء registry مركزي للأدوات (مثلاً `src/tools/registry.ts`):
-  - تسجيل كل أداة بالاسم والوصف ومخطط المدخلات
-  - دالة `getAllTools()` تُرجع القائمة لـ `tools/list`
-  - دالة `getTool(name)` و `executeTool(name, args)` لـ `tools/call`
-- [ ] ربط الـ registry بمعالج الطلبات في السيرفر (Phase 01) بحيث:
-  - `tools/list` يعيد كل الأدوات المسجّلة
-  - `tools/call` يستدعي `executeTool` ويرجع النتيجة أو رسالة خطأ مناسبة
+- [ ] Create a central tool registry (e.g. `src/tools/registry.ts`):
+  - Register each tool by name, description, and input schema
+  - Function `getAllTools()` returns the list for `tools/list`
+  - Functions `getTool(name)` and `executeTool(name, args)` for `tools/call`
+- [ ] Wire the registry to the server’s request handler (Phase 01) so that:
+  - `tools/list` returns all registered tools
+  - `tools/call` calls `executeTool` and returns the result or an appropriate error
 
-### 2.4 الأمان والحدود
+### 2.4 Safety and limits
 
-- [ ] تحديد حدود تنفيذ الأدوات:
-  - الملفات: فقط ضمن جذر المشروع (workspace root) أو مسار مُعرّف في الإعداد
-  - الأوامر: قائمة بيضاء أو تحذير عند أوامر خطرة (rm -rf، إلخ)
-- [ ] التحقق من المدخلات ضد الـ schema قبل التنفيذ ورفض الطلبات غير الصالحة
-- [ ] توثيق سياسة الأمان في `docs/` أو في نفس الملف
+- [ ] Define execution limits for tools:
+  - Files: only within project root (workspace root) or a path defined in config
+  - Commands: allowlist or warning for dangerous commands (rm -rf, etc.)
+- [ ] Validate inputs against the schema before execution and reject invalid requests
+- [ ] Document the security policy in `docs/` or in this file
 
-### 2.5 الاختبار
+### 2.5 Testing
 
-- [ ] اختبار كل أداة بشكل منفصل (وحدة أو تكامل)
-- [ ] اختبار من عميل MCP: استدعاء كل أداة مسجّلة والتحقق من النتيجة
-
----
-
-## معايير الإكمال
-
-- `tools/list` يعيد قائمة تحتوي على الأدوات المُنفّذة
-- `tools/call` ينفذ كل أداة بشكل صحيح ويعيد محتوى أو رسالة خطأ واضحة
-- إضافة أداة جديدة = إضافة تعريف + handler + تسجيل في الـ registry دون تعديل قلب السيرفر
+- [ ] Test each tool in isolation (unit or integration)
+- [ ] Test from an MCP client: call each registered tool and verify the result
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 01** مكتمل (السيرفر يستقبل الطلبات ويوجّهها لـ tools/list و tools/call).
-
----
-
-## الملفات المقترحة
-
-| الملف | الغرض |
-|-------|--------|
-| `src/types/tools.ts` | أنواع تعريف الأداة ومخطط المدخلات |
-| `src/tools/registry.ts` | تسجيل الأدوات واستدعاؤها |
-| `src/tools/create-file.ts` | أداة create_file |
-| `src/tools/run-command.ts` | أداة run_command |
-| `src/tools/read-file.ts` | (اختياري) أداة read_file |
-| `src/tools/index.ts` | تصدير الـ registry والأدوات |
+- `tools/list` returns a list containing the implemented tools
+- `tools/call` runs each tool correctly and returns content or a clear error message
+- Adding a new tool = add definition + handler + register in the registry without changing the server core
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- الأدوات يجب أن تبقى صغيرة وحتمية قدر الإمكان؛ التعقيد يُنقل إلى المهارات (Phase 03).
-- أي اعتماد على نظام الملفات أو shell يجب أن يكون معزولاً (واجهة واحدة) لتسهيل الاختبار والأمان.
+- **Phase 01** complete (server receives requests and routes them to tools/list and tools/call).
+
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/tools.ts` | Tool definition type and input schema |
+| `src/tools/registry.ts` | Tool registration and invocation |
+| `src/tools/create-file.ts` | create_file tool |
+| `src/tools/run-command.ts` | run_command tool |
+| `src/tools/read-file.ts` | (optional) read_file tool |
+| `src/tools/index.ts` | Export registry and tools |
+
+---
+
+## Notes
+
+- Tools should stay small and deterministic where possible; complexity belongs in skills (Phase 03).
+- Any dependency on the file system or shell should be isolated behind a single interface for testing and security.

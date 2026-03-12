@@ -1,100 +1,100 @@
 # Phase 03 — Skills Registry & Dynamic Skills
 
-## الهدف
+## Goal
 
-تنفيذ طبقة المهارات: سجل للمهارات، تعريف كل مهارة (الاسم، الوصف، مخطط المدخلات، الـ handler)، وتشغيل المهارات عبر تنسيق موحّد بحيث يمكن للعميل استدعاؤها كأدوات عالية المستوى.
-
----
-
-## المخرجات المتوقعة
-
-- Skills registry: تسجيل مهارات بالاسم والوصف ومخطط المدخلات
-- تنفيذ handler لكل مهارة ينسّق استدعاء عدة أدوات (من الطبقة 02) أو خطوات أخرى
-- تعرّف السيرفر المهارات كـ "أدوات" (أو كقدرة منفصلة حسب التصميم) بحيث يستطيع الـ AI طلبها
-- إمكانية إضافة مهارة جديدة عبر ملف + تسجيل دون تعديل قلب السيرفر
+Implement the skills layer: a skills registry, each skill defined (name, description, input schema, handler), and execution through a unified format so the client can call them as higher-level tools.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 3.1 نموذج تعريف المهارة
-
-- [ ] توحيد شكل المهارة:
-  - `name`: معرف فريد (مثلاً `create_api_endpoint`, `generate_crud`)
-  - `description`: نص يوضح للـ AI ماذا تفعل المهارة وما المدخلات المتوقعة
-  - `inputSchema`: JSON Schema للمعاملات
-  - `handler`: دالة (async) تستقبل المعاملات وتنفذ التسلسل وترجع نتيجة
-- [ ] نوع TypeScript للمهارة في `src/types/skills.ts` (أو مشابه)
-
-### 3.2 Skills Registry
-
-- [ ] إنشاء سجل مركزي (مثلاً `src/skills/registry.ts`):
-  - `registerSkill(skill)`: إضافة مهارة
-  - `getSkill(name)`: استرجاع مهارة بالاسم
-  - `getAllSkills()`: قائمة كل المهارات (للعرض أو لـ tools/list)
-  - تحميل المهارات من مجلد `src/skills/` أو من قائمة صريحة في الكود
-- [ ] آلية اكتشاف أو تحميل الملفات في `src/skills/` (مثلاً ملفات `*-skill.ts` تُستورد وتسجّل تلقائياً)
-
-### 3.3 مهارات نموذجية (واحدة على الأقل)
-
-- [ ] تنفيذ مهارة واحدة كاملة، مثلاً **create_api_endpoint**:
-  - المدخلات: اسم الـ endpoint، المسار، الطريقة (GET/POST/…)، حقول اختيارية
-  - الخطوات (داخل الـ handler):
-    1. إنشاء ملف الـ controller (عبر أداة create_file أو استدعاء داخلي)
-    2. إنشاء أو تحديث ملف الـ route
-    3. تحديث Swagger/OpenAPI إن وُجد
-    4. (اختياري) تشغيل سكربت توليد كود
-  - النتيجة: رسالة نجاح أو تفاصيل الملفات المُنشأة
-- [ ] (اختياري) مهارة ثانية بسيطة، مثلاً **generate_crud** أو **create_react_page**، للتحقق من إعادة الاستخدام
-
-### 3.4 عرض المهارات للعميل
-
-- [ ] قرار التصميم: المهارات تظهر كأدوات في `tools/list` (باسم مميز مثل `skill:create_api_endpoint`) أم كقدرة منفصلة (مثلاً `skills/list` و `skills/call`)
-- [ ] تنفيذ الاختيار:
-  - إن ظهرت كأدوات: دمج قائمة المهارات مع قائمة الأدوات في الرد على `tools/list`، ومعالجة `tools/call` حسب البادئة أو الحقل لتمييز المهارة واستدعاء الـ handler المناسب
-  - إن كانت منفصلة: تنفيذ نقاط نهاية أو طلبات MCP للمهارات فقط
-- [ ] توثيق القرار في هذا الملف أو في `docs/architecture.md`
-
-### 3.5 تنفيذ المهارة ومعالجة الأخطاء
-
-- [ ] عند استدعاء مهارة: تحميل الـ handler، تنفيذه مع المعاملات، وإرجاع النتيجة
-- [ ] في حال فشل خطوة داخل المهارة: رسالة خطأ واضحة، وعدم ترك موارد مفتوحة (تراجع أو تنظيف إن أمكن)
-- [ ] (اختياري) وقت أقصى لتنفيذ المهارة (timeout) لتجنب التعليق
-
-### 3.6 التوثيق والقابلية للتوسع
-
-- [ ] توثيق في `docs/` أو تعليقات في الكود: كيف يضيف مطوّر مهارة جديدة (ملف جديد + تسجيل)
-- [ ] قالب (template) أو مثال تعليقي لملف مهارة جديد
+- Skills registry: register skills by name, description, and input schema
+- Handler execution for each skill that coordinates multiple tool calls (from Phase 02) or other steps
+- Server exposes skills as “tools” (or a separate capability per design) so the AI can request them
+- Ability to add a new skill via a file + registration without changing the server core
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- سجل المهارات يعيد قائمة المهارات المعرّفة
-- استدعاء مهارة واحدة على الأقل ينفذ التسلسل الكامل (عدة أدوات/خطوات) ويعيد نتيجة صحيحة
-- إضافة مهارة جديدة = إضافة handler + تسجيل (ودون تعديل قلب السيرفر أو السيرفر MCP)
+### 3.1 Skill definition model
+
+- [ ] Unify the skill shape:
+  - `name`: unique id (e.g. `create_api_endpoint`, `generate_crud`)
+  - `description`: text for the AI describing what the skill does and expected inputs
+  - `inputSchema`: JSON Schema for parameters
+  - `handler`: async function that receives parameters, runs the sequence, and returns a result
+- [ ] TypeScript type for skills in `src/types/skills.ts` (or similar)
+
+### 3.2 Skills registry
+
+- [ ] Create a central registry (e.g. `src/skills/registry.ts`):
+  - `registerSkill(skill)`: add a skill
+  - `getSkill(name)`: get skill by name
+  - `getAllSkills()`: list all skills (for display or tools/list)
+  - Load skills from `src/skills/` folder or from an explicit list in code
+- [ ] Discovery or loading from files in `src/skills/` (e.g. `*-skill.ts` files imported and registered automatically)
+
+### 3.3 Example skills (at least one)
+
+- [ ] Implement one full skill, e.g. **create_api_endpoint**:
+  - Inputs: endpoint name, path, method (GET/POST/…), optional fields
+  - Steps (inside the handler):
+    1. Create controller file (via create_file or internal call)
+    2. Create or update route file
+    3. Update Swagger/OpenAPI if present
+    4. (optional) Run code generation script
+  - Result: success message or list of created files
+- [ ] (optional) A second simple skill, e.g. **generate_crud** or **create_react_page**, to verify reuse
+
+### 3.4 Exposing skills to the client
+
+- [ ] Design decision: skills appear as tools in `tools/list` (with a distinct name like `skill:create_api_endpoint`) or as a separate capability (e.g. `skills/list` and `skills/call`)
+- [ ] Implement the choice:
+  - If as tools: merge the skills list with the tools list in the `tools/list` response, and in `tools/call` use prefix or field to identify the skill and call the right handler
+  - If separate: implement endpoints or MCP requests for skills only
+- [ ] Document the decision in this file or in `docs/architecture.md`
+
+### 3.5 Skill execution and error handling
+
+- [ ] On skill call: load the handler, run it with the parameters, return the result
+- [ ] On failure of a step inside the skill: clear error message, no leaked resources (rollback or cleanup if possible)
+- [ ] (optional) Maximum execution time (timeout) for a skill to avoid hangs
+
+### 3.6 Documentation and extensibility
+
+- [ ] Document in `docs/` or in code comments how to add a new skill (new file + registration)
+- [ ] Template or commented example for a new skill file
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 02** مكتمل (طبقة الأدوات موجودة وقابلة للاستدعاء من داخل المهارات).
-
----
-
-## الملفات المقترحة
-
-| الملف | الغرض |
-|-------|--------|
-| `src/types/skills.ts` | أنواع تعريف المهارة والـ handler |
-| `src/skills/registry.ts` | سجل المهارات وتحميلها |
-| `src/skills/create-api-endpoint.ts` | مهارة create_api_endpoint |
-| `src/skills/index.ts` | تصدير الـ registry وتحميل المهارات |
-| `docs/skill-template.md` أو تعليق في مثال | قالب إضافة مهارة جديدة |
+- The skills registry returns the defined skills
+- Calling at least one skill runs the full sequence (multiple tools/steps) and returns a correct result
+- Adding a new skill = add handler + register (no change to server core or MCP server logic)
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- المهارات لا تحل محل الأدوات؛ هي طبقة أعلى تستدعي الأدوات (وربما لاحقاً أدوات من إضافات خارجية).
-- في Phase 05 سيُحدد كيف تُدمج طلبات المهارات مع الأدوات المحلية والإضافات في توجيه واحد.
+- **Phase 02** complete (tool layer exists and can be called from inside skills).
+
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `src/types/skills.ts` | Skill definition type and handler |
+| `src/skills/registry.ts` | Skills registry and loading |
+| `src/skills/create-api-endpoint.ts` | create_api_endpoint skill |
+| `src/skills/index.ts` | Export registry and load skills |
+| `docs/skill-template.md` or comment in example | Template for adding a new skill |
+
+---
+
+## Notes
+
+- Skills do not replace tools; they are a higher layer that calls tools (and later possibly plugin tools).
+- Phase 05 will define how skill requests are merged with local tools and plugins in a single routing layer.

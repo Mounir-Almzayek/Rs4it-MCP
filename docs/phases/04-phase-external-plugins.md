@@ -1,88 +1,88 @@
 # Phase 04 — External MCP Plugins & NPX
 
-## الهدف
+## Goal
 
-تمكين الـ Hub من تحميل والتواصل مع إضافات MCP خارجية (مثل next-devtools-mcp، filesystem-mcp، github-mcp)، وتشغيلها ديناميكياً عبر **NPX** لاستخدام أحدث إصدار دون تثبيت دائم.
-
----
-
-## المخرجات المتوقعة
-
-- ملف إعداد يصف الإضافات الخارجية (الاسم، أمر التشغيل، وسائط)
-- مُحمّل (loader) يقرأ الإعداد ويشغّل كل إضافة كعملية فرعية (مثلاً `npx -y package-name@latest`)
-- اتصال مع كل إضافة عبر **stdio** (أو النقل المحدد لكل إضافة)
-- توجيه طلبات الأدوات إلى الإضافة المناسبة (أو دمج قوائم الأدوات) — التفاصيل الكاملة في Phase 05
+Enable the Hub to load and communicate with external MCP plugins (e.g. next-devtools-mcp, filesystem-mcp, github-mcp), running them dynamically via **NPX** to use the latest version without a permanent install.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 4.1 إعداد الإضافات الخارجية
-
-- [ ] تعريف تنسيق الإعداد (مثلاً `config/mcp_plugins.json` أو ضمن `config/default.json`):
-  - لكل إضافة: `id`, `name`, `command` (مثلاً `npx`), `args` (مثلاً `["-y", "next-devtools-mcp@latest"]`)
-  - (اختياري) `cwd`, `env`, `timeout`
-- [ ] إنشاء ملف إعداد نموذجي مع 1–2 إضافات (مثلاً next-devtools-mcp، أو إضافة خفيفة للمختبرات)
-- [ ] تحميل الإعداد عند بدء السيرفر من مسار ثابت أو من متغير بيئة (مثلاً `MCP_PLUGINS_CONFIG`)
-
-### 4.2 Plugin Loader — تشغيل العمليات
-
-- [ ] تنفيذ **Plugin Loader** (مثلاً في `src/plugins/loader.ts`):
-  - قراءة قائمة الإضافات من الإعداد
-  - لكل إضافة: إطلاق عملية فرعية (child_process) بالأمر والوسائط (مثلاً `npx -y package@latest`)
-  - ربط stdin/stdout العملية بـ MCP transport (stdio) للتواصل مع الإضافة
-- [ ] إدارة دورة الحياة: إيقاف العمليات عند إغلاق الـ Hub، مع عدم ترك عمليات يتيمة
-- [ ] (اختياري) إعادة تشغيل إضافة عند تعطلها أو إعداد عدد محاولات إعادة الاتصال
-
-### 4.3 التواصل مع الإضافة (MCP Client تجاه كل إضافة)
-
-- [ ] التعامل مع كل إضافة كـ **MCP Server** فرعي؛ الـ Hub يكون **عميل MCP** تجاهها
-- [ ] تنفيذ تبادل تهيئة (initialize) مع كل إضافة عند البدء وجلب قائمة الأدوات التي تقدمها
-- [ ] تخزين قائمة أدوات كل إضافة (مع بادئة أو معرف للإضافة لتجنب تعارض الأسماء)
-- [ ] عند طلب تنفيذ أداة تخص إضافة معيّنة: إرسال طلب `tools/call` إلى تلك الإضافة عبر الـ stdio واسترجاع النتيجة
-
-### 4.4 NPX وأمان التشغيل
-
-- [ ] توثيق أن الأمر الافتراضي هو `npx -y package@latest` (أو الإصدار المحدد في الإعداد)
-- [ ] قائمة بيضاء لحزم NPX المسموح بها إن أمكن (لتقليل مخاطر تشغيل حزم عشوائية)
-- [ ] (اختياري) دعم تشغيل إضافة من مسار محلي (مثلاً `node ./local-plugin`) للإعدادات الداخلية
-
-### 4.5 الأخطاء والحدود
-
-- [ ] عند فشل تشغيل إضافة: تسجيل الخطأ وعدم تعطيل الـ Hub؛ إرجاع رسالة واضحة للعميل عند استدعاء أداة من إضافة غير متاحة
-- [ ] (اختياري) timeout لتهيئة الإضافة ولتنفيذ طلبات الأدوات
+- Config file describing external plugins (name, run command, arguments)
+- Loader that reads config and starts each plugin as a subprocess (e.g. `npx -y package-name@latest`)
+- Communication with each plugin via **stdio** (or the transport defined per plugin)
+- Routing of tool requests to the right plugin (or merging tool lists) — full details in Phase 05
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- عند بدء الـ Hub، يتم تشغيل الإضافات المدرجة في الإعداد عبر NPX والاتصال بها عبر stdio
-- قوائم أدوات الإضافات متاحة للـ Hub (لدمجها أو توجيهها في Phase 05)
-- استدعاء أداة من إضافة يعمل ويعيد النتيجة (بعد ربط التوجيه في Phase 05)
-- إغلاق الـ Hub يوقف كل عمليات الإضافات بشكل نظيف
+### 4.1 External plugins config
+
+- [ ] Define config format (e.g. `config/mcp_plugins.json` or inside `config/default.json`):
+  - Per plugin: `id`, `name`, `command` (e.g. `npx`), `args` (e.g. `["-y", "next-devtools-mcp@latest"]`)
+  - (optional) `cwd`, `env`, `timeout`
+- [ ] Create a sample config with 1–2 plugins (e.g. next-devtools-mcp or a light one for testing)
+- [ ] Load config at server start from a fixed path or environment variable (e.g. `MCP_PLUGINS_CONFIG`)
+
+### 4.2 Plugin loader — running processes
+
+- [ ] Implement **Plugin Loader** (e.g. in `src/plugins/loader.ts`):
+  - Read plugin list from config
+  - For each plugin: start a subprocess (child_process) with command and args (e.g. `npx -y package@latest`)
+  - Connect process stdin/stdout to MCP transport (stdio) for communication with the plugin
+- [ ] Lifecycle: stop processes when the Hub shuts down, no orphan processes
+- [ ] (optional) Restart a plugin on crash or configurable reconnect attempts
+
+### 4.3 Communicating with the plugin (MCP client per plugin)
+
+- [ ] Treat each plugin as a **subordinate MCP Server**; the Hub is an **MCP client** to it
+- [ ] Perform initialize exchange with each plugin at startup and fetch its tool list
+- [ ] Store each plugin’s tool list (with prefix or plugin id to avoid name clashes)
+- [ ] On request to run a tool that belongs to a plugin: send `tools/call` to that plugin via stdio and return the result
+
+### 4.4 NPX and run safety
+
+- [ ] Document that the default command is `npx -y package@latest` (or version from config)
+- [ ] Allowlist for allowed NPX packages if possible (to reduce risk of running arbitrary packages)
+- [ ] (optional) Support running a plugin from a local path (e.g. `node ./local-plugin`) for internal setups
+
+### 4.5 Errors and limits
+
+- [ ] On plugin start failure: log the error and do not crash the Hub; return a clear message to the client when calling a tool from an unavailable plugin
+- [ ] (optional) Timeout for plugin initialization and for tool call requests
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 01** مكتمل (السيرفر يعمل ويستقبل الطلبات)
-- **Phase 02** و **03** لا يلزمان لهذه المرحلة بشكل مباشر، لكن Phase 05 سيدمج الأدوات المحلية + المهارات + الإضافات
-
----
-
-## الملفات المقترحة
-
-| الملف | الغرض |
-|-------|--------|
-| `config/mcp_plugins.json` | قائمة الإضافات وأوامر التشغيل (أو ملف إعداد آخر) |
-| `src/plugins/loader.ts` | تشغيل عمليات الإضافات وربط stdio |
-| `src/plugins/client.ts` | عميل MCP للتواصل مع كل إضافة (initialize + tools/list + tools/call) |
-| `src/plugins/types.ts` | أنواع إعداد الإضافة ووصف الإضافة المحمّلة |
-| `src/config/load-plugins-config.ts` | قراءة وتحقق من ملف إعداد الإضافات |
+- On Hub start, plugins listed in config are run via NPX and connected via stdio
+- Plugin tool lists are available to the Hub (for merge or routing in Phase 05)
+- Calling a tool from a plugin works and returns the result (after routing is wired in Phase 05)
+- Closing the Hub stops all plugin processes cleanly
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- الإضافات تعمل كسيرفرات MCP مستقلة؛ الـ Hub يجمعها تحت واجهة واحدة.
-- دمج قوائم الأدوات (أدوات محلية + مهارات + أدوات إضافات) وتوجيه الطلبات يتم بالكامل في Phase 05.
+- **Phase 01** complete (server runs and receives requests)
+- **Phase 02** and **03** are not strictly required for this phase, but Phase 05 will merge local tools + skills + plugins
+
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `config/mcp_plugins.json` | Plugin list and run commands (or other config file) |
+| `src/plugins/loader.ts` | Start plugin processes and connect stdio |
+| `src/plugins/client.ts` | MCP client per plugin (initialize + tools/list + tools/call) |
+| `src/plugins/types.ts` | Plugin config type and loaded plugin descriptor |
+| `src/config/load-plugins-config.ts` | Read and validate plugin config file |
+
+---
+
+## Notes
+
+- Plugins run as independent MCP servers; the Hub aggregates them under one interface.
+- Merging tool lists (local + skills + plugin tools) and routing requests is done fully in Phase 05.

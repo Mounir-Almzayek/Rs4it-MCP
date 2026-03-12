@@ -1,93 +1,93 @@
 # Phase 05 — Integration & Routing
 
-## الهدف
+## Goal
 
-دمج كل المصادر (الأدوات المحلية، المهارات، أدوات الإضافات الخارجية) تحت واجهة واحدة، وتوجيه طلبات `tools/list` و `tools/call` إلى المصدر الصحيح بحسب اسم الأداة أو الاتفاقية المعرّفة.
-
----
-
-## المخرجات المتوقعة
-
-- رد واحد موحّد لـ `tools/list` يجمع أدوات السيرفر المحلية + المهارات (إن عُرِضت كأدوات) + أدوات كل إضافة خارجية
-- توجيه صحيح لـ `tools/call`: تحديد المصدر (محلي / مهارة / إضافة) وتنفيذ الطلب وإرجاع النتيجة
-- اتفاقية تسمية أو بادئات لتجنب تعارض الأسماء بين المصادر (مثلاً `plugin:next-devtools/run_build` أو أسماء فريدة)
-- سلوك متسق للأخطاء (إضافة غير متاحة، أداة غير موجودة، timeout)
+Integrate all sources (local tools, skills, external plugin tools) under one interface and route `tools/list` and `tools/call` requests to the correct source by tool name or the defined convention.
 
 ---
 
-## المهام الفرعية
+## Expected Outputs
 
-### 5.1 اتفاقية التسمية والمصادر
-
-- [ ] تعريف كيف تُعرَض الأدوات للعميل:
-  - أدوات محلية: أسماء مباشرة (مثلاً `create_file`, `run_command`)
-  - مهارات: إما أسماء مباشرة (مثلاً `create_api_endpoint`) أو بادئة (مثلاً `skill:create_api_endpoint`) لتمييزها
-  - إضافات: بادئة أو namespace (مثلاً `next-devtools:run_build` أو `plugin/next-devtools/run_build`) لتجنب التعارض
-- [ ] توثيق الاتفاقية في `docs/architecture.md` أو في هذا الملف
-- [ ] إنشاء خريطة (map) أو جدول: اسم الأداة → مصدر (local | skill | plugin id)
-
-### 5.2 دمج قوائم الأدوات
-
-- [ ] عند استلام طلب `tools/list`:
-  - جمع أدوات الطبقة المحلية (من Phase 02)
-  - جمع المهارات المعرّفة كأدوات (من Phase 03)
-  - جمع أدوات كل إضافة خارجية محمّلة (من Phase 04)، مع إعادة تسمية أو إضافة البادئة حسب الاتفاقية
-  - إرجاع قائمة واحدة بدون تكرار أسماء
-- [ ] التأكد من أن الوصف ومخطط المدخلات يبقى صحيحاً لكل أداة بعد الدمج
-
-### 5.3 توجيه استدعاء الأدوات (tools/call)
-
-- [ ] عند استلام طلب `tools/call` (اسم الأداة + الوسائط):
-  - تحديد المصدر من اسم الأداة (محلي / مهارة / إضافة)
-  - **أداة محلية**: استدعاء الـ registry المحلي (Phase 02)
-  - **مهارة**: استدعاء handler المهارة من السجل (Phase 03)
-  - **إضافة خارجية**: إرسال الطلب إلى عميل الإضافة المناسب (Phase 04) وإرجاع النتيجة
-- [ ] معالجة الأخطاء:
-  - أداة غير موجودة: رسالة واضحة
-  - إضافة غير متاحة أو انقطع الاتصال: رسالة مناسبة دون تعطل السيرفر
-  - timeout: إرجاع خطأ بعد انتهاء المهلة
-
-### 5.4 مهارات تستخدم أدوات من عدة مصادر (اختياري متقدم)
-
-- [ ] إن رُغب: السماح لـ handler المهارة باستدعاء أدوات من الإضافات (مثلاً filesystem + next-devtools + git) من داخل نفس المهارة
-- [ ] تنفيذ ذلك عبر واجهة موحّة (مثلاً `executeTool(name, args)`) يستخدمها الـ handler ويوجّهها الـ Hub إلى المصدر الصحيح
-- [ ] توثيق مثال لمهارة تستخدم أدوات محلية + أداة من إضافة
-
-### 5.5 الاختبار والتكامل
-
-- [ ] اختبار من عميل MCP: `tools/list` يعيد كل الأدوات (محلية + مهارات + إضافات)
-- [ ] اختبار استدعاء أداة من كل مصدر والتأكد من النتيجة
-- [ ] اختبار سيناريو: إضافة غير متاحة أو فشل استدعاء — التحقق من رسالة الخطأ وعدم تعطل الـ Hub
+- Single unified response for `tools/list` combining local server tools + skills (if exposed as tools) + each external plugin’s tools
+- Correct routing for `tools/call`: determine source (local / skill / plugin), execute the request, return the result
+- Naming convention or prefixes to avoid name clashes between sources (e.g. `plugin:next-devtools/run_build` or unique names)
+- Consistent error behaviour (plugin unavailable, tool not found, timeout)
 
 ---
 
-## معايير الإكمال
+## Sub-tasks
 
-- عميل واحد (مثل Cursor) يرى قائمة موحّدة لجميع القدرات (أدوات + مهارات + إضافات)
-- استدعاء أي أداة مسجّلة يُنفَّذ من المصدر الصحيح ويعيد النتيجة أو خطأ واضح
-- اتفاقية التسمية موثّقة ومتسقة في الكود
+### 5.1 Naming convention and sources
+
+- [ ] Define how tools are exposed to the client:
+  - Local tools: direct names (e.g. `create_file`, `run_command`)
+  - Skills: either direct names (e.g. `create_api_endpoint`) or prefix (e.g. `skill:create_api_endpoint`) to distinguish them
+  - Plugins: prefix or namespace (e.g. `next-devtools:run_build` or `plugin/next-devtools/run_build`) to avoid clashes
+- [ ] Document the convention in `docs/architecture.md` or in this file
+- [ ] Create a map or table: tool name → source (local | skill | plugin id)
+
+### 5.2 Merging tool lists
+
+- [ ] On `tools/list` request:
+  - Collect local layer tools (Phase 02)
+  - Collect skills defined as tools (Phase 03)
+  - Collect each loaded external plugin’s tools (Phase 04), renaming or adding prefix per convention
+  - Return a single list with no duplicate names
+- [ ] Ensure description and input schema remain correct for each tool after merge
+
+### 5.3 Routing tool calls (tools/call)
+
+- [ ] On `tools/call` request (tool name + arguments):
+  - Determine source from the name (local / skill / plugin)
+  - **Local tool**: call local registry (Phase 02)
+  - **Skill**: call skill handler from registry (Phase 03)
+  - **External plugin**: send request to the right plugin client (Phase 04) and return the result
+- [ ] Error handling:
+  - Tool not found: clear message
+  - Plugin unavailable or disconnected: appropriate message without crashing the server
+  - Timeout: return error after the limit
+
+### 5.4 Skills using tools from multiple sources (optional advanced)
+
+- [ ] If desired: allow a skill handler to call tools from plugins (e.g. filesystem + next-devtools + git) from within the same skill
+- [ ] Implement via a unified interface (e.g. `executeTool(name, args)`) used by the handler and routed by the Hub to the correct source
+- [ ] Document an example skill that uses local tools + a plugin tool
+
+### 5.5 Testing and integration
+
+- [ ] Test from MCP client: `tools/list` returns all tools (local + skills + plugins)
+- [ ] Test calling a tool from each source and verify the result
+- [ ] Test scenario: plugin unavailable or failed call — verify error message and that the Hub does not crash
 
 ---
 
-## التبعيات
+## Completion Criteria
 
-- **Phase 01**: السيرفر يعمل
-- **Phase 02**: أدوات محلية مسجّلة
-- **Phase 03**: مهارات مسجّلة وقابلة للاستدعاء
-- **Phase 04**: إضافات محمّلة ومتاحة للاستعلام والاستدعاء
-
----
-
-## الملفات المقترحة
-
-| الملف | الغرض |
-|-------|--------|
-| `src/server/routing.ts` أو `src/router.ts` | منطق تحديد المصدر وتوجيه tools/list و tools/call |
-| `src/types/routing.ts` | أنواع مصدر الأداة وخريطة التوجيه |
-| `docs/architecture.md` | اتفاقية التسمية ووصف التكامل |
+- A single client (e.g. Cursor) sees one unified list of all capabilities (tools + skills + plugins)
+- Calling any registered tool runs from the correct source and returns the result or a clear error
+- Naming convention is documented and consistent in the code
 
 ---
 
-## ملاحظات
+## Dependencies
 
-- هذه المرحلة هي "اللحمة" بين كل الطبقات؛ يجب أن تبقى واضحة وقابلة للتوسع عند إضافة مصدر جديد (مثلاً نوع آخر من الإضافات).
+- **Phase 01**: Server runs
+- **Phase 02**: Local tools registered
+- **Phase 03**: Skills registered and callable
+- **Phase 04**: Plugins loaded and available for list/call
+
+---
+
+## Suggested Files
+
+| File | Purpose |
+|------|---------|
+| `src/server/routing.ts` or `src/router.ts` | Logic to determine source and route tools/list and tools/call |
+| `src/types/routing.ts` | Tool source type and routing map |
+| `docs/architecture.md` | Naming convention and integration description |
+
+---
+
+## Notes
+
+- This phase is the “glue” between all layers; keep it clear and extensible when adding a new source (e.g. another type of plugin).

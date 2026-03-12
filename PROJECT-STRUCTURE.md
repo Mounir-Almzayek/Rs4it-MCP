@@ -1,19 +1,19 @@
-# هيكلية المشروع — Company MCP Platform
+# Project Structure — Company MCP Platform
 
-هذا الملف يوضح هيكلية المجلدات والملفات **بدون كود** — فقط البنية والغرض من كل جزء.
+This file describes the folder and file structure **without code** — only the layout and purpose of each part.
 
 ---
 
-## الشجرة الكاملة
+## Full Tree
 
 ```
 rs4it mcp/
-├── README.md                    # نظرة عامة وبداية سريعة
-├── PROJECT-STRUCTURE.md         # هذا الملف — شرح الهيكلية
+├── README.md                    # Overview and quick start
+├── PROJECT-STRUCTURE.md         # This file — structure explanation
 │
-├── docs/                        # التوثيق
-│   ├── README.md                # فهرس التوثيق وترتيب المراحل
-│   └── phases/                  # مراحل التنفيذ (فاز)
+├── docs/                        # Documentation
+│   ├── README.md                # Docs index and phase order
+│   └── phases/                  # Implementation phases
 │       ├── 00-overview-and-setup.md
 │       ├── 01-phase-mcp-server.md
 │       ├── 02-phase-tool-layer.md
@@ -22,44 +22,44 @@ rs4it mcp/
 │       ├── 05-phase-integration-routing.md
 │       └── 06-phase-extensions-future.md
 │
-├── src/                         # الكود المصدري (يُضاف لاحقاً حسب المراحل)
+├── src/                         # Source code (added later per phases)
 │   ├── server/                  # Phase 01 — MCP Server Layer
 │   ├── tools/                   # Phase 02 — Tool Layer
 │   ├── skills/                  # Phase 03 — Skill Layer
 │   ├── plugins/                 # Phase 04 — External Plugins Loader
-│   ├── config/                  # تحميل الإعدادات الداخلية
-│   └── types/                   # أنواع TypeScript المشتركة
+│   ├── config/                  # Internal config loading
+│   └── types/                   # Shared TypeScript types
 │
-└── config/                      # إعدادات التشغيل (مثلاً mcp_plugins.json)
+└── config/                      # Runtime config (e.g. mcp_plugins.json)
 ```
 
 ---
 
-## غرض كل مجلد
+## Purpose of Each Folder
 
-| المسار | المرحلة | الغرض |
-|--------|---------|--------|
-| `src/server/` | 01 | نقطة الدخول، تهيئة MCP، استقبال الطلبات وتوجيهها |
-| `src/tools/` | 02 | تعريف وتنفيذ الأدوات الذرية (create_file، run_command، إلخ) |
-| `src/skills/` | 03 | سجل المهارات و handlers السير العمل المركّبة |
-| `src/plugins/` | 04 | تشغيل إضافات MCP خارجية عبر NPX والتواصل معها (stdio) |
-| `src/config/` | 01, 05 | تحميل ثوابت وإعدادات (اسم السيرفر، إعداد الإضافات، إلخ) |
-| `src/types/` | مشترك | واجهات وأنواع للأدوات، المهارات، التوجيه، الإضافات |
-| `config/` | 04 | ملفات إعداد قابلة للتعديل (مثلاً قائمة الإضافات وأوامر NPX) |
-| `docs/phases/` | — | مراحل التنفيذ المفصّلة للبدء بالتنفيذ لاحقاً |
+| Path | Phase | Purpose |
+|------|-------|---------|
+| `src/server/` | 01 | Entry point, MCP init, receive and route requests |
+| `src/tools/` | 02 | Define and implement atomic tools (create_file, run_command, etc.) |
+| `src/skills/` | 03 | Skills registry and composite workflow handlers |
+| `src/plugins/` | 04 | Run external MCP plugins via NPX and communicate (stdio) |
+| `src/config/` | 01, 05 | Load constants and config (server name, plugins config, etc.) |
+| `src/types/` | Shared | Interfaces and types for tools, skills, routing, plugins |
+| `config/` | 04 | Editable config files (e.g. plugin list and NPX commands) |
+| `docs/phases/` | — | Detailed implementation phases for later execution |
 
 ---
 
-## المراحل وعلاقتها بالمجلدات
+## Phases and Their Relation to Folders
 
-- **Phase 00**: إعداد المشروع (package.json، tsconfig، اعتماديات) — لا مجلدات جديدة.
+- **Phase 00**: Project setup (package.json, tsconfig, dependencies) — no new folders.
 - **Phase 01**: `src/server/`, `src/config/`, `src/types/`.
-- **Phase 02**: `src/tools/`, توسيع `src/types/`.
-- **Phase 03**: `src/skills/`, توسيع `src/types/`.
-- **Phase 04**: `src/plugins/`, `config/` (ملف إعداد الإضافات).
-- **Phase 05**: توجيه موحّد (قد يكون داخل `src/server/` أو `src/router.ts`).
-- **Phase 06**: توثيق توسعات مستقبلية — لا هيكلية جديدة إلزامية.
+- **Phase 02**: `src/tools/`, extend `src/types/`.
+- **Phase 03**: `src/skills/`, extend `src/types/`.
+- **Phase 04**: `src/plugins/`, `config/` (plugins config file).
+- **Phase 05**: Unified routing (may live in `src/server/` or `src/router.ts`).
+- **Phase 06**: Future extensions documentation — no mandatory new structure.
 
 ---
 
-*يُحدَّث هذا الملف عند إضافة مجلدات أو مراحل جديدة.*
+*This file is updated when new folders or phases are added.*
