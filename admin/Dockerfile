@@ -16,11 +16,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Next.js standalone expects public/; create if missing (project has no static assets yet)
+RUN mkdir -p public
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # -----------------------------------------------------------------------------
-# Stage 3: Production runner (standalone output)
+# Stage 3: Production runner (standalone, runs as non-root user "nextjs")
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
 

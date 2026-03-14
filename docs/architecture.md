@@ -57,3 +57,12 @@ There is no separate capability (e.g. `skills/list`); everything goes through `t
   - **stdio**: Environment variable `MCP_ROLE`.
 - When the session is created (or stdio starts), the Hub filters what is registered: only tools/skills/plugins allowed for the effective role are registered. If no role is passed, all tools are exposed (legacy behaviour).
 - **Security**: Passing the role from the client (header/env) does not replace authentication; roles can later be tied to authentication (e.g. from a token) if available.
+
+## MCP user tracking (Phase 11)
+
+- **Purpose**: Register which clients connect to the Hub (by a user name they send) and track the last time they used the connection, for visibility in the admin panel.
+- **Passing the user name**: Same style as role. **HTTP**: Header **`X-MCP-User-Name`** or **`params.userName`** in the `initialize` request. The value is stored in the session; if the client does not send a name, no user record is created or updated.
+- **Storage**: A JSON file (e.g. `config/mcp_users.json`, or path from **`MCP_USERS_FILE`**) shared between the Hub and the admin panel. Each record has at least `name` and `last_used_at` (ISO); optional `first_seen_at` and `request_count`.
+- **When it is updated**: On every meaningful MCP request (e.g. `initialize`, POST with session, GET for SSE), if the session has a user name, the Hub updates that user’s `last_used_at` (and increments `request_count`) in a non-blocking way so that latency is not affected.
+- **Admin panel**: A dedicated “MCP Users” tab lists all recorded users with name and last used time (and optionally first seen and request count). Data is read from the same file via `GET /api/mcp-users` (authenticated).
+- **Security**: The user name is not authenticated; it is whatever the client sends. Use for visibility and usage tracking only.

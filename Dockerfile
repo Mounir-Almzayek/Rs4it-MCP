@@ -7,21 +7,22 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies (exact versions for reproducible builds)
+# Install all deps (devDependencies needed for tsc), then build
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install
 
-# Copy source and build
 COPY tsconfig.json ./
 COPY src ./src
-RUN npm run build
+RUN npm run build \
+  && rm -rf node_modules \
+  && npm install --omit=dev
 
 # -----------------------------------------------------------------------------
-# Stage 2: Production
+# Stage 2: Production (runs as non-root user "mcp")
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
 
-# Entrypoint runs as root to seed volume; then gosu drops to mcp for CMD
+# Create non-root user: main process runs as mcp (entrypoint runs as root only to seed config, then gosu to mcp)
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 mcp \
   && apk add --no-cache gosu
@@ -40,9 +41,20 @@ RUN chown -R mcp:nodejs /app/config.default
 # Config directory (mounted volume in compose)
 RUN mkdir -p /app/config && chown mcp:nodejs /app/config
 
-# Entrypoint: seed config from defaults, then exec CMD as mcp
-COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# Entrypoint: seed config from defaults, then exec CMD as mcp (created here to avoid CRLF from Windows host)
+RUN printf '%s\n' \
+  '#!/bin/sh' \
+  'set -e' \
+  'CONFIG_DIR="${CONFIG_DIR:-/app/config}"' \
+  'DEFAULT_DIR="/app/config.default"' \
+  'for f in roles.json dynamic-registry.json mcp_plugins.json; do' \
+  '  if [ ! -f "$CONFIG_DIR/$f" ] && [ -f "$DEFAULT_DIR/$f" ]; then' \
+  '    cp "$DEFAULT_DIR/$f" "$CONFIG_DIR/$f"' \
+  '  fi' \
+  'done' \
+  'chown -R mcp:nodejs "$CONFIG_DIR" 2>/dev/null || true' \
+  'exec gosu mcp "$@"' \
+  > /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

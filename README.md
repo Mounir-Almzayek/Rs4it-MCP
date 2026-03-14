@@ -56,6 +56,111 @@ A **unified platform** that exposes the company's capabilities to AI tools (e.g.
 
 ---
 
+## Tools vs Skills (how they relate)
+
+- **Tool** = a **single operation**. The Hub has built-in tools: `create_file`, `read_file`, `run_command`. Each tool does one thing (e.g. create one file, read one file, run one command). From the dashboard you can add **dynamic tools**: same built-in behaviour, but with a **custom name and description** (e.g. a tool named `create_readme` that still runs `create_file` under the hood).
+- **Skill** = a **workflow** that runs **one or more tools in sequence**. A skill does not replace tools — it **uses** them. When you call a skill, the Hub runs step 1 (a tool), then step 2 (maybe another tool), and so on. So:
+  - **One tool** = one action (e.g. create one file).
+  - **One skill** = multiple actions in order (e.g. create a file, then run a command), each step being a tool (or a plugin tool).
+
+So: **skills depend on tools**. A skill can use the same tool several times or several different tools in one workflow. The example below shows one skill that runs **two different tools** (create a file, then run a command) in a single request.
+
+---
+
+## Adding Tools from the Dashboard
+
+From **Admin Panel** → **Tools** → **Create Tool** you can expose a **custom name and description** for an existing built-in tool. The dynamic tool still runs **exactly one** built-in tool (`create_file`, `read_file`, or `run_command`) via **Handler reference**.
+
+### Form fields
+
+| Field | What to put |
+|--------|-------------|
+| **Name** | Unique tool name in English, e.g. `create_readme` or `write_env_file`. This is the name Cursor will see in `tools/list`. |
+| **Description** | One or two sentences for the AI: what this tool does and when to use it. |
+| **Handler reference** | The built-in tool that runs when this tool is called. Must be one of: `create_file`, `read_file`, `run_command`. |
+| **Input schema (JSON)** | JSON describing the tool’s parameters (same shape as the built-in tool’s schema). Parameter names must match what the handler expects. |
+| **Allowed Roles** | (Optional) Who can see this tool. Empty = all roles. |
+| **Enabled** | On = visible and callable; off = hidden. |
+
+### Example: “Create README” wrapper around create_file
+
+- **Name:** `create_readme`
+- **Description:** `Creates a README.md file in the project. Use when initializing a new repo or adding project documentation.`
+- **Handler reference:** `create_file`
+- **Input schema (JSON):**
+
+```json
+{
+  "path": { "type": "string", "description": "Path for the file, e.g. README.md or docs/README.md" },
+  "content": { "type": "string", "description": "Full content of the README (markdown)." }
+}
+```
+
+The built-in tools and their parameters:
+
+- **create_file:** `path` (string), `content` (string), `encoding` (optional string).
+- **read_file:** `path` (string).
+- **run_command:** `command` (string), `cwd` (optional string).
+
+---
+
+## Adding Skills from the Dashboard
+
+From **Admin Panel** → **Skills** → **Create Skill** you add a **workflow** that runs **one or more tools** in order. The skill appears in Cursor as `skill:<skill_name>`. Each step in the workflow is a **tool** (or a plugin tool); the same tool can be used in several steps, or different tools in sequence.
+
+### Form fields
+
+| Field | What to put |
+|--------|-------------|
+| **Name** | Unique name in English, with underscores, e.g. `bootstrap_docs` or `setup_and_install`. |
+| **Description** | One or two sentences for the AI: what the skill does and when to use it. |
+| **Steps** | Ordered list of steps. Each step: type **tool** or **plugin**, and **Target** = tool name (e.g. `create_file`, `run_command`, or `plugin:id:tool_name`). |
+| **Input schema (JSON)** | JSON for all parameters the skill needs. The same parameters are sent to every step; each step uses the ones it needs (e.g. step 1 uses `path` and `content`, step 2 uses `command` and `cwd`). |
+| **Allowed Roles** | (Optional) Who can see the skill. Empty = all roles. |
+| **Enabled** | On = visible and runnable; off = hidden. |
+
+### Complete example: one skill that uses two different tools
+
+This example shows **one skill** that runs **two tools in sequence**: first **create_file**, then **run_command**. So one user request runs two operations.
+
+**Goal:** A skill “create a README and then run npm install”.  
+- **Step 1** uses the **create_file** tool (needs `path`, `content`).  
+- **Step 2** uses the **run_command** tool (needs `command`, and optionally `cwd`).  
+
+The skill receives one set of parameters; step 1 uses `path` and `content`, step 2 uses `command` and `cwd`.
+
+- **Name:** `create_readme_and_install`
+- **Description:** `Creates a README.md file at the given path with the given content, then runs npm install in the project. Use when bootstrapping a new repo.`
+- **Steps:**  
+  - Step 1: Type **tool** — Target: `create_file`  
+  - Step 2: Type **tool** — Target: `run_command`
+- **Input schema (JSON):** (paste as-is; step 1 uses `path` and `content`, step 2 uses `command` and `cwd`)
+
+```json
+{
+  "path": { "type": "string", "description": "Path for README, e.g. README.md" },
+  "content": { "type": "string", "description": "Content of the README (markdown)." },
+  "command": { "type": "string", "description": "Command to run after creating the file, e.g. npm install" },
+  "cwd": { "type": "string", "description": "(Optional) Working directory for the command, e.g. ." }
+}
+```
+
+**What happens when the user (or AI) calls this skill:**
+
+1. The Hub runs **step 1**: tool `create_file` with `path` and `content` → the README file is created.
+2. The Hub runs **step 2**: tool `run_command` with `command` and `cwd` → e.g. `npm install` runs.
+
+So: **one skill = two tools in sequence**. Skills depend on tools; a skill can use one tool once, the same tool several times, or several different tools (as here).
+
+### Other examples (single-tool skills)
+
+- **Only create_file:** Name e.g. `welcome_file`, one step Target `create_file`, input schema with `path` and `content`.
+- **Only run_command:** Name e.g. `run_npm_install`, one step Target `run_command`, input schema with `command` and optional `cwd`.
+
+From the dashboard, the same parameters are passed to every step; each tool step uses the parameters it needs (e.g. `create_file` ignores `command` and `cwd`). For workflows where each step needs a different mapping of parameters, add a skill in code under `src/skills/` and register it in `src/skills/index.ts`.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -159,7 +264,7 @@ rs4it mcp/
 | [docs/architecture.md](docs/architecture.md) | Architecture, naming, roles |
 | [docs/deployment.md](docs/deployment.md) | Hosting, Docker, reverse proxy |
 | [docs/admin-auth.md](docs/admin-auth.md) | Panel auth and initial setup |
-| [docs/phases/](docs/phases/) | Implementation phases 00–10 (overview, MCP, tools, skills, plugins, routing, hosting, panel, roles, auth) |
+| [docs/phases/](docs/phases/) | Implementation phases 00–11 (overview, MCP, tools, skills, plugins, routing, hosting, panel, roles, auth, MCP users) |
 
 Phases are meant to be followed in order; each builds on the previous.
 

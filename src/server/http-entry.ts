@@ -12,11 +12,13 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "./server.js";
 import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 import { getPort, getBaseUrl } from "../config/transport.js";
+import { upsertMcpUser } from "../config/mcp-users-store.js";
 
 type SessionId = string;
 interface SessionState {
   transport: StreamableHTTPServerTransport;
   server: McpServer;
+  userName?: string;
 }
 
 const sessions = new Map<SessionId, SessionState>();
@@ -35,21 +37,48 @@ function getRoleFromRequest(req: IncomingMessage & { body?: unknown }): string |
   return undefined;
 }
 
-async function createSession(role?: string): Promise<SessionState> {
+function getUserNameFromRequest(req: IncomingMessage & { body?: unknown }): string | undefined {
+  const h = req.headers["x-mcp-user-name"];
+  if (typeof h === "string" && h.trim()) return h.trim();
+  const body = req.body;
+  if (body && typeof body === "object" && "params" in body) {
+    const params = (body as { params?: unknown }).params;
+    if (params && typeof params === "object" && "userName" in params) {
+      const n = (params as { userName?: unknown }).userName;
+      if (typeof n === "string" && n.trim()) return n.trim();
+    }
+  }
+  return undefined;
+}
+
+/** Fire-and-forget: update last_used_at for the given user so MCP requests are not delayed. */
+function trackMcpUserUsage(userName: string | undefined): void {
+  if (!userName) return;
+  void upsertMcpUser(userName);
+}
+
+async function createSession(role?: string, userName?: string): Promise<SessionState> {
   const server = await createServer(role ? { role } : undefined);
+  const state: SessionState = {
+    transport: undefined!,
+    server,
+    userName,
+  };
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (sessionId) => {
-      sessions.set(sessionId, { transport, server });
+      state.transport = transport;
+      sessions.set(sessionId, state);
     },
   });
+  state.transport = transport;
 
   transport.onclose = () => {
     const sid = transport.sessionId;
     if (sid) sessions.delete(sid);
   };
 
-  return { transport, server };
+  return state;
 }
 
 async function handlePost(
@@ -60,16 +89,19 @@ async function handlePost(
 
   try {
     if (sessionId && sessions.has(sessionId)) {
-      const { transport } = sessions.get(sessionId)!;
-      await transport.handleRequest(req, res, req.body);
+      const state = sessions.get(sessionId)!;
+      await state.transport.handleRequest(req, res, req.body);
+      trackMcpUserUsage(state.userName);
       return;
     }
 
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
       const role = getRoleFromRequest(req);
-      const { transport, server } = await createSession(role);
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      const userName = getUserNameFromRequest(req);
+      const state = await createSession(role, userName);
+      await state.server.connect(state.transport);
+      await state.transport.handleRequest(req, res, req.body);
+      trackMcpUserUsage(state.userName);
       return;
     }
 
@@ -108,8 +140,9 @@ async function handleGet(req: IncomingMessage, res: ServerResponse): Promise<voi
     res.end("Invalid or missing mcp-session-id");
     return;
   }
-  const { transport } = sessions.get(sessionId)!;
-  await transport.handleRequest(req, res);
+  const state = sessions.get(sessionId)!;
+  await state.transport.handleRequest(req, res);
+  trackMcpUserUsage(state.userName);
 }
 
 async function handleDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {

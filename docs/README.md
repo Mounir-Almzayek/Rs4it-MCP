@@ -7,7 +7,7 @@ This folder contains the project documentation and implementation phases.
 | Folder / File | Description |
 |---------------|-------------|
 | **[evolution-roadmap.md](evolution-roadmap.md)** | Evolution roadmap: server hosting, admin panel, roles, authentication (Phase 07–10) |
-| **phases/** | Implementation phases: 00–06 (foundation) then 07–10 (hosting, panel, roles, panel auth) — follow in order |
+| **phases/** | Implementation phases: 00–06 (foundation) then 07–11 (hosting, panel, roles, panel auth, MCP users tracking) — follow in order |
 | **[architecture.md](architecture.md)** | Design decisions (exposing skills as tools with `skill:` prefix) and layers |
 | **[skill-template.md](skill-template.md)** | Template for adding a new skill without changing the server core |
 | **[security.md](security.md)** | Tool security policy (workspace, blocklist) |
@@ -31,7 +31,7 @@ Phases are designed to be executed in order because each phase depends on the pr
 6. **[05 - Integration & Routing](phases/05-phase-integration-routing.md)** — Integration and request routing
 7. **[06 - Extensions & Future](phases/06-phase-extensions-future.md)** — Extensions and future scenarios
 
-### Evolution (07–10) — Hosting, panel, roles, auth
+### Evolution (07–11) — Hosting, panel, roles, auth, MCP users
 
 See **[evolution-roadmap.md](evolution-roadmap.md)** for context and goals.
 
@@ -39,6 +39,7 @@ See **[evolution-roadmap.md](evolution-roadmap.md)** for context and goals.
 9. **[08 - Admin Panel](phases/08-phase-admin-panel.md)** — Admin panel for Tools + Skills + Plugins
 10. **[09 - Roles & Visibility](phases/09-phase-roles-and-visibility.md)** — Roles and tool filtering (useful for Cursor)
 11. **[10 - Admin Authentication](phases/10-phase-admin-authentication.md)** — Secure panel authentication (login, API protection, credential change)
+12. **[11 - MCP Users Tracking](phases/11-phase-mcp-users-tracking.md)** — Register MCP connector name (header), track last usage, panel tab with users table
 
 ## Corresponding Code Structure
 
@@ -46,7 +47,7 @@ See **[evolution-roadmap.md](evolution-roadmap.md)** for context and goals.
 rs4it mcp/
 ├── docs/              ← You are here
 │   ├── evolution-roadmap.md   ← Roadmap for 07–09
-│   ├── phases/        ← 00–10
+│   ├── phases/        ← 00–11
 │   └── future/
 ├── src/
 │   ├── server/        ← Phase 01, 07 (http-entry)

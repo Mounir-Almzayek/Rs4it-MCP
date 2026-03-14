@@ -33,6 +33,9 @@ node -v
   - **`MCP_ROLE`** (optional, stdio): Connection role (e.g. `web_engineer`, `full_stack`). When set, the Hub exposes only tools/skills/plugins allowed for that role (with inheritance). If not set, all tools are exposed.
   - **`MCP_ROLES_CONFIG`** (optional): Path to roles definition file (JSON). If not set, `config/roles.json` is used.
   - **HTTP**: Client passes the role via header **`X-MCP-Role`** or via **`params.role`** in the `initialize` request; the same session uses this role for the whole connection.
+- **MCP user tracking (Phase 11)**:
+  - **`MCP_USERS_FILE`** (optional): Path to the JSON file where MCP user names and last-used timestamps are stored. If not set, the Hub uses `config/mcp_users.json`; the admin panel uses the same path (or `../config/mcp_users.json` when run from the admin folder).
+  - **HTTP**: Client can pass the user name via header **`X-MCP-User-Name`** or via **`params.userName`** in the `initialize` request. If present, the Hub records/updates that user and refreshes “last used” on each request.
 - **Admin panel (Phase 10)**:
   - **`SESSION_SECRET`** or **`ADMIN_SESSION_SECRET`** (required to enable auth): Secret key for the session, at least 16 characters. See [docs/admin-auth.md](admin-auth.md).
   - **`ADMIN_CREDENTIALS_PATH`** (optional): Path to admin credentials file (username + password hash). Default: `../config/admin-credentials.json`.

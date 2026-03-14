@@ -6,6 +6,9 @@
 #   2. docker compose up -d
 #   3. Hub: http://localhost:3000/mcp   Admin: http://localhost:3001
 #   4. First time: open Admin → /login → Create admin account
+#
+# Container and volume names are unique by default: Compose uses the project
+# directory name as project name (e.g. "rs4it-mcp" → rs4it-mcp-hub-1, rs4it-mcp_config_data).
 # -----------------------------------------------------------------------------
 
 services:
@@ -14,7 +17,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: rs4it-mcp-hub:latest
-    container_name: rs4it-mcp-hub
     restart: unless-stopped
     ports:
       - "${HUB_PORT:-3000}:3000"
@@ -32,11 +34,12 @@ services:
       # Optional: mount workspace for file tools (create_file, read_file, run_command)
       - ${WORKSPACE_PATH:-./workspace}:/workspace
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/mcp',r=>process.exit(r.statusCode===405?0:1)).on('error',()=>process.exit(1))"]
+      # GET /mcp returns 400 (no session) or 405; either means server is up
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/mcp',r=>{const ok=[400,405].includes(r.statusCode); process.exit(ok?0:1)}).on('error',()=>process.exit(1))"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     networks:
       - rs4it
 
@@ -45,7 +48,6 @@ services:
       context: ./admin
       dockerfile: Dockerfile
     image: rs4it-mcp-admin:latest
-    container_name: rs4it-mcp-admin
     restart: unless-stopped
     ports:
       - "${ADMIN_PORT:-3001}:3001"

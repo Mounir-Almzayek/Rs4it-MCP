@@ -28,6 +28,7 @@ The server will listen on the port defined by `PORT` or `MCP_PORT` (default: `30
 | `MCP_PLUGINS_CONFIG` | Path to plugins config | `config/mcp_plugins.json` |
 | `MCP_ROLE` | Connection role (Phase 09, optional) | — |
 | `MCP_ROLES_CONFIG` | Path to roles file (Phase 09) | `config/roles.json` |
+| `MCP_USERS_FILE` | Path to MCP users tracking file (Phase 11) | `config/mcp_users.json` |
 
 ### Endpoint
 
@@ -60,7 +61,7 @@ The project includes **Docker Compose** to run the Hub and admin panel together,
 ### Requirements
 
 - Docker and Docker Compose (v2)
-- `.env` file (copy from `.env.docker.example`) with **SESSION_SECRET** (required for the panel, at least 16 characters)
+- `.env` file (copy from `.env.docker.example`) with **SESSION_SECRET** (required for the panel, at least 16 characters).
 
 ### Quick run
 
@@ -88,9 +89,10 @@ docker compose down -v        # Stop and remove containers and config volume
 
 | Component | Description |
 |-----------|-------------|
-| **Hub** | Image from root `Dockerfile`: build TypeScript then run `node dist/server/http-entry.js`. Entrypoint initializes config directory from defaults on first run. |
-| **Admin** | Image from `admin/Dockerfile`: Next.js standalone on port 3001. |
-| **Volume `config_data`** | Mounted at `/app/config` (Hub) and `/config` (Admin); stores `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json` so Hub and panel share the same config. |
+| **Hub** | Image from root `Dockerfile`: build TypeScript then run `node dist/server/http-entry.js`. Runs as **non-root user** `mcp` (entrypoint seeds config as root, then drops to `mcp` via gosu). |
+| **Admin** | Image from `admin/Dockerfile`: Next.js standalone on port 3001. Runs as **non-root user** `nextjs`. |
+| **Container names** | Auto-generated from project directory name (e.g. `rs4it-mcp-hub-1`, `rs4it-mcp-admin-1`), so they stay unique per project folder. |
+| **Volume** | `config_data` is scoped by project name (directory name), e.g. `rs4it-mcp_config_data`; stores `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json`, `mcp_users.json`. |
 | **Workspace** | Optional: mount host directory at `/workspace` for the Hub (file tools). Default in `.env`: `WORKSPACE_PATH=./workspace`. |
 
 ### Environment variables (Compose)
@@ -154,8 +156,7 @@ After hosting the Hub on a server (e.g. `https://your-domain.com/mcp` or `http:/
    - **URL**: Your MCP endpoint, e.g.:
      - `https://your-domain.com/mcp` (if the Hub is behind a reverse proxy with HTTPS)
      - or `http://your-server-ip:3000/mcp` (direct).
-   - **Headers** (optional): For role (Phase 09) add e.g.:
-     - `X-MCP-Role`: `web_engineer` (or any role defined in `roles.json`).
+   - **Headers** (optional): For role (Phase 09) add e.g. `X-MCP-Role`: `web_engineer`. For user tracking (Phase 11) add e.g. `X-MCP-User-Name`: `Your Name` so the admin panel shows who last used the Hub.
 5. Save and **restart Cursor completely** so the server appears and is used.
 
 ### From config file (project-specific)
@@ -169,7 +170,8 @@ You can put MCP config in `.cursor/mcp.json` at the project root:
       "url": "https://your-domain.com/mcp",
       "transport": "streamableHttp",
       "headers": {
-        "X-MCP-Role": "web_engineer"
+        "X-MCP-Role": "web_engineer",
+        "X-MCP-User-Name": "Your Name"
       }
     }
   }
@@ -177,7 +179,7 @@ You can put MCP config in `.cursor/mcp.json` at the project root:
 ```
 
 - Change `url` to your actual Hub URL after deployment.
-- `headers` and `X-MCP-Role` are optional (for filtering tools by role).
+- `headers`, `X-MCP-Role` (filter tools by role), and `X-MCP-User-Name` (track user in admin panel) are optional.
 
 ### Notes
 
