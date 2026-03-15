@@ -24,9 +24,15 @@ import {
 } from "../skills/index.js";
 import { getLoadedPlugins, callPluginTool } from "../plugins/index.js";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
+import { registerBuiltInPrompts } from "../prompts/index.js";
+import { registerBuiltInResources } from "../resources/index.js";
 import { isAllowedForRole } from "../config/roles.js";
 import { PLUGIN_TOOL_PREFIX } from "../plugins/constants.js";
-import type { DynamicSkillStep } from "../types/dynamic-registry.js";
+import type {
+  DynamicSkillStep,
+  DynamicPromptEntry,
+  DynamicResourceEntry,
+} from "../types/dynamic-registry.js";
 
 export interface CreateServerOptions {
   /** When set, only tools/skills/plugins allowed for this role (and inherited roles) are registered. */
@@ -264,6 +270,59 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         }
       );
     }
+  }
+
+  registerBuiltInPrompts(server);
+  registerBuiltInResources(server);
+
+  for (const entry of dynamic.prompts) {
+    if (!entry.enabled) continue;
+    if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
+    const template = entry.template;
+    const argsSchema =
+      entry.argsSchema && Object.keys(entry.argsSchema as object).length > 0
+        ? jsonSchemaToZod(entry.argsSchema as Record<string, unknown>).shape
+        : undefined;
+    server.registerPrompt(
+      entry.name,
+      {
+        title: entry.title ?? entry.name,
+        description: entry.description,
+        argsSchema,
+      },
+      (args: Record<string, unknown> | undefined, _extra) => {
+        let text = template;
+        if (args && typeof args === "object") {
+          for (const [k, v] of Object.entries(args)) {
+            text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v ?? ""));
+          }
+        }
+        return Promise.resolve({
+          messages: [
+            { role: "user" as const, content: { type: "text" as const, text } },
+          ],
+        });
+      }
+    );
+  }
+
+  for (const entry of dynamic.resources) {
+    if (!entry.enabled) continue;
+    if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
+    const uri = entry.uri;
+    const mimeType = entry.mimeType;
+    const content = entry.content;
+    server.registerResource(
+      entry.name,
+      uri,
+      {
+        title: entry.name,
+        description: entry.description ?? undefined,
+      },
+      async () => ({
+        contents: [{ uri, mimeType, text: content }],
+      })
+    );
   }
 
   return server;

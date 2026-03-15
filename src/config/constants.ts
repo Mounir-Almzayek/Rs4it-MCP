@@ -10,4 +10,10 @@ export const DEFAULT_CAPABILITIES = {
   tools: {
     listChanged: true,
   },
+  prompts: {
+    listChanged: true,
+  },
+  resources: {
+    listChanged: true,
+  },
 } as const;

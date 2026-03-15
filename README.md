@@ -23,6 +23,8 @@ A **unified platform** that exposes the company's capabilities to AI tools (e.g.
 | **Roles & visibility** | Roles with inheritance (e.g. `full_stack` ← `web_engineer` + `backend_engineer`); tools filtered by the connecting role. |
 | **Admin panel** | Next.js app to manage Tools, Skills, Plugins, Roles, and the permission matrix, with secure authentication. |
 | **HTTP hosting** | Run the Hub as a network service (Streamable HTTP) for remote access. |
+| **Prompts** | Built-in prompts (e.g. `hub_help`) for Hub instructions; Cursor shows “X prompts” (Phase 13). |
+| **Resources** | Built-in resources (e.g. `rs4it://registry` — JSON summary of tools/skills/plugins); Cursor shows “Y resources” (Phase 13). |
 
 ---
 
@@ -285,6 +287,9 @@ Phases are meant to be followed in order; each builds on the previous.
 | 08 | Admin panel (Tools, Skills, Plugins) | ✅ |
 | 09 | Roles and visibility (inheritance, filter by role) | ✅ |
 | 10 | Panel authentication (login, credential change) | ✅ |
+| 11 | MCP user tracking (last used, panel tab) | ✅ |
+| 12 | Usage tracking (invocations by entity and by user, panel tab) | ✅ |
+| 13 | Prompts and resources (hub_help prompt, rs4it://registry resource) | ✅ |
 
 ---
 

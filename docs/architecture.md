@@ -74,3 +74,11 @@ There is no separate capability (e.g. `skills/list`); everything goes through `t
 - **Storage**: A JSON file (e.g. `config/mcp_usage.json`, or path from **`MCP_USAGE_FILE`**) with a list of events: `toolName`, `userName` (optional), `timestamp`. The Hub writes; the admin panel reads and aggregates (by entity, by user). A cap on the number of stored events (e.g. 50,000) avoids unbounded growth.
 - **stdio**: When the Hub runs over stdio, no user context is available; the callback is not passed, so usage is not recorded. Tracking is only active for HTTP transport.
 - **Admin panel**: A "Usage" tab shows per-entity stats (name, type tool/skill/plugin, total invocations, breakdown by user) and optionally the last N recent invocations. Data is read via `GET /api/usage` (authenticated).
+
+## Prompts and Resources (Phase 13)
+
+- **Purpose**: Expose **prompts** and **resources** so Cursor (and other MCP clients) show “X tools, Y prompts, Z resources” for the Hub, similar to plugin servers like Figma.
+- **Capabilities**: The Hub advertises `prompts: { listChanged: true }` and `resources: { listChanged: true }` in `initialize`. Clients can call `prompts/list`, `prompts/get`, `resources/list`, and `resources/read`.
+- **Built-in prompts**: Registered in `src/prompts/`. Example: **hub_help** — instructions for using the Hub (tools, skills, plugins, roles), with optional argument `topic` (`'tools'` | `'skills'` | `'plugins'`) for a shorter section.
+- **Built-in resources**: Registered in `src/resources/`. Example: **hub_registry** at URI **`rs4it://registry`** — JSON summary of available tools (built-in + dynamic), skills, and loaded plugins, built at read time.
+- **URI scheme**: Hub resources use the **`rs4it://`** scheme (e.g. `rs4it://registry`) to avoid collisions with file or other URIs. Future resources can follow the same scheme (e.g. `rs4it://tool/{name}`).

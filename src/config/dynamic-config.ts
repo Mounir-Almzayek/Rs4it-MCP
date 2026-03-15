@@ -27,21 +27,45 @@ export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
   try {
     raw = await readFile(filePath, "utf-8");
   } catch {
-    return { tools: [], skills: [], plugins: [] };
+    return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
   }
   let data: unknown;
   try {
     data = JSON.parse(raw) as unknown;
   } catch {
-    return { tools: [], skills: [], plugins: [] };
+    return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
   }
-  if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [] };
+  if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
   const o = data as Record<string, unknown>;
   return {
     tools: Array.isArray(o.tools) ? o.tools.filter(isDynamicToolEntry) : [],
     skills: Array.isArray(o.skills) ? o.skills.filter(isDynamicSkillEntry) : [],
     plugins: Array.isArray(o.plugins) ? o.plugins.filter(isDynamicPluginEntry) : [],
+    prompts: Array.isArray(o.prompts) ? o.prompts.filter(isDynamicPromptEntry) : [],
+    resources: Array.isArray(o.resources) ? o.resources.filter(isDynamicResourceEntry) : [],
   };
+}
+
+function isDynamicPromptEntry(x: unknown): x is DynamicRegistry["prompts"][0] {
+  return (
+    !!x &&
+    typeof x === "object" &&
+    typeof (x as Record<string, unknown>).name === "string" &&
+    typeof (x as Record<string, unknown>).template === "string" &&
+    typeof (x as Record<string, unknown>).enabled === "boolean"
+  );
+}
+
+function isDynamicResourceEntry(x: unknown): x is DynamicRegistry["resources"][0] {
+  return (
+    !!x &&
+    typeof x === "object" &&
+    typeof (x as Record<string, unknown>).name === "string" &&
+    typeof (x as Record<string, unknown>).uri === "string" &&
+    typeof (x as Record<string, unknown>).mimeType === "string" &&
+    typeof (x as Record<string, unknown>).content === "string" &&
+    typeof (x as Record<string, unknown>).enabled === "boolean"
+  );
 }
 
 function isDynamicToolEntry(x: unknown): x is DynamicRegistry["tools"][0] {

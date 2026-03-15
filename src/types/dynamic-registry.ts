@@ -52,9 +52,41 @@ export interface DynamicPluginEntry {
   allowedRoles?: string[];
 }
 
+/** Dynamic prompt: template-based prompt manageable from the dashboard. */
+export interface DynamicPromptEntry {
+  name: string;
+  title?: string;
+  description: string;
+  /** Optional JSON schema for prompt arguments (e.g. { topic: { type: "string", description: "..." } }). */
+  argsSchema?: Record<string, unknown>;
+  /** Message template. Use {{argName}} for substitution when the client passes arguments. */
+  template: string;
+  enabled: boolean;
+  updatedAt?: string;
+  /** Role ids that can see/use this prompt. Empty = all roles. */
+  allowedRoles?: string[];
+}
+
+/** Dynamic resource: static content at a fixed URI, manageable from the dashboard. */
+export interface DynamicResourceEntry {
+  name: string;
+  /** URI (e.g. rs4it://docs/readme). Prefer rs4it:// scheme. */
+  uri: string;
+  description?: string;
+  mimeType: string;
+  /** Inline content (text). */
+  content: string;
+  enabled: boolean;
+  updatedAt?: string;
+  /** Role ids that can see/use this resource. Empty = all roles. */
+  allowedRoles?: string[];
+}
+
 /** Full dynamic registry file. */
 export interface DynamicRegistry {
   tools: DynamicToolEntry[];
   skills: DynamicSkillEntry[];
   plugins: DynamicPluginEntry[];
+  prompts: DynamicPromptEntry[];
+  resources: DynamicResourceEntry[];
 }

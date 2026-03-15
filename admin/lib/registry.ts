@@ -45,7 +45,28 @@ export interface DynamicPluginEntry {
   cwd?: string;
   env?: Record<string, string>;
   timeout?: number;
-  /** Role ids that can see/use this plugin's tools (Phase 09). Empty = all roles. */
+  allowedRoles?: string[];
+}
+
+export interface DynamicPromptEntry {
+  name: string;
+  title?: string;
+  description: string;
+  argsSchema?: Record<string, unknown>;
+  template: string;
+  enabled: boolean;
+  updatedAt?: string;
+  allowedRoles?: string[];
+}
+
+export interface DynamicResourceEntry {
+  name: string;
+  uri: string;
+  description?: string;
+  mimeType: string;
+  content: string;
+  enabled: boolean;
+  updatedAt?: string;
   allowedRoles?: string[];
 }
 
@@ -53,6 +74,8 @@ export interface DynamicRegistry {
   tools: DynamicToolEntry[];
   skills: DynamicSkillEntry[];
   plugins: DynamicPluginEntry[];
+  prompts: DynamicPromptEntry[];
+  resources: DynamicResourceEntry[];
 }
 
 /** Candidate paths to try (env first, then cwd-relative). Used for read. */
@@ -79,7 +102,7 @@ function getRegistryPathForWrite(): string {
 }
 
 export async function readRegistry(): Promise<DynamicRegistry> {
-  const empty: DynamicRegistry = { tools: [], skills: [], plugins: [] };
+  const empty: DynamicRegistry = { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
   const candidates = getRegistryPathCandidates();
   for (const filePath of candidates) {
     try {
@@ -91,6 +114,8 @@ export async function readRegistry(): Promise<DynamicRegistry> {
         tools: Array.isArray(o.tools) ? o.tools : [],
         skills: Array.isArray(o.skills) ? o.skills : [],
         plugins: Array.isArray(o.plugins) ? o.plugins : [],
+        prompts: Array.isArray(o.prompts) ? o.prompts : [],
+        resources: Array.isArray(o.resources) ? o.resources : [],
       };
     } catch {
       continue;
