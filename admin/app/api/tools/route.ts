@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       enabled: body.enabled ?? true,
       updatedAt: new Date().toISOString(),
       allowedRoles: Array.isArray(body.allowedRoles) ? body.allowedRoles : undefined,
+      source: body.source === "mcp" ? "mcp" : "admin",
+      origin: body.origin,
     };
     const registry = await readRegistry();
     if (registry.tools.some((t) => t.name === entry.name)) {

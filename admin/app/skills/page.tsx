@@ -248,6 +248,8 @@ function SkillsContent() {
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Steps</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
+                    <th className="p-3 text-left font-medium">Source</th>
+                    <th className="p-3 text-left font-medium">Origin</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
@@ -266,6 +268,14 @@ function SkillsContent() {
                               </Badge>
                             ))
                           : "—"}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={s.source === "mcp" ? "secondary" : "outline"}>
+                          {s.source === "mcp" ? "MCP" : "Admin"}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono text-xs">
+                        {s.origin ?? "—"}
                       </td>
                       <td className="p-3">
                         <Badge variant={s.enabled ? "success" : "secondary"}>

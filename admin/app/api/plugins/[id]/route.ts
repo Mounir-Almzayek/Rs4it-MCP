@@ -21,6 +21,8 @@ export async function PUT(
       command: body.command ?? existing.command,
       args: Array.isArray(body.args) ? body.args : existing.args,
       allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
+      source: body.source !== undefined ? body.source : existing.source,
+      origin: body.origin !== undefined ? body.origin : existing.origin,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.plugins[idx]);

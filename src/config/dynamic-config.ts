@@ -37,12 +37,14 @@ export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
   }
   if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
   const o = data as Record<string, unknown>;
+  const normalizeSource = <T extends { source?: string }>(arr: T[]): T[] =>
+    arr.map((e) => (e.source === "admin" || e.source === "mcp" ? e : { ...e, source: "admin" as const }));
   return {
-    tools: Array.isArray(o.tools) ? o.tools.filter(isDynamicToolEntry) : [],
-    skills: Array.isArray(o.skills) ? o.skills.filter(isDynamicSkillEntry) : [],
-    plugins: Array.isArray(o.plugins) ? o.plugins.filter(isDynamicPluginEntry) : [],
-    prompts: Array.isArray(o.prompts) ? o.prompts.filter(isDynamicPromptEntry) : [],
-    resources: Array.isArray(o.resources) ? o.resources.filter(isDynamicResourceEntry) : [],
+    tools: normalizeSource(Array.isArray(o.tools) ? o.tools.filter(isDynamicToolEntry) : []),
+    skills: normalizeSource(Array.isArray(o.skills) ? o.skills.filter(isDynamicSkillEntry) : []),
+    plugins: normalizeSource(Array.isArray(o.plugins) ? o.plugins.filter(isDynamicPluginEntry) : []),
+    prompts: normalizeSource(Array.isArray(o.prompts) ? o.prompts.filter(isDynamicPromptEntry) : []),
+    resources: normalizeSource(Array.isArray(o.resources) ? o.resources.filter(isDynamicResourceEntry) : []),
   };
 }
 

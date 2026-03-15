@@ -209,6 +209,8 @@ function ToolsContent() {
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Handler</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
+                    <th className="p-3 text-left font-medium">Source</th>
+                    <th className="p-3 text-left font-medium">Origin</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-left font-medium">Updated</th>
                     <th className="p-3 text-right font-medium">Actions</th>
@@ -228,6 +230,14 @@ function ToolsContent() {
                               </Badge>
                             ))
                           : "—"}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={t.source === "mcp" ? "secondary" : "outline"}>
+                          {t.source === "mcp" ? "MCP" : "Admin"}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono text-xs">
+                        {t.origin ?? "—"}
                       </td>
                       <td className="p-3">
                         <Badge variant={t.enabled ? "success" : "secondary"}>

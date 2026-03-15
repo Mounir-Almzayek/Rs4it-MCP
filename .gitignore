@@ -11,6 +11,9 @@ node_modules/
 .env.local
 .env.*.local
 
+# Runtime (Hub writes at startup)
+config/mcp_plugin_status.json
+
 # IDE / OS
 .idea/
 .vscode/

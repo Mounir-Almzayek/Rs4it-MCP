@@ -12,6 +12,9 @@ export interface DynamicSkillStep {
   argsMap?: Record<string, string>;
 }
 
+/** Source of a registry entry: manual from dashboard or from an included MCP. */
+export type RegistrySource = "admin" | "mcp";
+
 /** Dynamic tool: definition stored in config, execution via handlerRef (built-in tool name). */
 export interface DynamicToolEntry {
   name: string;
@@ -23,6 +26,10 @@ export interface DynamicToolEntry {
   updatedAt?: string;
   /** Role ids that can see/use this tool (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
+  /** Phase 14: admin = added manually, mcp = from an included MCP (e.g. imported). */
+  source?: RegistrySource;
+  /** When source is mcp: plugin id or other origin identifier. */
+  origin?: string;
 }
 
 /** Dynamic skill: orchestration steps defined in config. */
@@ -35,6 +42,8 @@ export interface DynamicSkillEntry {
   updatedAt?: string;
   /** Role ids that can see/use this skill (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 /** External MCP plugin entry (same shape as PluginConfig, plus enabled). */
@@ -50,6 +59,8 @@ export interface DynamicPluginEntry {
   timeout?: number;
   /** Role ids that can see/use this plugin's tools (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 /** Dynamic prompt: template-based prompt manageable from the dashboard. */
@@ -65,6 +76,8 @@ export interface DynamicPromptEntry {
   updatedAt?: string;
   /** Role ids that can see/use this prompt. Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 /** Dynamic resource: static content at a fixed URI, manageable from the dashboard. */
@@ -80,6 +93,8 @@ export interface DynamicResourceEntry {
   updatedAt?: string;
   /** Role ids that can see/use this resource. Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 /** Full dynamic registry file. */

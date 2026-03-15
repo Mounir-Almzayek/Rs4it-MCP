@@ -7,6 +7,8 @@ import path from "path";
 import fs from "fs/promises";
 import fsSync from "fs";
 
+export type RegistrySource = "admin" | "mcp";
+
 export interface DynamicSkillStep {
   type: "tool" | "plugin";
   target: string;
@@ -20,8 +22,9 @@ export interface DynamicToolEntry {
   handlerRef: string;
   enabled: boolean;
   updatedAt?: string;
-  /** Role ids that can see/use this tool (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 export interface DynamicSkillEntry {
@@ -31,8 +34,9 @@ export interface DynamicSkillEntry {
   steps: DynamicSkillStep[];
   enabled: boolean;
   updatedAt?: string;
-  /** Role ids that can see/use this skill (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 export interface DynamicPluginEntry {
@@ -46,6 +50,8 @@ export interface DynamicPluginEntry {
   env?: Record<string, string>;
   timeout?: number;
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 export interface DynamicPromptEntry {
@@ -57,6 +63,8 @@ export interface DynamicPromptEntry {
   enabled: boolean;
   updatedAt?: string;
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 export interface DynamicResourceEntry {
@@ -68,6 +76,8 @@ export interface DynamicResourceEntry {
   enabled: boolean;
   updatedAt?: string;
   allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
 }
 
 export interface DynamicRegistry {

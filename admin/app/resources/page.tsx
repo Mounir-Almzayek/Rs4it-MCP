@@ -202,6 +202,8 @@ function ResourcesContent() {
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">MIME</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
+                    <th className="p-3 text-left font-medium">Source</th>
+                    <th className="p-3 text-left font-medium">Origin</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-left font-medium">Updated</th>
                     <th className="p-3 text-right font-medium">Actions</th>
@@ -222,6 +224,14 @@ function ResourcesContent() {
                               </Badge>
                             ))
                           : "—"}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={r.source === "mcp" ? "secondary" : "outline"}>
+                          {r.source === "mcp" ? "MCP" : "Admin"}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono text-xs">
+                        {r.origin ?? "—"}
                       </td>
                       <td className="p-3">
                         <Badge variant={r.enabled ? "success" : "secondary"}>

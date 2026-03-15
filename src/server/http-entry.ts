@@ -12,7 +12,6 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "./server.js";
-import { writeCapabilitiesSnapshot } from "../config/capabilities-snapshot.js";
 import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 import { getPort, getBaseUrl } from "../config/transport.js";
 import { upsertMcpUser } from "../config/mcp-users-store.js";
@@ -72,11 +71,6 @@ async function createSession(role?: string, userName?: string): Promise<SessionS
     role: role ? role : undefined,
     onToolInvoked: (toolName) => recordInvocation(toolName, state.userName),
     baseUrl,
-    onCapabilitiesSnapshot: (snapshot) => {
-      void writeCapabilitiesSnapshot(snapshot).catch((err) =>
-        console.error("[Hub] Failed to write capabilities snapshot:", err)
-      );
-    },
   });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),

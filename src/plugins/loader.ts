@@ -1,9 +1,11 @@
 /**
  * Plugin loader: spawn external MCP plugins via NPX, connect as client, manage lifecycle (Phase 04 + 08).
+ * Writes connection status to config/mcp_plugin_status.json for Admin to show.
  */
 
 import { loadPluginsConfig } from "../config/load-plugins-config.js";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
+import { writePluginStatus } from "../config/plugin-status-store.js";
 import type { LoadedPlugin, PluginConfig, PluginTool } from "./types.js";
 import { createPluginClient } from "./client.js";
 
@@ -34,22 +36,50 @@ async function getMergedPluginConfigs(): Promise<PluginConfig[]> {
 /**
  * Load all plugins from config. Call once at startup.
  * Failed plugins are logged and skipped; Hub continues without them.
+ * Writes connection status (connected/failed + error) to plugin status file for Admin.
  */
 export async function loadAllPlugins(): Promise<void> {
   const configs = await getMergedPluginConfigs();
+  const statusEntries: Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; error?: string }> = [];
+
   for (const config of configs) {
-    if (loaded.has(config.id)) continue;
-    const clientResult = await createPluginClient(config);
-    if (!clientResult) continue;
-    const loadedPlugin: LoadedPlugin = {
-      id: config.id,
-      name: config.name,
-      tools: clientResult.tools,
-      callTool: clientResult.callTool,
-      close: clientResult.close,
-    };
-    loaded.set(config.id, loadedPlugin);
+    if (loaded.has(config.id)) {
+      const existing = loaded.get(config.id)!;
+      statusEntries.push({
+        id: config.id,
+        name: config.name,
+        status: "connected",
+        toolsCount: existing.tools.length,
+      });
+      continue;
+    }
+    const result = await createPluginClient(config);
+    if (result.ok) {
+      const loadedPlugin: LoadedPlugin = {
+        id: config.id,
+        name: config.name,
+        tools: result.tools,
+        callTool: result.callTool,
+        close: result.close,
+      };
+      loaded.set(config.id, loadedPlugin);
+      statusEntries.push({
+        id: config.id,
+        name: config.name,
+        status: "connected",
+        toolsCount: result.tools.length,
+      });
+    } else {
+      statusEntries.push({
+        id: config.id,
+        name: config.name,
+        status: "failed",
+        error: result.error,
+      });
+    }
   }
+
+  await writePluginStatus(statusEntries);
 }
 
 /**

@@ -216,6 +216,8 @@ function PromptsContent() {
                     <th className="p-3 text-left font-medium">Title</th>
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
+                    <th className="p-3 text-left font-medium">Source</th>
+                    <th className="p-3 text-left font-medium">Origin</th>
                     <th className="p-3 text-left font-medium">Status</th>
                     <th className="p-3 text-left font-medium">Updated</th>
                     <th className="p-3 text-right font-medium">Actions</th>
@@ -235,6 +237,14 @@ function PromptsContent() {
                               </Badge>
                             ))
                           : "—"}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={p.source === "mcp" ? "secondary" : "outline"}>
+                          {p.source === "mcp" ? "MCP" : "Admin"}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono text-xs">
+                        {p.origin ?? "—"}
                       </td>
                       <td className="p-3">
                         <Badge variant={p.enabled ? "success" : "secondary"}>

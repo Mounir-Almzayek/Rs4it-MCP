@@ -14,13 +14,18 @@ export interface PluginClientResult {
   close: () => Promise<void>;
 }
 
+export type CreatePluginClientResult =
+  | { ok: true; tools: PluginTool[]; callTool: PluginClientResult["callTool"]; close: () => Promise<void> }
+  | { ok: false; error: string };
+
 /**
  * Start plugin process, connect as MCP client, fetch tools.
  * Tools are returned with prefixed names (plugin:<id>:<name>).
+ * Returns { ok: true, ... } on success or { ok: false, error } on failure (for connection status).
  */
 export async function createPluginClient(
   config: PluginConfig
-): Promise<PluginClientResult | null> {
+): Promise<CreatePluginClientResult> {
   const transport = new StdioClientTransport({
     command: config.command,
     args: config.args,
@@ -43,13 +48,14 @@ export async function createPluginClient(
       ),
     ]);
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error(`[rs4it-mcp] Plugin ${config.id} failed to connect:`, err);
     try {
       await transport.close();
     } catch {
       // ignore
     }
-    return null;
+    return { ok: false, error: message };
   }
 
   let tools: PluginTool[] = [];
@@ -62,7 +68,14 @@ export async function createPluginClient(
       inputSchema: t.inputSchema as Record<string, unknown>,
     }));
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error(`[rs4it-mcp] Plugin ${config.id} listTools failed:`, err);
+    try {
+      await transport.close();
+    } catch {
+      // ignore
+    }
+    return { ok: false, error: `listTools: ${message}` };
   }
 
   async function callTool(
@@ -90,6 +103,7 @@ export async function createPluginClient(
   }
 
   return {
+    ok: true as const,
     tools,
     callTool,
     close: () => transport.close(),

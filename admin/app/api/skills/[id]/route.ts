@@ -21,6 +21,8 @@ export async function PUT(
       steps: body.steps ?? existing.steps,
       updatedAt: new Date().toISOString(),
       allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
+      source: body.source !== undefined ? body.source : existing.source,
+      origin: body.origin !== undefined ? body.origin : existing.origin,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.skills[idx]);
