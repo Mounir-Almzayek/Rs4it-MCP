@@ -65,8 +65,6 @@ function PluginsContent() {
     description: "",
     enabled: true,
     allowedRoles: [],
-    cwd: undefined,
-    timeout: undefined,
   });
   const [argsStr, setArgsStr] = useState('["-y", "package@latest"]');
 
@@ -161,8 +159,6 @@ function PluginsContent() {
       description: "",
       enabled: true,
       allowedRoles: [],
-      cwd: undefined,
-      timeout: undefined,
     });
     setArgsStr('["-y", "package@latest"]');
   }
@@ -183,8 +179,6 @@ function PluginsContent() {
       description: p.description,
       enabled: p.enabled,
       allowedRoles: p.allowedRoles ?? [],
-      cwd: p.cwd,
-      timeout: p.timeout,
     });
     setArgsStr(JSON.stringify(p.args ?? [], null, 2));
     setDialogOpen(true);
@@ -204,8 +198,6 @@ function PluginsContent() {
       ...form,
       args,
       allowedRoles: (form.allowedRoles?.length ?? 0) > 0 ? form.allowedRoles : undefined,
-      cwd: form.cwd?.trim() || undefined,
-      timeout: form.timeout != null && form.timeout > 0 ? form.timeout : undefined,
     };
     if (editing) {
       updateMutation.mutate({ id: editing.id, body: payload });
@@ -294,9 +286,7 @@ function PluginsContent() {
                           {p.origin ?? "—"}
                         </td>
                         <td className="p-3">
-                          {!p.enabled ? (
-                            <Badge variant="secondary">Disabled</Badge>
-                          ) : conn === undefined ? (
+                          {conn === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : isConnected ? (
                             <Badge variant="success" className="gap-1">
@@ -419,38 +409,6 @@ function PluginsContent() {
                   return argsStr;
                 }
               })()}
-            </p>
-          </div>
-          <div>
-            <Label htmlFor="cwd">Working directory (optional)</Label>
-            <Input
-              id="cwd"
-              value={form.cwd ?? ""}
-              onChange={(e) => setForm((s) => ({ ...s, cwd: e.target.value || undefined }))}
-              placeholder="/path/to/repo (e.g. for Git plugin use your repo root)"
-              className="mt-1 font-mono text-sm"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Run the plugin from this directory. Required for Git and similar plugins to avoid &quot;Connection closed&quot;.
-            </p>
-          </div>
-          <div>
-            <Label htmlFor="timeout">Init timeout (ms, optional)</Label>
-            <Input
-              id="timeout"
-              type="number"
-              min={5000}
-              step={1000}
-              value={form.timeout ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                setForm((s) => ({ ...s, timeout: v === "" ? undefined : parseInt(v, 10) }));
-              }}
-              placeholder="30000"
-              className="mt-1 font-mono w-32"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Max wait for plugin to connect (default 30000). Increase if npx install is slow.
             </p>
           </div>
           <div>

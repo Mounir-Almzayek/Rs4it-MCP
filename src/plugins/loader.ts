@@ -124,12 +124,3 @@ export async function closeAllPlugins(): Promise<void> {
   loaded.clear();
   await Promise.allSettled(closePromises);
 }
-
-/**
- * Re-load all plugins from config and update connection status file.
- * Call when a new client connects so status reflects current config (e.g. enabled/disabled).
- */
-export async function refreshAllPlugins(): Promise<void> {
-  await closeAllPlugins();
-  await loadAllPlugins();
-}

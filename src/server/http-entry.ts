@@ -12,7 +12,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "./server.js";
-import { loadAllPlugins, refreshAllPlugins, closeAllPlugins } from "../plugins/index.js";
+import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 import { getPort, getBaseUrl } from "../config/transport.js";
 import { upsertMcpUser } from "../config/mcp-users-store.js";
 import { recordInvocation } from "../config/usage-store.js";
@@ -104,7 +104,6 @@ async function handlePost(
     }
 
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
-      await refreshAllPlugins();
       const role = getRoleFromRequest(req);
       const userName = getUserNameFromRequest(req);
       const state = await createSession(role, userName);

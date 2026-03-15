@@ -237,13 +237,19 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   }
 
   const pluginAllowedMap = new Map<string, string[]>();
+  const dynamicPluginEnabled = new Map<string, boolean>();
   for (const p of dynamic.plugins) {
+    dynamicPluginEnabled.set(p.id, p.enabled !== false);
     if (p.allowedRoles && p.allowedRoles.length > 0) {
       pluginAllowedMap.set(p.id, p.allowedRoles);
     }
   }
 
   for (const plugin of getLoadedPlugins()) {
+    const isEnabled = dynamicPluginEnabled.has(plugin.id)
+      ? dynamicPluginEnabled.get(plugin.id)
+      : true;
+    if (!isEnabled) continue;
     if (role) {
       const allowed = pluginAllowedMap.get(plugin.id);
       if (allowed !== undefined && !(await isAllowedForRole(allowed, role))) continue;

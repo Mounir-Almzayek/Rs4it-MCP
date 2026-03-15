@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Wrench, Sparkles, Puzzle, MessageSquare, FileText, Shield, RefreshCw } from "lucide-react";
+import { Wrench, Sparkles, Puzzle, MessageSquare, FileText, Shield, RefreshCw, BarChart3, LayoutGrid } from "lucide-react";
+import { DashboardStatsTab } from "@/components/dashboard-stats-tab";
 
 async function fetchRegistry() {
   const res = await fetch("/api/registry", { cache: "no-store" });
@@ -49,8 +51,16 @@ export default function DashboardPage() {
   const rolesCount = rolesData?.roles?.length ?? 0;
 
   const registryToolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
+  const registryPluginById = new Map(
+    (data?.plugins ?? []).map((p: { id: string; enabled?: boolean }) => [p.id, p])
+  );
   const pluginToolsCount = (pluginStatus?.plugins ?? [])
-    .filter((p) => p.status === "connected" && Array.isArray(p.tools))
+    .filter((p) => {
+      if (p.status !== "connected" || !Array.isArray(p.tools)) return false;
+      const reg = registryPluginById.get(p.id);
+      if (!reg) return true;
+      return reg.enabled !== false;
+    })
     .reduce((sum, p) => sum + (p.tools?.length ?? 0), 0);
   const toolsCount = registryToolsCount + pluginToolsCount;
 
@@ -59,11 +69,33 @@ export default function DashboardPage() {
   const promptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
   const resourcesCount = Array.isArray(data?.resources) ? data.resources.length : 0;
 
+  const [activeTab, setActiveTab] = useState<"stats" | "registry">("stats");
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
+            <Button
+              variant={activeTab === "stats" ? "secondary" : "ghost"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setActiveTab("stats")}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Statistics
+            </Button>
+            <Button
+              variant={activeTab === "registry" ? "secondary" : "ghost"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setActiveTab("registry")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Registry
+            </Button>
+          </div>
           <Link href="/registry" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
             Registry Preview
           </Link>
@@ -88,6 +120,10 @@ export default function DashboardPage() {
         </p>
       )}
 
+      {activeTab === "stats" && <DashboardStatsTab />}
+
+      {activeTab === "registry" && (
+        <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -219,6 +255,8 @@ export default function DashboardPage() {
           </Link>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

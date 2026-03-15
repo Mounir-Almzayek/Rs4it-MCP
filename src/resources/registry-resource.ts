@@ -15,17 +15,21 @@ export const REGISTRY_RESOURCE_NAME = "hub_registry";
 export async function readRegistryResource(_uri: URL): Promise<{
   contents: Array<{ uri: string; mimeType: string; text: string }>;
 }> {
+  const dynamic = await loadDynamicRegistry();
+  const dynamicPluginEnabled = new Map(dynamic.plugins.map((p) => [p.id, p.enabled !== false]));
+  const plugins = getLoadedPlugins()
+    .filter((p) => (dynamicPluginEnabled.has(p.id) ? dynamicPluginEnabled.get(p.id) : true))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      tools: p.tools.map((t) => t.name),
+    }));
+
   const tools = getAllTools().map((t) => ({ name: t.name, description: t.description }));
   const skills = getAllSkills().map((s) => ({
     name: skillToToolName(s.name),
     description: s.description,
   }));
-  const plugins = getLoadedPlugins().map((p) => ({
-    id: p.id,
-    name: p.name,
-    tools: p.tools.map((t) => t.name),
-  }));
-  const dynamic = await loadDynamicRegistry();
   const summary = {
     builtIn: { tools, skills },
     dynamic: {
