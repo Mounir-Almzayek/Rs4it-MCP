@@ -55,36 +55,52 @@ export interface DynamicRegistry {
   plugins: DynamicPluginEntry[];
 }
 
-function getRegistryPath(): string {
+/** Candidate paths to try (env first, then cwd-relative). Used for read. */
+function getRegistryPathCandidates(): string[] {
   const env = process.env.MCP_DYNAMIC_CONFIG ?? process.env.ADMIN_REGISTRY_PATH;
-  if (env) return path.resolve(env);
+  if (env) return [path.resolve(env)];
   const cwd = process.cwd();
-  const inCwd = path.resolve(cwd, "config", "dynamic-registry.json");
-  const parentCwd = path.resolve(cwd, "..", "config", "dynamic-registry.json");
-  if (fsSync.existsSync(inCwd)) return inCwd;
-  return parentCwd;
+  return [
+    path.resolve(cwd, "config", "dynamic-registry.json"),
+    path.resolve(cwd, "..", "config", "dynamic-registry.json"),
+    path.resolve(cwd, "..", "..", "config", "dynamic-registry.json"),
+  ];
+}
+
+/** Single path for write: first candidate that exists, or first candidate (so file is created there). */
+function getRegistryPathForWrite(): string {
+  const candidates = getRegistryPathCandidates();
+  for (const p of candidates) {
+    if (fsSync.existsSync(p)) return p;
+    const dir = path.dirname(p);
+    if (fsSync.existsSync(dir)) return p;
+  }
+  return candidates[0];
 }
 
 export async function readRegistry(): Promise<DynamicRegistry> {
-  const filePath = getRegistryPath();
-  try {
-    const raw = await fs.readFile(filePath, "utf-8");
-    const data = JSON.parse(raw) as unknown;
-    if (!data || typeof data !== "object")
-      return { tools: [], skills: [], plugins: [] };
-    const o = data as Record<string, unknown>;
-    return {
-      tools: Array.isArray(o.tools) ? o.tools : [],
-      skills: Array.isArray(o.skills) ? o.skills : [],
-      plugins: Array.isArray(o.plugins) ? o.plugins : [],
-    };
-  } catch {
-    return { tools: [], skills: [], plugins: [] };
+  const empty: DynamicRegistry = { tools: [], skills: [], plugins: [] };
+  const candidates = getRegistryPathCandidates();
+  for (const filePath of candidates) {
+    try {
+      const raw = await fs.readFile(filePath, "utf-8");
+      const data = JSON.parse(raw) as unknown;
+      if (!data || typeof data !== "object") continue;
+      const o = data as Record<string, unknown>;
+      return {
+        tools: Array.isArray(o.tools) ? o.tools : [],
+        skills: Array.isArray(o.skills) ? o.skills : [],
+        plugins: Array.isArray(o.plugins) ? o.plugins : [],
+      };
+    } catch {
+      continue;
+    }
   }
+  return empty;
 }
 
 export async function writeRegistry(registry: DynamicRegistry): Promise<void> {
-  const filePath = getRegistryPath();
+  const filePath = getRegistryPathForWrite();
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(registry, null, 2), "utf-8");
 }

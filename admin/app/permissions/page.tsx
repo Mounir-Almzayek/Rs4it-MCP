@@ -22,7 +22,7 @@ interface MatrixRow {
 }
 
 async function fetchRegistry() {
-  const res = await fetch("/api/registry");
+  const res = await fetch("/api/registry", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch registry");
   return res.json() as Promise<DynamicRegistry>;
 }
@@ -47,6 +47,8 @@ export default function PermissionsMatrixPage() {
   const { data: registry, isLoading: registryLoading } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const { data: rolesConfig, isLoading: rolesLoading } = useQuery({
     queryKey: ["roles"],
@@ -57,7 +59,10 @@ export default function PermissionsMatrixPage() {
   const rows = useMemo((): MatrixRow[] => {
     if (!registry) return [];
     const r: MatrixRow[] = [];
-    registry.tools.forEach((t) => {
+    const tools = Array.isArray(registry.tools) ? registry.tools : [];
+    const skills = Array.isArray(registry.skills) ? registry.skills : [];
+    const plugins = Array.isArray(registry.plugins) ? registry.plugins : [];
+    tools.forEach((t) => {
       r.push({
         id: `tool:${t.name}`,
         type: "tool",
@@ -65,7 +70,7 @@ export default function PermissionsMatrixPage() {
         allowedRoles: t.allowedRoles ?? [],
       });
     });
-    registry.skills.forEach((s) => {
+    skills.forEach((s) => {
       r.push({
         id: `skill:${s.name}`,
         type: "skill",
@@ -73,7 +78,7 @@ export default function PermissionsMatrixPage() {
         allowedRoles: s.allowedRoles ?? [],
       });
     });
-    registry.plugins.forEach((p) => {
+    plugins.forEach((p) => {
       r.push({
         id: `plugin:${p.id}`,
         type: "plugin",

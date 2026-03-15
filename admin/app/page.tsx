@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Wrench, Sparkles, Puzzle, Shield, RefreshCw } from "lucide-react";
 
 async function fetchRegistry() {
-  const res = await fetch("/api/registry");
+  const res = await fetch("/api/registry", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch registry");
   return res.json();
 }
@@ -26,6 +26,7 @@ export default function DashboardPage() {
     queryFn: fetchRegistry,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   const { data: rolesData } = useQuery({
     queryKey: ["roles"],

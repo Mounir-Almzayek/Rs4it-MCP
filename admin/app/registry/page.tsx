@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 async function fetchRegistry() {
-  const res = await fetch("/api/registry");
+  const res = await fetch("/api/registry", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch registry");
   return res.json();
 }

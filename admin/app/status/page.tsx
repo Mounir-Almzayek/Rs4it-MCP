@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
 async function fetchRegistry() {
-  const res = await fetch("/api/registry");
+  const res = await fetch("/api/registry", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch registry");
   return res.json();
 }
