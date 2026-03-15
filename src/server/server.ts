@@ -31,6 +31,7 @@ import type {
   DynamicPromptEntry,
   DynamicResourceEntry,
 } from "../types/dynamic-registry.js";
+import type { CapabilitiesSnapshot, SnapshotTool, SnapshotPrompt, SnapshotResource } from "../types/capabilities-snapshot.js";
 
 export interface CreateServerOptions {
   /** When set, only tools/skills/plugins allowed for this role (and inherited roles) are registered. */
@@ -39,6 +40,8 @@ export interface CreateServerOptions {
   onToolInvoked?: (toolName: string) => void;
   /** Base URL of the Hub (e.g. http://localhost:3000). When set, serverInfo includes icon URL for Cursor/IDE. */
   baseUrl?: string;
+  /** Called after all capabilities are registered (Phase 14). Used to write snapshot for dashboard. */
+  onCapabilitiesSnapshot?: (snapshot: CapabilitiesSnapshot) => void;
 }
 
 const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
@@ -144,6 +147,11 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   const role = options?.role;
   const onToolInvoked = options?.onToolInvoked;
   const baseUrl = options?.baseUrl;
+  const onCapabilitiesSnapshot = options?.onCapabilitiesSnapshot;
+  const snapshotTools: SnapshotTool[] = [];
+  const snapshotPrompts: SnapshotPrompt[] = [];
+  const snapshotResources: SnapshotResource[] = [];
+
   registerBuiltInTools();
   registerBuiltInSkills();
 
@@ -166,6 +174,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   // Built-in tools: no allowedRoles → visible to all
   for (const tool of getAllTools()) {
     const name = tool.name;
+    snapshotTools.push({ name, description: tool.description, source: "built-in" });
     server.registerTool(
       name,
       {
@@ -182,6 +191,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   // Built-in skills: visible to all
   for (const skill of getAllSkills()) {
     const toolName = skillToToolName(skill.name);
+    snapshotTools.push({ name: toolName, description: skill.description, source: "skill" });
     server.registerTool(
       toolName,
       {
@@ -202,6 +212,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const handlerRef = entry.handlerRef;
     const toolName = entry.name;
+    snapshotTools.push({ name: toolName, description: entry.description, source: "dynamic" });
     server.registerTool(
       toolName,
       {
@@ -219,6 +230,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const steps = entry.steps ?? [];
     const toolName = skillToToolName(entry.name);
+    snapshotTools.push({ name: toolName, description: entry.description, source: "dynamic" });
     server.registerTool(
       toolName,
       {
@@ -252,6 +264,12 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       const pluginId = plugin.id;
       const originalName = pt.originalName;
       const toolName = pt.name;
+      snapshotTools.push({
+        name: toolName,
+        description: pt.description ?? undefined,
+        source: "plugin",
+        pluginId,
+      });
       server.registerTool(
         toolName,
         {
@@ -273,6 +291,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   for (const entry of dynamic.prompts) {
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
+    snapshotPrompts.push({ name: entry.name, description: entry.description, source: "dynamic" });
     const template = entry.template;
     const argsSchema =
       entry.argsSchema && Object.keys(entry.argsSchema as object).length > 0
@@ -304,6 +323,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   for (const entry of dynamic.resources) {
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
+    snapshotResources.push({ name: entry.name, uri: entry.uri, description: entry.description, source: "dynamic" });
     const uri = entry.uri;
     const mimeType = entry.mimeType;
     const content = entry.content;
@@ -318,6 +338,15 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         contents: [{ uri, mimeType, text: content }],
       })
     );
+  }
+
+  if (onCapabilitiesSnapshot) {
+    onCapabilitiesSnapshot({
+      updatedAt: new Date().toISOString(),
+      tools: snapshotTools,
+      prompts: snapshotPrompts,
+      resources: snapshotResources,
+    });
   }
 
   return server;

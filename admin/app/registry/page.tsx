@@ -2,6 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TableCellText } from "@/components/table-cell-text";
+import type { CapabilitiesSnapshot, SnapshotTool } from "@/lib/capabilities";
+import { Activity, Wrench, Sparkles, FileEdit, Puzzle } from "lucide-react";
 
 async function fetchRegistry() {
   const res = await fetch("/api/registry", { cache: "no-store" });
@@ -9,10 +13,48 @@ async function fetchRegistry() {
   return res.json();
 }
 
+async function fetchCapabilities(): Promise<CapabilitiesSnapshot> {
+  const res = await fetch("/api/capabilities", { cache: "no-store" });
+  if (!res.ok) return { updatedAt: "", tools: [], prompts: [], resources: [] };
+  return res.json();
+}
+
+function SourceBadge({ tool }: { tool: SnapshotTool }) {
+  if (tool.source === "built-in")
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Wrench className="h-3 w-3" /> Built-in
+      </Badge>
+    );
+  if (tool.source === "skill")
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Sparkles className="h-3 w-3" /> Skill
+      </Badge>
+    );
+  if (tool.source === "dynamic")
+    return (
+      <Badge variant="outline" className="gap-1">
+        <FileEdit className="h-3 w-3" /> Manual
+      </Badge>
+    );
+  return (
+    <Badge variant="default" className="gap-1">
+      <Puzzle className="h-3 w-3" /> MCP: {tool.pluginId ?? "—"}
+    </Badge>
+  );
+}
+
 export default function RegistryPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const { data: capabilities, isLoading: capabilitiesLoading } = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: fetchCapabilities,
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -30,6 +72,8 @@ export default function RegistryPage() {
   const plugins = Array.isArray(data?.plugins) ? data.plugins : [];
   const prompts = Array.isArray(data?.prompts) ? data.prompts : [];
   const resources = Array.isArray(data?.resources) ? data.resources : [];
+  const liveTools = capabilities?.tools ?? [];
+  const hasLive = liveTools.length > 0;
 
   return (
     <div className="space-y-8">
@@ -37,6 +81,55 @@ export default function RegistryPage() {
       <p className="text-muted-foreground">
         This is what the MCP Hub exposes to AI clients (tools list). Built-in tools and skills are merged with this dynamic registry.
       </p>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4 text-primary" />
+            Live capabilities (from last MCP connection)
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            All tools currently exposed by the Hub, with source: Built-in, Skill, Manual (registry), or from an embedded MCP (plugin). Updated every time a client connects.
+          </p>
+          {capabilities?.updatedAt && (
+            <p className="text-xs text-muted-foreground">
+              Last updated: {new Date(capabilities.updatedAt).toLocaleString()}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {capabilitiesLoading ? (
+            <p className="text-muted-foreground">Loading…</p>
+          ) : !hasLive ? (
+            <div className="rounded-md border border-dashed p-6 text-center text-muted-foreground text-sm">
+              No snapshot yet. Connect a client (e.g. Cursor) to the Hub once to populate this list.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left font-medium">Name</th>
+                    <th className="p-3 text-left font-medium">Description</th>
+                    <th className="p-3 text-left font-medium">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liveTools.map((t) => (
+                    <tr key={t.name} className="border-b last:border-0">
+                      <TableCellText text={t.name} label="Name" maxWidthClass="max-w-[220px]" innerClassName="font-mono" />
+                      <TableCellText text={t.description} label="Description" maxWidthClass="max-w-[280px]" />
+                      <td className="p-3">
+                        <SourceBadge tool={t} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

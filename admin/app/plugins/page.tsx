@@ -13,14 +13,21 @@ import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { TableCellText } from "@/components/table-cell-text";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Puzzle } from "lucide-react";
 import type { DynamicPluginEntry } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
+import type { CapabilitiesSnapshot } from "@/lib/capabilities";
 
 async function fetchPlugins() {
   const res = await fetch("/api/plugins");
   if (!res.ok) throw new Error("Failed to fetch plugins");
   return res.json() as Promise<DynamicPluginEntry[]>;
+}
+
+async function fetchCapabilities(): Promise<CapabilitiesSnapshot> {
+  const res = await fetch("/api/capabilities", { cache: "no-store" });
+  if (!res.ok) return { updatedAt: "", tools: [], prompts: [], resources: [] };
+  return res.json();
 }
 
 async function fetchRoles() {
@@ -58,7 +65,20 @@ function PluginsContent() {
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
+  const { data: capabilities } = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: fetchCapabilities,
+    staleTime: 0,
+  });
   const roles = rolesConfig?.roles ?? [];
+  const toolsByPlugin = (capabilities?.tools ?? [])
+    .filter((t) => t.source === "plugin" && t.pluginId)
+    .reduce((acc, t) => {
+      const id = t.pluginId!;
+      if (!acc[id]) acc[id] = [];
+      acc[id].push(t);
+      return acc;
+    }, {} as Record<string, { name: string; description?: string }[]>);
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicPluginEntry) => {
@@ -269,6 +289,50 @@ function PluginsContent() {
           )}
         </CardContent>
       </Card>
+
+      {plugins && plugins.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Puzzle className="h-4 w-4" />
+              Tools from embedded MCPs (live)
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Tools exposed by each plugin after the last Hub connection. Connect a client to refresh.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {plugins.map((p) => {
+              const tools = toolsByPlugin[p.id] ?? [];
+              return (
+                <div key={p.id} className="rounded-md border p-3">
+                  <div className="font-mono font-medium text-sm">
+                    {p.name || p.id}
+                    <span className="ml-2 text-muted-foreground font-normal">
+                      ({tools.length} tool{tools.length !== 1 ? "s" : ""})
+                    </span>
+                  </div>
+                  {tools.length === 0 ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      No tools in snapshot yet. Connect a client to the Hub to populate.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {tools.map((t) => (
+                        <li key={t.name}>
+                          <Badge variant="secondary" className="font-mono text-xs font-normal">
+                            {t.name}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen} title={editing ? "Edit Plugin" : "Add Plugin"}>
         <form onSubmit={handleSubmit} className="space-y-4">
