@@ -1,26 +1,12 @@
 /**
- * Admin: read usage stats (Phase 12).
+ * Admin: read usage stats (Phase 12) — server only.
  * Same file as Hub writes to (config/mcp_usage.json or MCP_USAGE_FILE).
+ * For types and entityType, use @/lib/usage-types in client code.
  */
 
 import path from "path";
 import fs from "fs/promises";
-
-export interface UsageEvent {
-  toolName: string;
-  userName?: string;
-  timestamp: string;
-}
-
-export interface EntityStats {
-  total: number;
-  byUser: Record<string, number>;
-}
-
-export interface UsageStats {
-  byEntity: Record<string, EntityStats>;
-  recent: UsageEvent[];
-}
+import type { UsageEvent, EntityStats, UsageStats } from "./usage-types";
 
 const DEFAULT_PATH = path.join(process.cwd(), "..", "config", "mcp_usage.json");
 
@@ -74,10 +60,4 @@ export async function readUsageStats(options?: {
   const recentLimit = options?.recentLimit ?? 100;
   const recent = [...events].reverse().slice(0, recentLimit);
   return { byEntity, recent };
-}
-
-export function entityType(toolName: string): "tool" | "skill" | "plugin" {
-  if (toolName.startsWith("skill:")) return "skill";
-  if (toolName.startsWith("plugin:")) return "plugin";
-  return "tool";
 }

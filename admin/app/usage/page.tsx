@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, RefreshCw, Wrench, Sparkles, Puzzle } from "lucide-react";
-import { entityType, type UsageStats } from "@/lib/usage";
+import { entityType, type UsageStats } from "@/lib/usage-types";
 
 async function fetchUsage(): Promise<UsageStats> {
   const res = await fetch("/api/usage");
