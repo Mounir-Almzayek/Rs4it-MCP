@@ -36,6 +36,8 @@ node -v
 - **MCP user tracking (Phase 11)**:
   - **`MCP_USERS_FILE`** (optional): Path to the JSON file where MCP user names and last-used timestamps are stored. If not set, the Hub uses `config/mcp_users.json`; the admin panel uses the same path (or `../config/mcp_users.json` when run from the admin folder).
   - **HTTP**: Client can pass the user name via header **`X-MCP-User-Name`** or via **`params.userName`** in the `initialize` request. If present, the Hub records/updates that user and refreshes “last used” on each request.
+- **Host validation (behind reverse proxy)**:
+  - **`MCP_ALLOWED_HOSTS`** (optional): Comma-separated list of hostnames allowed in the `Host` header (e.g. `rs4it-mcp.ai.system2030.com`). Required when the Hub is behind HTTPS/proxy; otherwise the SDK rejects requests with “Invalid Host”. Localhost is always allowed in addition.
 - **Admin panel (Phase 10)**:
   - **`SESSION_SECRET`** or **`ADMIN_SESSION_SECRET`** (required to enable auth): Secret key for the session, at least 16 characters. See [docs/admin-auth.md](admin-auth.md).
   - **`ADMIN_CREDENTIALS_PATH`** (optional): Path to admin credentials file (username + password hash). Default: `../config/admin-credentials.json`.

@@ -29,6 +29,7 @@ The server will listen on the port defined by `PORT` or `MCP_PORT` (default: `30
 | `MCP_ROLE` | Connection role (Phase 09, optional) | — |
 | `MCP_ROLES_CONFIG` | Path to roles file (Phase 09) | `config/roles.json` |
 | `MCP_USERS_FILE` | Path to MCP users tracking file (Phase 11) | `config/mcp_users.json` |
+| `MCP_ALLOWED_HOSTS` | Comma-separated hostnames allowed in the `Host` header (when the Hub is behind a reverse proxy). Example: `rs4it-mcp.ai.system2030.com`. Localhost is always added. If not set, only localhost is allowed. | — |
 
 ### Endpoint
 

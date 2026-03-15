@@ -29,6 +29,7 @@ services:
       MCP_PLUGINS_CONFIG: /app/config/mcp_plugins.json
       MCP_WORKSPACE_ROOT: ${MCP_WORKSPACE_ROOT:-/workspace}
       BASE_URL: ${HUB_BASE_URL:-http://localhost:3000}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
     volumes:
       - config_data:/app/config
       # Optional: mount workspace for file tools (create_file, read_file, run_command)

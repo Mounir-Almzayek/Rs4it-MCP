@@ -162,12 +162,27 @@ async function handleDelete(req: IncomingMessage, res: ServerResponse): Promise<
   }
 }
 
+const DEFAULT_LOCALHOST_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
+function getAllowedHosts(): string[] | undefined {
+  const env = process.env["MCP_ALLOWED_HOSTS"];
+  if (!env || typeof env !== "string") return undefined;
+  const fromEnv = env.split(",").map((h) => h.trim()).filter(Boolean);
+  const combined = [...new Set([...fromEnv, ...DEFAULT_LOCALHOST_HOSTS])];
+  return combined.length > 0 ? combined : undefined;
+}
+
 async function main(): Promise<void> {
   await loadAllPlugins();
 
   const port = getPort();
   const baseUrl = getBaseUrl();
-  const app = createMcpExpressApp();
+  const allowedHosts = getAllowedHosts();
+  const app = createMcpExpressApp(
+    allowedHosts && allowedHosts.length > 0
+      ? { host: "0.0.0.0", allowedHosts }
+      : undefined
+  );
 
   app.post("/mcp", (req: IncomingMessage & { body?: unknown }, res: ServerResponse) => {
     void handlePost(req, res);
