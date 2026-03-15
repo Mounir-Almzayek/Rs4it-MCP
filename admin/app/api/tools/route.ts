@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readRegistry, writeRegistry, type DynamicToolEntry } from "@/lib/registry";
 
+const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", Pragma: "no-cache" };
+
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const registry = await readRegistry();
-    return NextResponse.json(registry.tools);
+    return NextResponse.json(registry.tools, { headers: NO_STORE });
   } catch (e) {
     console.error(e);
     return NextResponse.json(
