@@ -15,7 +15,9 @@ async function fetchRegistry() {
   return res.json();
 }
 
-async function fetchPluginStatus(): Promise<{ plugins: Array<{ status: string; tools?: unknown[] }> }> {
+async function fetchPluginStatus(): Promise<{
+  plugins: Array<{ id: string; status: string; tools?: unknown[] }>;
+}> {
   const res = await fetch("/api/plugin-status", { cache: "no-store" });
   if (!res.ok) return { plugins: [] };
   const data = await res.json();
@@ -51,8 +53,9 @@ export default function DashboardPage() {
   const rolesCount = rolesData?.roles?.length ?? 0;
 
   const registryToolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
-  const registryPluginById = new Map(
-    (data?.plugins ?? []).map((p: { id: string; enabled?: boolean }) => [p.id, p])
+  type RegistryPlugin = { id: string; enabled?: boolean };
+  const registryPluginById = new Map<string, RegistryPlugin>(
+    (data?.plugins ?? []).map((p: RegistryPlugin) => [p.id, p])
   );
   const pluginToolsCount = (pluginStatus?.plugins ?? [])
     .filter((p) => {
