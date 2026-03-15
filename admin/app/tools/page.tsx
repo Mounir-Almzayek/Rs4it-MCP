@@ -44,12 +44,6 @@ async function fetchRoles() {
   return res.json() as Promise<RoleConfig>;
 }
 
-async function fetchRegistry(): Promise<{ plugins?: Array<{ id: string; enabled?: boolean }> }> {
-  const res = await fetch("/api/registry", { cache: "no-store" });
-  if (!res.ok) return { plugins: [] };
-  return res.json();
-}
-
 /** One row in the tools table: either registry (editable) or from MCP plugin (read-only). */
 type ToolRow =
   | (DynamicToolEntry & { isPluginTool?: false })
@@ -93,25 +87,13 @@ function ToolsContent() {
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
-  const { data: registry } = useQuery({
-    queryKey: ["registry"],
-    queryFn: fetchRegistry,
-  });
   const roles = rolesConfig?.roles ?? [];
-
-  const registryPluginById = new Map(
-    (registry?.plugins ?? []).map((p: { id: string; enabled?: boolean }) => [p.id, p])
-  );
-  const pluginToolsFromEnabledOnly = (pluginStatus?.plugins ?? []).filter((p: PluginStatusEntry) => {
-    if (p.status !== "connected" || !Array.isArray(p.tools)) return false;
-    const reg = registryPluginById.get(p.id);
-    if (!reg) return true;
-    return reg.enabled !== false;
-  });
 
   const toolRows: ToolRow[] = [
     ...(tools ?? []).map((t) => ({ ...t, isPluginTool: false as const })),
-    ...pluginToolsFromEnabledOnly.flatMap((p: PluginStatusEntry) =>
+    ...(pluginStatus?.plugins ?? [])
+      .filter((p: PluginStatusEntry) => p.status === "connected" && Array.isArray(p.tools))
+      .flatMap((p: PluginStatusEntry) =>
       (p.tools ?? []).map((t: { name: string; description?: string }) => ({
         name: t.name,
         description: t.description ?? "",
