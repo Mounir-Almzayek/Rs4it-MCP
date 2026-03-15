@@ -218,6 +218,31 @@ async function main(): Promise<void> {
     void handleDelete(req, res);
   });
 
+  app.post("/reload", async (_req: IncomingMessage, res: ServerResponse) => {
+    const secret = process.env["MCP_RELOAD_SECRET"];
+    if (secret) {
+      const header = _req.headers["x-reload-secret"];
+      if (header !== secret) {
+        res.statusCode = 403;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: false, error: "Forbidden" }));
+        return;
+      }
+    }
+    try {
+      await closeAllPlugins();
+      await loadAllPlugins();
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: true, message: "Plugins reloaded" }));
+    } catch (err) {
+      console.error("[rs4it-mcp] Reload failed:", err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: String(err) }));
+    }
+  });
+
   const server = app.listen(port, () => {
     console.log(`[rs4it-mcp] Streamable HTTP server listening on port ${port}`);
     console.log(`[rs4it-mcp] MCP endpoint: ${baseUrl}/mcp`);

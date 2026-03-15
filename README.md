@@ -226,6 +226,7 @@ docker compose up -d
 
 - **Hub**: http://localhost:3000/mcp  
 - **Admin**: http://localhost:3001  
+- When you add, remove, or disable a plugin in the Admin, the panel calls the Hub’s `POST /reload` so plugin tools appear or disappear without restarting the Hub. (Admin uses `HUB_BASE_URL` in Docker; locally it defaults to `http://localhost:3000`.)  
 Details: [docs/deployment.md](docs/deployment.md).
 
 ---

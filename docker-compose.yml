@@ -56,6 +56,8 @@ services:
       NODE_ENV: production
       PORT: 3001
       HOSTNAME: "0.0.0.0"
+      # Admin calls Hub to reload plugins after add/remove/disable (no Hub restart needed)
+      HUB_BASE_URL: ${HUB_BASE_URL:-http://hub:3000}
       # Admin reads/writes same config as Hub via shared volume
       ADMIN_REGISTRY_PATH: /config/dynamic-registry.json
       MCP_ROLES_CONFIG: /config/roles.json

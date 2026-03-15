@@ -98,9 +98,16 @@ function PluginsContent() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
       queryClient.invalidateQueries({ queryKey: ["registry"] });
+      try {
+        await fetch("/api/reload", { method: "POST" });
+      } catch {
+        // Hub may be down or unreachable
+      }
+      queryClient.invalidateQueries({ queryKey: ["plugin-status"] });
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast.add("success", "Plugin added");
       setDialogOpen(false);
       resetForm();
@@ -124,9 +131,16 @@ function PluginsContent() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
       queryClient.invalidateQueries({ queryKey: ["registry"] });
+      try {
+        await fetch("/api/reload", { method: "POST" });
+      } catch {
+        // Hub may be down or unreachable
+      }
+      queryClient.invalidateQueries({ queryKey: ["plugin-status"] });
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast.add("success", "Plugin updated");
       setDialogOpen(false);
       setEditing(null);
@@ -142,9 +156,16 @@ function PluginsContent() {
       });
       if (!res.ok) throw new Error("Delete failed");
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
       queryClient.invalidateQueries({ queryKey: ["registry"] });
+      try {
+        await fetch("/api/reload", { method: "POST" });
+      } catch {
+        // Hub may be down or unreachable
+      }
+      queryClient.invalidateQueries({ queryKey: ["plugin-status"] });
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast.add("success", "Plugin deleted");
     },
     onError: (e: Error) => toast.add("error", e.message),
