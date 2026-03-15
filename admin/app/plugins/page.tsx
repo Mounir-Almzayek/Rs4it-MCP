@@ -23,13 +23,21 @@ async function fetchPlugins() {
   return res.json() as Promise<DynamicPluginEntry[]>;
 }
 
-async function fetchPluginStatus() {
+type PluginConnectionStatus = {
+  id: string;
+  name: string;
+  status: "connected" | "failed";
+  toolsCount?: number;
+  error?: string;
+};
+
+async function fetchPluginStatus(): Promise<{ updatedAt: string | null; plugins: PluginConnectionStatus[] }> {
   const res = await fetch("/api/plugin-status", { cache: "no-store" });
-  if (!res.ok) return { updatedAt: null as string | null, plugins: [] as Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; error?: string }> };
+  if (!res.ok) return { updatedAt: null, plugins: [] };
   const data = await res.json();
   return {
     updatedAt: data?.updatedAt ?? null,
-    plugins: Array.isArray(data?.plugins) ? data.plugins : [],
+    plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginConnectionStatus[]) : [],
   };
 }
 
@@ -74,7 +82,7 @@ function PluginsContent() {
   });
   const roles = rolesConfig?.roles ?? [];
   const connectionById = new Map(
-    (pluginStatus?.plugins ?? []).map((p) => [p.id, { status: p.status, toolsCount: p.toolsCount, error: p.error }])
+    (pluginStatus?.plugins ?? []).map((p: PluginConnectionStatus) => [p.id, { status: p.status, toolsCount: p.toolsCount, error: p.error }])
   );
 
   const createMutation = useMutation({
