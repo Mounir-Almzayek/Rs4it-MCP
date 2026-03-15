@@ -35,6 +35,8 @@ export default function StatusPage() {
   const toolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
   const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
   const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
+  const promptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
+  const resourcesCount = Array.isArray(data?.resources) ? data.resources.length : 0;
 
   return (
     <div className="space-y-8">
@@ -55,6 +57,8 @@ export default function StatusPage() {
             <li>Tools: {isLoading ? "…" : toolsCount}</li>
             <li>Skills: {isLoading ? "…" : skillsCount}</li>
             <li>Plugins: {isLoading ? "…" : pluginsCount}</li>
+            <li>Prompts: {isLoading ? "…" : promptsCount}</li>
+            <li>Resources: {isLoading ? "…" : resourcesCount}</li>
           </ul>
         </CardContent>
       </Card>

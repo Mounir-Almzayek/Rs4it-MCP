@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Wrench, Sparkles, Puzzle, Shield, RefreshCw } from "lucide-react";
+import { Wrench, Sparkles, Puzzle, MessageSquare, FileText, Shield, RefreshCw } from "lucide-react";
 
 async function fetchRegistry() {
   const res = await fetch("/api/registry", { cache: "no-store" });
@@ -37,6 +37,8 @@ export default function DashboardPage() {
   const toolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
   const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
   const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
+  const promptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
+  const resourcesCount = Array.isArray(data?.resources) ? data.resources.length : 0;
 
   return (
     <div className="space-y-8">
@@ -64,7 +66,7 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tools</CardTitle>
@@ -118,6 +120,40 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Prompts</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? "—" : promptsCount}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Template prompts in registry
+            </p>
+            <Link href="/prompts" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage prompts →
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resources</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? "—" : resourcesCount}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Static resources (URIs)
+            </p>
+            <Link href="/resources" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage resources →
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Roles</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -146,6 +182,12 @@ export default function DashboardPage() {
           </Link>
           <Link href="/plugins?create=1" className={buttonVariants()}>
             Add Plugin
+          </Link>
+          <Link href="/prompts?create=1" className={buttonVariants()}>
+            Create Prompt
+          </Link>
+          <Link href="/resources?create=1" className={buttonVariants()}>
+            Create Resource
           </Link>
           <Link href="/roles" className={buttonVariants({ variant: "outline" })}>
             Roles

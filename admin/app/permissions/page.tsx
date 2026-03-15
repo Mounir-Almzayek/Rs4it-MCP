@@ -12,7 +12,7 @@ import { Check, X, Search, Filter } from "lucide-react";
 import type { RoleConfig } from "@/lib/roles";
 import type { DynamicRegistry } from "@/lib/registry";
 
-type CapabilityType = "tool" | "skill" | "plugin";
+type CapabilityType = "tool" | "skill" | "plugin" | "prompt" | "resource";
 
 interface MatrixRow {
   id: string;
@@ -62,6 +62,8 @@ export default function PermissionsMatrixPage() {
     const tools = Array.isArray(registry.tools) ? registry.tools : [];
     const skills = Array.isArray(registry.skills) ? registry.skills : [];
     const plugins = Array.isArray(registry.plugins) ? registry.plugins : [];
+    const prompts = Array.isArray(registry.prompts) ? registry.prompts : [];
+    const resources = Array.isArray(registry.resources) ? registry.resources : [];
     tools.forEach((t) => {
       r.push({
         id: `tool:${t.name}`,
@@ -84,6 +86,22 @@ export default function PermissionsMatrixPage() {
         type: "plugin",
         name: p.name || p.id,
         allowedRoles: p.allowedRoles ?? [],
+      });
+    });
+    prompts.forEach((p) => {
+      r.push({
+        id: `prompt:${p.name}`,
+        type: "prompt",
+        name: p.name,
+        allowedRoles: p.allowedRoles ?? [],
+      });
+    });
+    resources.forEach((res) => {
+      r.push({
+        id: `resource:${res.name}`,
+        type: "resource",
+        name: res.name,
+        allowedRoles: res.allowedRoles ?? [],
       });
     });
     return r;
@@ -158,6 +176,44 @@ export default function PermissionsMatrixPage() {
     onError: (e: Error) => toast.add("error", e.message),
   });
 
+  const updatePromptRoles = useMutation({
+    mutationFn: async ({
+      name,
+      allowedRoles,
+    }: { name: string; allowedRoles: string[] | undefined }) => {
+      const res = await fetch(`/api/prompts/${encodeURIComponent(name)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedRoles }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
+      toast.add("success", "Prompt permissions updated");
+    },
+    onError: (e: Error) => toast.add("error", e.message),
+  });
+
+  const updateResourceRoles = useMutation({
+    mutationFn: async ({
+      name,
+      allowedRoles,
+    }: { name: string; allowedRoles: string[] | undefined }) => {
+      const res = await fetch(`/api/resources/${encodeURIComponent(name)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedRoles }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
+      toast.add("success", "Resource permissions updated");
+    },
+    onError: (e: Error) => toast.add("error", e.message),
+  });
+
   function togglePermission(row: MatrixRow, roleId: string) {
     const currentlyAllowed = isAllowed(row.allowedRoles, roleId);
 
@@ -169,7 +225,12 @@ export default function PermissionsMatrixPage() {
         updateToolRoles.mutate({ name: row.name, allowedRoles: payload });
       else if (row.type === "skill")
         updateSkillRoles.mutate({ name: row.name, allowedRoles: payload });
-      else updatePluginRoles.mutate({ id: row.id.replace("plugin:", ""), allowedRoles: payload });
+      else if (row.type === "plugin")
+        updatePluginRoles.mutate({ id: row.id.replace("plugin:", ""), allowedRoles: payload });
+      else if (row.type === "prompt")
+        updatePromptRoles.mutate({ name: row.name, allowedRoles: payload });
+      else if (row.type === "resource")
+        updateResourceRoles.mutate({ name: row.name, allowedRoles: payload });
     } else {
       const base = row.allowedRoles.length === 0 ? [] : [...row.allowedRoles];
       const next = base.includes(roleId) ? base : [...base, roleId];
@@ -177,7 +238,12 @@ export default function PermissionsMatrixPage() {
         updateToolRoles.mutate({ name: row.name, allowedRoles: next });
       else if (row.type === "skill")
         updateSkillRoles.mutate({ name: row.name, allowedRoles: next });
-      else updatePluginRoles.mutate({ id: row.id.replace("plugin:", ""), allowedRoles: next });
+      else if (row.type === "plugin")
+        updatePluginRoles.mutate({ id: row.id.replace("plugin:", ""), allowedRoles: next });
+      else if (row.type === "prompt")
+        updatePromptRoles.mutate({ name: row.name, allowedRoles: next });
+      else if (row.type === "resource")
+        updateResourceRoles.mutate({ name: row.name, allowedRoles: next });
     }
   }
 
@@ -193,7 +259,7 @@ export default function PermissionsMatrixPage() {
         <CardHeader>
           <CardTitle>Access control</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Rows: capabilities (tools, skills, plugins). Columns: roles. ✓ = allowed, ✗ = not allowed. Empty allowed list = visible to all. Toggle a cell to update.
+            Rows: capabilities (tools, skills, plugins, prompts, resources). Columns: roles. ✓ = allowed, ✗ = not allowed. Empty allowed list = visible to all. Toggle a cell to update.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -222,6 +288,8 @@ export default function PermissionsMatrixPage() {
                 <option value="tool">Tools</option>
                 <option value="skill">Skills</option>
                 <option value="plugin">Plugins</option>
+                <option value="prompt">Prompts</option>
+                <option value="resource">Resources</option>
               </select>
             </div>
           </div>
@@ -271,7 +339,11 @@ export default function PermissionsMatrixPage() {
                               ? "default"
                               : row.type === "skill"
                                 ? "secondary"
-                                : "outline"
+                                : row.type === "prompt"
+                                  ? "secondary"
+                                  : row.type === "resource"
+                                    ? "outline"
+                                    : "outline"
                           }
                         >
                           {row.type}

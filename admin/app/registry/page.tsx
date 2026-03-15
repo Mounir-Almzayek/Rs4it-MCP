@@ -28,6 +28,8 @@ export default function RegistryPage() {
   const tools = Array.isArray(data?.tools) ? data.tools : [];
   const skills = Array.isArray(data?.skills) ? data.skills : [];
   const plugins = Array.isArray(data?.plugins) ? data.plugins : [];
+  const prompts = Array.isArray(data?.prompts) ? data.prompts : [];
+  const resources = Array.isArray(data?.resources) ? data.resources : [];
 
   return (
     <div className="space-y-8">
@@ -113,6 +115,64 @@ export default function RegistryPage() {
                   <span className="ml-2 block text-muted-foreground">
                     {p.command} {(p.args ?? []).join(" ")}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Prompts exposed to AI</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Dynamic prompts from registry (prompts/list). Template-based with optional args.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-muted-foreground">Loading…</p>
+          ) : prompts.length === 0 ? (
+            <p className="text-muted-foreground">No dynamic prompts in registry.</p>
+          ) : (
+            <ul className="space-y-2 font-mono text-sm">
+              {prompts.filter((p: { enabled?: boolean }) => p.enabled !== false).map((p: { name: string; title?: string; description?: string }) => (
+                <li key={p.name} className="rounded border px-3 py-2">
+                  <span className="font-semibold">{p.name}</span>
+                  {p.title && (
+                    <span className="ml-2 text-muted-foreground">— {p.title}</span>
+                  )}
+                  {p.description && (
+                    <span className="ml-2 block text-muted-foreground">{p.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Resources exposed to AI</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Dynamic resources from registry (resources/list). Static content at fixed URIs.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-muted-foreground">Loading…</p>
+          ) : resources.length === 0 ? (
+            <p className="text-muted-foreground">No dynamic resources in registry.</p>
+          ) : (
+            <ul className="space-y-2 font-mono text-sm">
+              {resources.filter((r: { enabled?: boolean }) => r.enabled !== false).map((r: { name: string; uri: string; description?: string }) => (
+                <li key={r.name} className="rounded border px-3 py-2">
+                  <span className="font-semibold">{r.name}</span>
+                  <span className="ml-2 text-muted-foreground">{r.uri}</span>
+                  {r.description && (
+                    <span className="ml-2 block text-muted-foreground">{r.description}</span>
+                  )}
                 </li>
               ))}
             </ul>
