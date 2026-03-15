@@ -50,17 +50,17 @@ export async function readPluginStatus(): Promise<PluginStatusSnapshot | null> {
             (x): x is PluginConnectionEntry =>
               !!x &&
               typeof x === "object" &&
-              typeof (x as Record<string, unknown>).id === "string" &&
-              typeof (x as Record<string, unknown>).name === "string" &&
-              ((x as Record<string, unknown>).status === "connected" ||
-                (x as Record<string, unknown>).status === "failed")
+              typeof (x as unknown as Record<string, unknown>).id === "string" &&
+              typeof (x as unknown as Record<string, unknown>).name === "string" &&
+              ((x as unknown as Record<string, unknown>).status === "connected" ||
+                (x as unknown as Record<string, unknown>).status === "failed")
           )
         : [];
       for (const p of plugins) {
         if (Array.isArray(p.tools)) {
           p.tools = p.tools.filter(
             (t): t is PluginToolRef =>
-              !!t && typeof t === "object" && typeof (t as Record<string, unknown>).name === "string"
+              !!t && typeof t === "object" && typeof (t as unknown as Record<string, unknown>).name === "string"
           );
         }
       }
