@@ -13,7 +13,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { TableCellText } from "@/components/table-cell-text";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import type { DynamicPluginEntry } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
 
@@ -21,6 +21,16 @@ async function fetchPlugins() {
   const res = await fetch("/api/plugins");
   if (!res.ok) throw new Error("Failed to fetch plugins");
   return res.json() as Promise<DynamicPluginEntry[]>;
+}
+
+async function fetchPluginStatus() {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { updatedAt: null as string | null, plugins: [] as Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; error?: string }> };
+  const data = await res.json();
+  return {
+    updatedAt: data?.updatedAt ?? null,
+    plugins: Array.isArray(data?.plugins) ? data.plugins : [],
+  };
 }
 
 async function fetchRoles() {
@@ -54,11 +64,18 @@ function PluginsContent() {
     queryKey: ["plugins"],
     queryFn: fetchPlugins,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+  });
   const { data: rolesConfig } = useQuery({
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
   const roles = rolesConfig?.roles ?? [];
+  const connectionById = new Map(
+    (pluginStatus?.plugins ?? []).map((p) => [p.id, { status: p.status, toolsCount: p.toolsCount, error: p.error }])
+  );
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicPluginEntry) => {
@@ -197,16 +214,21 @@ function PluginsContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>External MCP plugins</CardTitle>
+          <CardTitle>MCP plugins & connection status</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Plugins are run via command + args (e.g. npx -y package@latest).
+            Plugins run via command + args. Connection status is updated when the Hub starts; restart the Hub to refresh.
+            {pluginStatus?.updatedAt && (
+              <span className="mt-1 block text-xs">
+                Last connection check: {new Date(pluginStatus.updatedAt).toLocaleString()}
+              </span>
+            )}
           </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
           ) : !plugins?.length ? (
-            <p className="text-muted-foreground">No plugins yet.</p>
+            <p className="text-muted-foreground">No plugins yet. Add one to get started. Start the Hub to see connection status.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
@@ -218,63 +240,105 @@ function PluginsContent() {
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Source</th>
                     <th className="p-3 text-left font-medium">Origin</th>
-                    <th className="p-3 text-left font-medium">Status</th>
+                    <th className="p-3 text-left font-medium">Connection</th>
+                    <th className="p-3 text-left font-medium">Enabled</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {plugins.map((p) => (
-                    <tr key={p.id} className="border-b last:border-0">
-                      <TableCellText text={p.id} label="ID" maxWidthClass="max-w-[120px]" innerClassName="font-mono" />
-                      <TableCellText text={p.name} label="Name" maxWidthClass="max-w-[180px]" />
-                      <TableCellText
-                        text={resolvedCommand(p)}
-                        label="Resolved command"
-                        maxWidthClass="max-w-[300px]"
-                        className="font-mono text-muted-foreground"
-                      />
-                      <td className="p-3">
-                        {(p.allowedRoles?.length ?? 0) > 0
-                          ? (p.allowedRoles ?? []).map((r) => (
-                              <Badge key={r} variant="outline" className="mr-1 mb-1">
-                                {roles.find((x) => x.id === r)?.name ?? r}
-                              </Badge>
-                            ))
-                          : "—"}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={p.source === "mcp" ? "secondary" : "outline"}>
-                          {p.source === "mcp" ? "MCP" : "Admin"}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-muted-foreground font-mono text-xs">
-                        {p.origin ?? "—"}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={p.enabled ? "success" : "secondary"}>
-                          {p.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)} aria-label="Edit">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this plugin?"))
-                              deleteMutation.mutate(p.id);
-                          }}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {plugins.map((p) => {
+                    const conn = connectionById.get(p.id);
+                    const isConnected = conn?.status === "connected";
+                    const isFailed = conn?.status === "failed";
+                    return (
+                      <tr key={p.id} className="border-b last:border-0">
+                        <TableCellText text={p.id} label="ID" maxWidthClass="max-w-[120px]" innerClassName="font-mono" />
+                        <TableCellText text={p.name} label="Name" maxWidthClass="max-w-[180px]" />
+                        <TableCellText
+                          text={resolvedCommand(p)}
+                          label="Resolved command"
+                          maxWidthClass="max-w-[300px]"
+                          className="font-mono text-muted-foreground"
+                        />
+                        <td className="p-3">
+                          {(p.allowedRoles?.length ?? 0) > 0
+                            ? (p.allowedRoles ?? []).map((r) => (
+                                <Badge key={r} variant="outline" className="mr-1 mb-1">
+                                  {roles.find((x) => x.id === r)?.name ?? r}
+                                </Badge>
+                              ))
+                            : "—"}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={p.source === "mcp" ? "secondary" : "outline"}>
+                            {p.source === "mcp" ? "MCP" : "Admin"}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground font-mono text-xs">
+                          {p.origin ?? "—"}
+                        </td>
+                        <td className="p-3">
+                          {conn === undefined ? (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          ) : isConnected ? (
+                            <Badge variant="success" className="gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Connected ({conn.toolsCount ?? 0} tools)
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="gap-1">
+                              <XCircle className="h-3.5 w-3.5" />
+                              Failed
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={p.enabled ? "success" : "secondary"}>
+                            {p.enabled ? "Enabled" : "Disabled"}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(p)} aria-label="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm("Delete this plugin?"))
+                                deleteMutation.mutate(p.id);
+                            }}
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {(pluginStatus?.plugins ?? []).some((p) => p.status === "failed" && p.error) && (
+            <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5">
+              <h4 className="flex items-center gap-2 p-3 text-sm font-medium text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                Connection errors (detail)
+              </h4>
+              <ul className="list-none space-y-4 p-3 pt-0">
+                {(pluginStatus?.plugins ?? [])
+                  .filter((p) => p.status === "failed" && p.error)
+                  .map((p) => (
+                    <li key={p.id} className="rounded border border-destructive/20 bg-background p-3">
+                      <p className="mb-1 font-medium font-mono text-sm">{p.id}</p>
+                      <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 text-xs text-destructive">
+                        {p.error}
+                      </pre>
+                    </li>
+                  ))}
+              </ul>
             </div>
           )}
         </CardContent>

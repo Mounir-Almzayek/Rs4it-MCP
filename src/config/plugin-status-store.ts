@@ -6,6 +6,12 @@
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
+export interface PluginToolRef {
+  name: string;
+  originalName?: string;
+  description?: string;
+}
+
 export interface PluginConnectionEntry {
   id: string;
   name: string;
@@ -13,6 +19,8 @@ export interface PluginConnectionEntry {
   status: "connected" | "failed";
   /** Number of tools exposed (when status is connected). */
   toolsCount?: number;
+  /** Tool list for Admin display (when status is connected). Read-only in Tools page. */
+  tools?: PluginToolRef[];
   /** Error message when status is failed. */
   error?: string;
 }

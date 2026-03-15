@@ -6,11 +6,18 @@
 import path from "path";
 import fs from "fs/promises";
 
+export interface PluginToolRef {
+  name: string;
+  originalName?: string;
+  description?: string;
+}
+
 export interface PluginConnectionEntry {
   id: string;
   name: string;
   status: "connected" | "failed";
   toolsCount?: number;
+  tools?: PluginToolRef[];
   error?: string;
 }
 
@@ -49,6 +56,14 @@ export async function readPluginStatus(): Promise<PluginStatusSnapshot | null> {
                 (x as Record<string, unknown>).status === "failed")
           )
         : [];
+      for (const p of plugins) {
+        if (Array.isArray(p.tools)) {
+          p.tools = p.tools.filter(
+            (t): t is PluginToolRef =>
+              !!t && typeof t === "object" && typeof (t as Record<string, unknown>).name === "string"
+          );
+        }
+      }
       return {
         updatedAt: typeof snap.updatedAt === "string" ? snap.updatedAt : new Date().toISOString(),
         plugins,

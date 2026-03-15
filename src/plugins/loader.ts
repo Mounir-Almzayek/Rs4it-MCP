@@ -40,7 +40,7 @@ async function getMergedPluginConfigs(): Promise<PluginConfig[]> {
  */
 export async function loadAllPlugins(): Promise<void> {
   const configs = await getMergedPluginConfigs();
-  const statusEntries: Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; error?: string }> = [];
+  const statusEntries: Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; tools?: Array<{ name: string; originalName?: string; description?: string }>; error?: string }> = [];
 
   for (const config of configs) {
     if (loaded.has(config.id)) {
@@ -50,6 +50,7 @@ export async function loadAllPlugins(): Promise<void> {
         name: config.name,
         status: "connected",
         toolsCount: existing.tools.length,
+        tools: existing.tools.map((t) => ({ name: t.name, originalName: t.originalName, description: t.description })),
       });
       continue;
     }
@@ -68,6 +69,7 @@ export async function loadAllPlugins(): Promise<void> {
         name: config.name,
         status: "connected",
         toolsCount: result.tools.length,
+        tools: result.tools.map((t) => ({ name: t.name, originalName: t.originalName, description: t.description })),
       });
     } else {
       statusEntries.push({

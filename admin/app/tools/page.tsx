@@ -24,11 +24,33 @@ async function fetchTools() {
   return res.json() as Promise<DynamicToolEntry[]>;
 }
 
+async function fetchPluginStatus() {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { plugins: [] as Array<{ id: string; name: string; status: string; tools?: Array<{ name: string; description?: string }> }> };
+  const data = await res.json();
+  return { plugins: Array.isArray(data?.plugins) ? data.plugins : [] };
+}
+
 async function fetchRoles() {
   const res = await fetch("/api/roles");
   if (!res.ok) throw new Error("Failed to fetch roles");
   return res.json() as Promise<RoleConfig>;
 }
+
+/** One row in the tools table: either registry (editable) or from MCP plugin (read-only). */
+type ToolRow =
+  | (DynamicToolEntry & { isPluginTool?: false })
+  | {
+      name: string;
+      description: string;
+      handlerRef: string;
+      allowedRoles?: string[];
+      source: "mcp";
+      origin: string;
+      enabled: boolean;
+      updatedAt?: string;
+      isPluginTool: true;
+    };
 
 function ToolsContent() {
   const searchParams = useSearchParams();
@@ -50,11 +72,33 @@ function ToolsContent() {
     queryKey: ["tools"],
     queryFn: fetchTools,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+  });
   const { data: rolesConfig } = useQuery({
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
   const roles = rolesConfig?.roles ?? [];
+
+  const toolRows: ToolRow[] = [
+    ...(tools ?? []).map((t) => ({ ...t, isPluginTool: false as const })),
+    ...(pluginStatus?.plugins ?? [])
+      .filter((p) => p.status === "connected" && Array.isArray(p.tools))
+      .flatMap((p) =>
+        (p.tools ?? []).map((t) => ({
+          name: t.name,
+          description: t.description ?? "",
+          handlerRef: "—",
+          allowedRoles: [] as string[],
+          source: "mcp" as const,
+          origin: p.id,
+          enabled: true,
+          isPluginTool: true as const,
+        }))
+      ),
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicToolEntry) => {
@@ -190,16 +234,16 @@ function ToolsContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Dynamic tools</CardTitle>
+          <CardTitle>All tools</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Tools defined in the registry and delegated to a built-in handler.
+            Registry tools (editable) and tools from connected MCP plugins (read-only). Restart the Hub to refresh plugin tools.
           </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
-          ) : !tools?.length ? (
-            <p className="text-muted-foreground">No tools yet. Create one to get started.</p>
+          ) : toolRows.length === 0 ? (
+            <p className="text-muted-foreground">No tools yet. Create one from the registry or start the Hub with MCP plugins to see their tools here.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
@@ -217,8 +261,8 @@ function ToolsContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tools.map((t) => (
-                    <tr key={t.name} className="border-b last:border-0">
+                  {toolRows.map((t) => (
+                    <tr key={t.source === "mcp" ? `${t.origin}:${t.name}` : t.name} className="border-b last:border-0">
                       <TableCellText text={t.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={t.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <TableCellText text={t.handlerRef} label="Handler" maxWidthClass="max-w-[140px]" innerClassName="font-mono text-muted-foreground" />
@@ -250,25 +294,31 @@ function ToolsContent() {
                           : "—"}
                       </td>
                       <td className="p-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(t)}
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this tool?"))
-                              deleteMutation.mutate(t.name);
-                          }}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {t.isPluginTool ? (
+                          <span className="text-xs text-muted-foreground">Read-only</span>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(t)}
+                              aria-label="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Delete this tool?"))
+                                  deleteMutation.mutate(t.name);
+                              }}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
