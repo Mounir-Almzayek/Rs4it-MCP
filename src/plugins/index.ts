@@ -4,6 +4,7 @@
 
 export {
   loadAllPlugins,
+  refreshAllPlugins,
   getLoadedPlugins,
   getAllPluginTools,
   callPluginTool,

@@ -294,7 +294,9 @@ function PluginsContent() {
                           {p.origin ?? "—"}
                         </td>
                         <td className="p-3">
-                          {conn === undefined ? (
+                          {!p.enabled ? (
+                            <Badge variant="secondary">Disabled</Badge>
+                          ) : conn === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : isConnected ? (
                             <Badge variant="success" className="gap-1">
@@ -337,7 +339,9 @@ function PluginsContent() {
             </div>
           )}
 
-          {(pluginStatus?.plugins ?? []).some((p) => p.status === "failed" && p.error) && (
+          {(pluginStatus?.plugins ?? []).some(
+            (p) => p.status === "failed" && p.error && plugins?.some((r) => r.id === p.id)
+          ) && (
             <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5">
               <h4 className="flex items-center gap-2 p-3 text-sm font-medium text-destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -345,7 +349,10 @@ function PluginsContent() {
               </h4>
               <ul className="list-none space-y-4 p-3 pt-0">
                 {(pluginStatus?.plugins ?? [])
-                  .filter((p) => p.status === "failed" && p.error)
+                  .filter(
+                    (p) =>
+                      p.status === "failed" && p.error && plugins?.some((r) => r.id === p.id)
+                  )
                   .map((p) => (
                     <li key={p.id} className="rounded border border-destructive/20 bg-background p-3">
                       <p className="mb-1 font-medium font-mono text-sm">{p.id}</p>
