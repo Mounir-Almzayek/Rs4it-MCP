@@ -24,11 +24,18 @@ async function fetchTools() {
   return res.json() as Promise<DynamicToolEntry[]>;
 }
 
-async function fetchPluginStatus() {
+type PluginStatusEntry = {
+  id: string;
+  name: string;
+  status: string;
+  tools?: Array<{ name: string; description?: string }>;
+};
+
+async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
   const res = await fetch("/api/plugin-status", { cache: "no-store" });
-  if (!res.ok) return { plugins: [] as Array<{ id: string; name: string; status: string; tools?: Array<{ name: string; description?: string }> }> };
+  if (!res.ok) return { plugins: [] };
   const data = await res.json();
-  return { plugins: Array.isArray(data?.plugins) ? data.plugins : [] };
+  return { plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginStatusEntry[]) : [] };
 }
 
 async function fetchRoles() {
@@ -85,9 +92,9 @@ function ToolsContent() {
   const toolRows: ToolRow[] = [
     ...(tools ?? []).map((t) => ({ ...t, isPluginTool: false as const })),
     ...(pluginStatus?.plugins ?? [])
-      .filter((p) => p.status === "connected" && Array.isArray(p.tools))
-      .flatMap((p) =>
-        (p.tools ?? []).map((t) => ({
+      .filter((p: PluginStatusEntry) => p.status === "connected" && Array.isArray(p.tools))
+      .flatMap((p: PluginStatusEntry) =>
+        (p.tools ?? []).map((t: { name: string; description?: string }) => ({
           name: t.name,
           description: t.description ?? "",
           handlerRef: "—",
