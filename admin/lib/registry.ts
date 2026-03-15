@@ -5,6 +5,19 @@
 
 import path from "path";
 import fs from "fs/promises";
+import { existsSync } from "fs";
+
+/** Resolve default registry path: try relative to cwd (admin or project root) so dashboard stats find the file. */
+function getDefaultRegistryPath(): string {
+  const env = process.env.MCP_DYNAMIC_CONFIG ?? process.env.ADMIN_REGISTRY_PATH;
+  if (env) return path.resolve(env);
+  const cwd = process.cwd();
+  const fromRoot = path.resolve(cwd, "config", "dynamic-registry.json");
+  const fromAdmin = path.resolve(cwd, "..", "config", "dynamic-registry.json");
+  if (existsSync(fromRoot)) return fromRoot;
+  if (existsSync(fromAdmin)) return fromAdmin;
+  return fromAdmin;
+}
 
 export interface DynamicSkillStep {
   type: "tool" | "plugin";
@@ -54,12 +67,8 @@ export interface DynamicRegistry {
   plugins: DynamicPluginEntry[];
 }
 
-const DEFAULT_PATH = path.join(process.cwd(), "..", "config", "dynamic-registry.json");
-
 function getRegistryPath(): string {
-  const env = process.env.MCP_DYNAMIC_CONFIG ?? process.env.ADMIN_REGISTRY_PATH;
-  if (env) return path.resolve(env);
-  return path.resolve(DEFAULT_PATH);
+  return getDefaultRegistryPath();
 }
 
 export async function readRegistry(): Promise<DynamicRegistry> {
