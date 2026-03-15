@@ -35,6 +35,26 @@ export interface CreateServerOptions {
 const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
   r as Awaited<ReturnType<Parameters<McpServer["registerTool"]>[2]>>;
 
+/**
+ * Normalize inputSchema to MCP JSON Schema so clients (e.g. Cursor) show parameters.
+ * Dashboard stores a flat { paramName: { type, description? } }; MCP expects { type: "object", properties, required }.
+ */
+function normalizeInputSchemaToMcp(schema: Record<string, unknown>): Record<string, unknown> {
+  if (!schema || typeof schema !== "object") return { type: "object", properties: {} };
+  const hasObjectType = schema["type"] === "object";
+  const hasProperties = "properties" in schema && schema["properties"] != null;
+  if (hasObjectType && hasProperties) return schema;
+  const properties = hasProperties ? (schema["properties"] as Record<string, unknown>) : schema;
+  const required = Object.keys(properties).filter(
+    (k) => (properties[k] as Record<string, unknown>)?.type != null
+  );
+  return {
+    type: "object",
+    properties,
+    ...(required.length > 0 && { required }),
+  };
+}
+
 async function runDynamicSkillSteps(
   steps: DynamicSkillStep[],
   args: Record<string, unknown>
@@ -128,7 +148,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       entry.name,
       {
         description: entry.description,
-        inputSchema: (entry.inputSchema ?? {}) as Record<string, unknown>,
+        inputSchema: normalizeInputSchemaToMcp((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) =>
         toolResultCast(await executeTool(handlerRef, args))
@@ -143,7 +163,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       toolName,
       {
         description: `[Skill] ${entry.description}`,
-        inputSchema: (entry.inputSchema ?? {}) as Record<string, unknown>,
+        inputSchema: normalizeInputSchemaToMcp((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
         const result = await runDynamicSkillSteps(
@@ -174,7 +194,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         pt.name,
         {
           description: pt.description ?? `[Plugin ${plugin.name}] ${pt.originalName}`,
-          inputSchema: (pt.inputSchema ?? {}) as Record<string, unknown>,
+          inputSchema: normalizeInputSchemaToMcp((pt.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
