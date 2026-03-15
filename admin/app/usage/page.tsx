@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TableCellText } from "@/components/table-cell-text";
 import { BarChart3, RefreshCw, Wrench, Sparkles, Puzzle } from "lucide-react";
 import { entityType, type UsageStats } from "@/lib/usage-types";
 
@@ -85,7 +86,7 @@ export default function UsagePage() {
                 <tbody>
                   {entities.map(([name, ent]) => (
                     <tr key={name} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{name}</td>
+                      <TableCellText text={name} label="Name" maxWidthClass="max-w-[220px]" innerClassName="font-mono" />
                       <td className="p-3">
                         <TypeBadge name={name} />
                       </td>
@@ -131,8 +132,8 @@ export default function UsagePage() {
                 <tbody>
                   {stats.recent.map((e, i) => (
                     <tr key={i} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{e.toolName}</td>
-                      <td className="p-3 text-muted-foreground">{e.userName ?? "anonymous"}</td>
+                      <TableCellText text={e.toolName} label="Tool" maxWidthClass="max-w-[220px]" innerClassName="font-mono" />
+                      <TableCellText text={e.userName ?? "anonymous"} label="User" maxWidthClass="max-w-[140px]" innerClassName="text-muted-foreground" />
                       <td className="p-3 text-muted-foreground">
                         {new Date(e.timestamp).toLocaleString()}
                       </td>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/toast";
+import { TableCellText } from "@/components/table-cell-text";
 import { Check, X, Search, Filter } from "lucide-react";
 import type { RoleConfig } from "@/lib/roles";
 import type { DynamicRegistry } from "@/lib/registry";
@@ -328,10 +329,14 @@ export default function PermissionsMatrixPage() {
                 </thead>
                 <tbody>
                   {filteredRows.map((row) => (
-                    <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-2 font-mono text-xs sticky left-0 bg-background z-10">
-                        {row.name}
-                      </td>
+                    <tr key={row.id} className="group border-b last:border-0 hover:bg-muted/30">
+                      <TableCellText
+                        text={row.name}
+                        label="Capability"
+                        maxWidthClass="max-w-[200px]"
+                        className="p-2 font-mono text-xs sticky left-0 bg-background group-hover:bg-muted/30 z-10"
+                        innerClassName="font-mono text-xs"
+                      />
                       <td className="p-2">
                         <Badge
                           variant={

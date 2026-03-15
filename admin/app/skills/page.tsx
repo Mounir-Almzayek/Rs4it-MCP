@@ -255,7 +255,7 @@ function SkillsContent() {
                 <tbody>
                   {skills.map((s) => (
                     <tr key={s.name} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{s.name}</td>
+                      <TableCellText text={s.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={s.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <td className="p-3">{(s.steps ?? []).length} steps</td>
                       <td className="p-3">

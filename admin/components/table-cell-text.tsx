@@ -5,13 +5,17 @@ import { cn } from "@/lib/utils";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const TRUNCATE_LEN = 60;
+/** Show "Show more" when text exceeds this length (or when empty we show — only) */
+const TRUNCATE_LEN = 48;
 
 interface TableCellTextProps {
   text: string | undefined | null;
   /** Optional label for the dialog title (e.g. "Description") */
   label?: string;
+  /** Class for the td */
   className?: string;
+  /** Class for the inner span (e.g. font-mono text-muted-foreground) */
+  innerClassName?: string;
   /** Max width class for the cell, e.g. max-w-[200px] */
   maxWidthClass?: string;
 }
@@ -20,16 +24,21 @@ export function TableCellText({
   text,
   label,
   className,
+  innerClassName,
   maxWidthClass = "max-w-[200px]",
 }: TableCellTextProps) {
   const [open, setOpen] = useState(false);
   const value = text ?? "";
-  const isLong = value.length > TRUNCATE_LEN;
+  const isEmpty = !value.trim();
+  const isLong = !isEmpty && value.length > TRUNCATE_LEN;
 
   return (
     <td className={cn("p-3", className)}>
-      <span className={cn("block truncate", maxWidthClass)} title={value || undefined}>
-        {value || "—"}
+      <span
+        className={cn("block truncate", maxWidthClass, innerClassName)}
+        title={value || undefined}
+      >
+        {isEmpty ? "—" : value}
       </span>
       {isLong && (
         <>

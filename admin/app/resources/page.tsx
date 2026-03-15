@@ -210,10 +210,8 @@ function ResourcesContent() {
                 <tbody>
                   {resources.map((r) => (
                     <tr key={r.name} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{r.name}</td>
-                      <td className="p-3 font-mono text-muted-foreground max-w-[180px] truncate" title={r.uri}>
-                        {r.uri}
-                      </td>
+                      <TableCellText text={r.name} label="Name" maxWidthClass="max-w-[120px]" innerClassName="font-mono" />
+                      <TableCellText text={r.uri} label="URI" maxWidthClass="max-w-[200px]" innerClassName="font-mono text-muted-foreground" />
                       <TableCellText text={r.description ?? ""} label="Description" maxWidthClass="max-w-[160px]" />
                       <td className="p-3 text-muted-foreground">{r.mimeType}</td>
                       <td className="p-3">

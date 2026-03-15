@@ -224,8 +224,8 @@ function PromptsContent() {
                 <tbody>
                   {prompts.map((p) => (
                     <tr key={p.name} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{p.name}</td>
-                      <td className="p-3 text-muted-foreground">{p.title ?? "—"}</td>
+                      <TableCellText text={p.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
+                      <TableCellText text={p.title ?? ""} label="Title" maxWidthClass="max-w-[180px]" innerClassName="text-muted-foreground" />
                       <TableCellText text={p.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <td className="p-3">
                         {(p.allowedRoles?.length ?? 0) > 0

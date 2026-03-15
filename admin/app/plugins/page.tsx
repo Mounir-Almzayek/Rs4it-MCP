@@ -223,8 +223,8 @@ function PluginsContent() {
                 <tbody>
                   {plugins.map((p) => (
                     <tr key={p.id} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{p.id}</td>
-                      <td className="p-3">{p.name}</td>
+                      <TableCellText text={p.id} label="ID" maxWidthClass="max-w-[120px]" innerClassName="font-mono" />
+                      <TableCellText text={p.name} label="Name" maxWidthClass="max-w-[180px]" />
                       <TableCellText
                         text={resolvedCommand(p)}
                         label="Resolved command"

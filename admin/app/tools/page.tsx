@@ -217,9 +217,9 @@ function ToolsContent() {
                 <tbody>
                   {tools.map((t) => (
                     <tr key={t.name} className="border-b last:border-0">
-                      <td className="p-3 font-mono">{t.name}</td>
+                      <TableCellText text={t.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={t.description} label="Description" maxWidthClass="max-w-[200px]" />
-                      <td className="p-3 font-mono text-muted-foreground">{t.handlerRef}</td>
+                      <TableCellText text={t.handlerRef} label="Handler" maxWidthClass="max-w-[140px]" innerClassName="font-mono text-muted-foreground" />
                       <td className="p-3">
                         {(t.allowedRoles?.length ?? 0) > 0
                           ? (t.allowedRoles ?? []).map((r) => (

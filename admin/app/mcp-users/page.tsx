@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableCellText } from "@/components/table-cell-text";
 import { Button } from "@/components/ui/button";
 import { Users, RefreshCw } from "lucide-react";
 import type { McpUserRecord } from "@/lib/mcp-users";
@@ -79,7 +80,7 @@ export default function McpUsersPage() {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.name} className="border-b last:border-0">
-                      <td className="p-3 font-medium">{u.name}</td>
+                      <TableCellText text={u.name} label="User name" maxWidthClass="max-w-[200px]" innerClassName="font-medium" />
                       <td className="p-3 text-muted-foreground">
                         {formatLastUsed(u.last_used_at)}
                       </td>
