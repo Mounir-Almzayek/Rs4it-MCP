@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,6 +13,13 @@ async function fetchRegistry() {
   return res.json();
 }
 
+async function fetchPluginStatus(): Promise<{ plugins: Array<{ status: string; tools?: unknown[] }> }> {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { plugins: [] };
+  const data = await res.json();
+  return { plugins: Array.isArray(data?.plugins) ? data.plugins : [] };
+}
+
 async function fetchRolesCount() {
   const res = await fetch("/api/roles");
   if (!res.ok) return { roles: [] };
@@ -21,6 +28,7 @@ async function fetchRolesCount() {
 }
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
@@ -32,9 +40,20 @@ export default function DashboardPage() {
     queryKey: ["roles"],
     queryFn: fetchRolesCount,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
   const rolesCount = rolesData?.roles?.length ?? 0;
 
-  const toolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
+  const registryToolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
+  const pluginToolsCount = (pluginStatus?.plugins ?? [])
+    .filter((p) => p.status === "connected" && Array.isArray(p.tools))
+    .reduce((sum, p) => sum + (p.tools?.length ?? 0), 0);
+  const toolsCount = registryToolsCount + pluginToolsCount;
+
   const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
   const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
   const promptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
@@ -51,7 +70,10 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => {
+              refetch();
+              queryClient.invalidateQueries({ queryKey: ["plugin-status"] });
+            }}
             disabled={isLoading}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -77,7 +99,7 @@ export default function DashboardPage() {
               {isLoading ? "—" : toolsCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              Dynamic tools in registry
+              Registry + MCP plugin tools
             </p>
             <Link href="/tools" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
               Manage tools →
