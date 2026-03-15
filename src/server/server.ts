@@ -24,8 +24,6 @@ import {
 } from "../skills/index.js";
 import { getLoadedPlugins, callPluginTool } from "../plugins/index.js";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
-import { registerBuiltInPrompts } from "../prompts/index.js";
-import { registerBuiltInResources } from "../resources/index.js";
 import { isAllowedForRole } from "../config/roles.js";
 import { PLUGIN_TOOL_PREFIX } from "../plugins/constants.js";
 import type {
@@ -271,9 +269,6 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       );
     }
   }
-
-  registerBuiltInPrompts(server);
-  registerBuiltInResources(server);
 
   for (const entry of dynamic.prompts) {
     if (!entry.enabled) continue;
