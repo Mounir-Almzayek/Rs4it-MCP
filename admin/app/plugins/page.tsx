@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
+import { TableCellText } from "@/components/table-cell-text";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { DynamicPluginEntry } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
@@ -74,6 +75,7 @@ function PluginsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Plugin added");
       setDialogOpen(false);
       resetForm();
@@ -99,6 +101,7 @@ function PluginsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Plugin updated");
       setDialogOpen(false);
       setEditing(null);
@@ -116,6 +119,7 @@ function PluginsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Plugin deleted");
     },
     onError: (e: Error) => toast.add("error", e.message),
@@ -221,9 +225,12 @@ function PluginsContent() {
                     <tr key={p.id} className="border-b last:border-0">
                       <td className="p-3 font-mono">{p.id}</td>
                       <td className="p-3">{p.name}</td>
-                      <td className="max-w-[300px] truncate p-3 font-mono text-muted-foreground" title={resolvedCommand(p)}>
-                        {resolvedCommand(p)}
-                      </td>
+                      <TableCellText
+                        text={resolvedCommand(p)}
+                        label="Resolved command"
+                        maxWidthClass="max-w-[300px]"
+                        className="font-mono text-muted-foreground"
+                      />
                       <td className="p-3">
                         {(p.allowedRoles?.length ?? 0) > 0
                           ? (p.allowedRoles ?? []).map((r) => (

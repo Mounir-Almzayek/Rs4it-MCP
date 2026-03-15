@@ -22,6 +22,8 @@ export default function StatusPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const reloadMutation = useMutation({
     mutationFn: triggerReload,
@@ -30,9 +32,9 @@ export default function StatusPage() {
     },
   });
 
-  const toolsCount = data?.tools?.length ?? 0;
-  const skillsCount = data?.skills?.length ?? 0;
-  const pluginsCount = data?.plugins?.length ?? 0;
+  const toolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
+  const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
+  const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
 
   return (
     <div className="space-y-8">

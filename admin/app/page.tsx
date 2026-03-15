@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const { data: rolesData } = useQuery({
     queryKey: ["roles"],
@@ -31,9 +33,9 @@ export default function DashboardPage() {
   });
   const rolesCount = rolesData?.roles?.length ?? 0;
 
-  const toolsCount = data?.tools?.length ?? 0;
-  const skillsCount = data?.skills?.length ?? 0;
-  const pluginsCount = data?.plugins?.length ?? 0;
+  const toolsCount = Array.isArray(data?.tools) ? data.tools.length : 0;
+  const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
+  const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
 
   return (
     <div className="space-y-8">

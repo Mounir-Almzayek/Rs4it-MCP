@@ -13,6 +13,8 @@ export default function RegistryPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["registry"],
     queryFn: fetchRegistry,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   if (error) {
@@ -23,9 +25,9 @@ export default function RegistryPage() {
     );
   }
 
-  const tools = data?.tools ?? [];
-  const skills = data?.skills ?? [];
-  const plugins = data?.plugins ?? [];
+  const tools = Array.isArray(data?.tools) ? data.tools : [];
+  const skills = Array.isArray(data?.skills) ? data.skills : [];
+  const plugins = Array.isArray(data?.plugins) ? data.plugins : [];
 
   return (
     <div className="space-y-8">

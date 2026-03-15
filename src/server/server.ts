@@ -4,6 +4,7 @@
  * Optional role filters tools/list by allowedRoles (with role inheritance).
  */
 
+import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   SERVER_NAME,
@@ -36,8 +37,8 @@ const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
   r as Awaited<ReturnType<Parameters<McpServer["registerTool"]>[2]>>;
 
 /**
- * Normalize inputSchema to MCP JSON Schema so clients (e.g. Cursor) show parameters.
- * Dashboard stores a flat { paramName: { type, description? } }; MCP expects { type: "object", properties, required }.
+ * Normalize inputSchema: dashboard stores flat { paramName: { type, description? } };
+ * we need full JSON Schema { type: "object", properties, required }.
  */
 function normalizeInputSchemaToMcp(schema: Record<string, unknown>): Record<string, unknown> {
   if (!schema || typeof schema !== "object") return { type: "object", properties: {} };
@@ -53,6 +54,38 @@ function normalizeInputSchemaToMcp(schema: Record<string, unknown>): Record<stri
     properties,
     ...(required.length > 0 && { required }),
   };
+}
+
+/**
+ * Build a Zod schema from normalized JSON Schema so the MCP SDK can serialize it correctly.
+ * The SDK expects Zod and converts it to JSON Schema for tools/list; plain objects may be dropped.
+ */
+function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodObject<Record<string, z.ZodTypeAny>> {
+  const normalized = normalizeInputSchemaToMcp(schema);
+  const props = (normalized["properties"] as Record<string, unknown>) ?? {};
+  const required = new Set((normalized["required"] as string[]) ?? []);
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const [key, def] of Object.entries(props)) {
+    const d = (def ?? {}) as Record<string, unknown>;
+    const type = String(d["type"] ?? "string");
+    const desc = typeof d["description"] === "string" ? d["description"] : undefined;
+    const hasDefault = "default" in d && d["default"] !== undefined;
+    const isRequired = required.has(key) && !hasDefault;
+    let field: z.ZodTypeAny;
+    if (type === "string") field = z.string();
+    else if (type === "number") field = z.number();
+    else if (type === "integer") field = z.number().int();
+    else if (type === "boolean") field = z.boolean();
+    else if (type === "array") field = z.array(z.unknown());
+    else field = z.string();
+    if (desc) field = field.describe(desc);
+    if (!isRequired || hasDefault) {
+      field = field.optional();
+      if (hasDefault) field = (field as z.ZodOptional<z.ZodTypeAny>).default(d["default"]);
+    }
+    shape[key] = field;
+  }
+  return z.object(shape);
 }
 
 async function runDynamicSkillSteps(
@@ -148,7 +181,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       entry.name,
       {
         description: entry.description,
-        inputSchema: normalizeInputSchemaToMcp((entry.inputSchema ?? {}) as Record<string, unknown>),
+        inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) =>
         toolResultCast(await executeTool(handlerRef, args))
@@ -163,7 +196,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       toolName,
       {
         description: `[Skill] ${entry.description}`,
-        inputSchema: normalizeInputSchemaToMcp((entry.inputSchema ?? {}) as Record<string, unknown>),
+        inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
         const result = await runDynamicSkillSteps(
@@ -194,7 +227,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         pt.name,
         {
           description: pt.description ?? `[Plugin ${plugin.name}] ${pt.originalName}`,
-          inputSchema: normalizeInputSchemaToMcp((pt.inputSchema ?? {}) as Record<string, unknown>),
+          inputSchema: jsonSchemaToZod((pt.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);

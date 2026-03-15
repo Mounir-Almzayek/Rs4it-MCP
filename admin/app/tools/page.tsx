@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
+import { TableCellText } from "@/components/table-cell-text";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { DynamicToolEntry } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
@@ -70,6 +71,7 @@ function ToolsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tools"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Tool created");
       setDialogOpen(false);
       resetForm();
@@ -95,6 +97,7 @@ function ToolsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tools"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Tool updated");
       setDialogOpen(false);
       setEditing(null);
@@ -112,6 +115,7 @@ function ToolsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tools"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Tool deleted");
     },
     onError: (e: Error) => toast.add("error", e.message),
@@ -214,7 +218,7 @@ function ToolsContent() {
                   {tools.map((t) => (
                     <tr key={t.name} className="border-b last:border-0">
                       <td className="p-3 font-mono">{t.name}</td>
-                      <td className="max-w-[200px] truncate p-3">{t.description}</td>
+                      <TableCellText text={t.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <td className="p-3 font-mono text-muted-foreground">{t.handlerRef}</td>
                       <td className="p-3">
                         {(t.allowedRoles?.length ?? 0) > 0

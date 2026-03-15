@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
+import { TableCellText } from "@/components/table-cell-text";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import type { DynamicSkillEntry, DynamicSkillStep } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
@@ -92,6 +93,7 @@ function SkillsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Skill created");
       setDialogOpen(false);
       resetForm();
@@ -117,6 +119,7 @@ function SkillsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Skill updated");
       setDialogOpen(false);
       setEditing(null);
@@ -134,6 +137,7 @@ function SkillsContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] });
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
       toast.add("success", "Skill deleted");
     },
     onError: (e: Error) => toast.add("error", e.message),
@@ -252,7 +256,7 @@ function SkillsContent() {
                   {skills.map((s) => (
                     <tr key={s.name} className="border-b last:border-0">
                       <td className="p-3 font-mono">{s.name}</td>
-                      <td className="max-w-[200px] truncate p-3">{s.description}</td>
+                      <TableCellText text={s.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <td className="p-3">{(s.steps ?? []).length} steps</td>
                       <td className="p-3">
                         {(s.allowedRoles?.length ?? 0) > 0
