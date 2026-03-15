@@ -24,6 +24,19 @@ async function fetchResources() {
   return res.json() as Promise<DynamicResourceEntry[]>;
 }
 
+type PluginStatusEntry = {
+  id: string;
+  status: string;
+  resources?: Array<{ name: string; originalName?: string; uri: string; description?: string; mimeType?: string }>;
+};
+
+async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { plugins: [] };
+  const data = await res.json();
+  return { plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginStatusEntry[]) : [] };
+}
+
 async function fetchRoles() {
   const res = await fetch("/api/roles");
   if (!res.ok) throw new Error("Failed to fetch roles");
@@ -50,11 +63,48 @@ function ResourcesContent() {
     queryKey: ["resources"],
     queryFn: fetchResources,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+  });
   const { data: rolesConfig } = useQuery({
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
   const roles = rolesConfig?.roles ?? [];
+
+  type ResourceRow = (DynamicResourceEntry & { isPluginResource?: false }) | {
+    name: string;
+    uri: string;
+    description?: string;
+    mimeType: string;
+    content: string;
+    enabled: boolean;
+    allowedRoles?: string[];
+    updatedAt?: string;
+    source: "mcp";
+    origin: string;
+    isPluginResource: true;
+  };
+  const resourceRows: ResourceRow[] = [
+    ...(resources ?? []).map((r) => ({ ...r, isPluginResource: false as const })),
+    ...(pluginStatus?.plugins ?? [])
+      .filter((p) => p.status === "connected" && Array.isArray(p.resources))
+      .flatMap((p) =>
+        (p.resources ?? []).map((res) => ({
+          name: res.name,
+          uri: res.uri,
+          description: res.description ?? "",
+          mimeType: res.mimeType ?? "text/plain",
+          content: "",
+          enabled: true,
+          allowedRoles: [],
+          source: "mcp" as const,
+          origin: p.id,
+          isPluginResource: true as const,
+        }))
+      ),
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicResourceEntry) => {
@@ -184,14 +234,14 @@ function ResourcesContent() {
         <CardHeader>
           <CardTitle>Dynamic resources</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Static resources (e.g. rs4it://docs/…) with inline content, visible in resources/list.
+            Registry resources (editable) and resources from connected MCP plugins (read-only).
           </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
-          ) : !resources?.length ? (
-            <p className="text-muted-foreground">No resources yet. Create one to get started.</p>
+          ) : resourceRows.length === 0 ? (
+            <p className="text-muted-foreground">No resources yet. Create one or connect MCP plugins that expose resources.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
@@ -210,8 +260,8 @@ function ResourcesContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {resources.map((r) => (
-                    <tr key={r.name} className="border-b last:border-0">
+                  {resourceRows.map((r) => (
+                    <tr key={r.source === "mcp" ? `${r.origin}:${r.name}` : r.name} className="border-b last:border-0">
                       <TableCellText text={r.name} label="Name" maxWidthClass="max-w-[120px]" innerClassName="font-mono" />
                       <TableCellText text={r.uri} label="URI" maxWidthClass="max-w-[200px]" innerClassName="font-mono text-muted-foreground" />
                       <TableCellText text={r.description ?? ""} label="Description" maxWidthClass="max-w-[160px]" />
@@ -244,25 +294,31 @@ function ResourcesContent() {
                           : "—"}
                       </td>
                       <td className="p-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(r)}
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this resource?"))
-                              deleteMutation.mutate(r.name);
-                          }}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {r.isPluginResource ? (
+                          <span className="text-xs text-muted-foreground">Read-only</span>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(r)}
+                              aria-label="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Delete this resource?"))
+                                  deleteMutation.mutate(r.name);
+                              }}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

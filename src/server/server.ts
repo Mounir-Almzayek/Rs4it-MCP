@@ -22,10 +22,10 @@ import {
   executeSkill,
   skillToToolName,
 } from "../skills/index.js";
-import { getLoadedPlugins, callPluginTool } from "../plugins/index.js";
+import { getLoadedPlugins, callPluginTool, getPluginPrompt, readPluginResource } from "../plugins/index.js";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
 import { isAllowedForRole } from "../config/roles.js";
-import { PLUGIN_TOOL_PREFIX } from "../plugins/constants.js";
+import { PLUGIN_TOOL_PREFIX, PLUGIN_SKILL_PREFIX, PLUGIN_PROMPT_PREFIX, PLUGIN_RESOURCE_URI_SCHEME } from "../plugins/constants.js";
 import type {
   DynamicSkillStep,
   DynamicPromptEntry,
@@ -113,8 +113,13 @@ async function runDynamicSkillSteps(
         out.content.map((c) => ("text" in c ? c.text : "")).join("")
       );
     } else {
-      const match = step.target.startsWith(PLUGIN_TOOL_PREFIX)
-        ? step.target.slice(PLUGIN_TOOL_PREFIX.length).split(":")
+      const prefix = step.target.startsWith(PLUGIN_SKILL_PREFIX)
+        ? PLUGIN_SKILL_PREFIX
+        : step.target.startsWith(PLUGIN_TOOL_PREFIX)
+          ? PLUGIN_TOOL_PREFIX
+          : null;
+      const match = prefix
+        ? step.target.slice(prefix.length).split(":")
         : [];
       if (match.length >= 2) {
         const [pluginId, ...rest] = match;
@@ -265,6 +270,93 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
             content: result.content.map((c) => ({ type: "text" as const, text: c.text ?? "" })),
             isError: result.isError,
           });
+        }
+      );
+    }
+    for (const ps of plugin.skills) {
+      const pluginId = plugin.id;
+      const originalName = ps.originalName;
+      const toolName = ps.name;
+      server.registerTool(
+        toolName,
+        {
+          description: ps.description ?? `[Skill][Plugin ${plugin.name}] ${ps.originalName}`,
+          inputSchema: jsonSchemaToZod((ps.inputSchema ?? {}) as Record<string, unknown>),
+        } as Parameters<McpServer["registerTool"]>[1],
+        async (args: unknown) => {
+          onToolInvoked?.(toolName);
+          const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
+          return toolResultCast({
+            content: result.content.map((c) => ({ type: "text" as const, text: c.text ?? "" })),
+            isError: result.isError,
+          });
+        }
+      );
+    }
+  }
+
+  for (const plugin of getLoadedPlugins()) {
+    if (role) {
+      const allowed = pluginAllowedMap.get(plugin.id);
+      if (allowed !== undefined && !(await isAllowedForRole(allowed, role))) continue;
+    }
+    for (const pp of plugin.prompts) {
+      const pluginId = plugin.id;
+      const originalName = pp.originalName;
+      const promptName = pp.name;
+      const argsSchema =
+        pp.arguments && pp.arguments.length > 0
+          ? Object.fromEntries(
+              pp.arguments.map((a) => [
+                a.name,
+                z.string().describe(a.description ?? a.name).optional(),
+              ])
+            )
+          : undefined;
+      server.registerPrompt(
+        promptName,
+        {
+          title: pp.originalName,
+          description: pp.description ?? `[Plugin ${plugin.name}] ${pp.originalName}`,
+          argsSchema,
+        },
+        async (args: Record<string, unknown> | undefined) => {
+          const result = await getPluginPrompt(pluginId, originalName, args);
+          const messages = result.messages.map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: { type: "text" as const, text: m.content?.text ?? "" },
+          }));
+          return { messages };
+        }
+      );
+    }
+  }
+
+  for (const plugin of getLoadedPlugins()) {
+    if (role) {
+      const allowed = pluginAllowedMap.get(plugin.id);
+      if (allowed !== undefined && !(await isAllowedForRole(allowed, role))) continue;
+    }
+    for (const res of plugin.resources) {
+      const pluginId = plugin.id;
+      const originalUri = res.originalUri;
+      const uri = res.uri;
+      server.registerResource(
+        res.name,
+        uri,
+        {
+          title: res.originalName,
+          description: res.description ?? `[Plugin ${plugin.name}] ${res.originalName}`,
+        },
+        async () => {
+          const result = await readPluginResource(pluginId, originalUri);
+          return {
+            contents: result.contents.map((c) => ({
+              uri: c.uri,
+              mimeType: c.mimeType,
+              text: c.text ?? "",
+            })),
+          };
         }
       );
     }

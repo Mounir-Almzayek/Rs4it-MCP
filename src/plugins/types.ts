@@ -50,14 +50,56 @@ export interface PluginToolCallResult {
 }
 
 /**
- * Loaded plugin: connected client and its tools.
+ * Prompt from a plugin (prefixed name for merging).
+ */
+export interface PluginPromptRef {
+  name: string;
+  originalName: string;
+  description?: string;
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+}
+
+/**
+ * Skill from a plugin (prefixed name for merging; executed via callTool with original name).
+ */
+export interface PluginSkillRef {
+  name: string;
+  originalName: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+}
+
+/**
+ * Resource from a plugin (prefixed name and virtual URI for Hub; originalUri for plugin readResource).
+ */
+export interface PluginResourceRef {
+  /** Display/registered name (e.g. plugin:id:name). */
+  name: string;
+  originalName: string;
+  /** Virtual URI used by the Hub (e.g. plugin://id/encoded). */
+  uri: string;
+  /** Original URI to pass to the plugin when reading. */
+  originalUri: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/**
+ * Loaded plugin: connected client and its tools, skills, prompts, resources.
  */
 export interface LoadedPlugin {
   id: string;
   name: string;
   tools: PluginTool[];
+  skills: PluginSkillRef[];
+  prompts: PluginPromptRef[];
+  resources: PluginResourceRef[];
   /** Call a tool by its original name on the plugin server. */
   callTool: (toolName: string, args: Record<string, unknown>) => Promise<PluginToolCallResult>;
+  /** Get a prompt by original name (args optional). */
+  getPrompt?: (name: string, args?: Record<string, unknown>) => Promise<{ messages: Array<{ role: string; content: { type: string; text?: string } }> }>;
+  /** Read a resource by URI (plugin’s original URI or name). */
+  readResource?: (uri: string) => Promise<{ contents: Array<{ uri: string; mimeType?: string; text?: string }> }>;
   /** Close the plugin process. */
   close: () => Promise<void>;
 }

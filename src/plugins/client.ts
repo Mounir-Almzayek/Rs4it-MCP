@@ -1,21 +1,33 @@
 /**
  * MCP client for a single plugin process (Phase 04).
- * Connects via stdio, runs initialize, and exposes listTools / callTool.
+ * Connects via stdio, runs initialize, and exposes listTools / listPrompts / listResources and call/get/read.
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { PluginConfig, PluginTool, PluginToolCallResult } from "./types.js";
-import { PLUGIN_TOOL_PREFIX } from "./constants.js";
+import type {
+  PluginConfig,
+  PluginTool,
+  PluginToolCallResult,
+  PluginSkillRef,
+  PluginPromptRef,
+  PluginResourceRef,
+} from "./types.js";
+import { PLUGIN_TOOL_PREFIX, PLUGIN_PROMPT_PREFIX, PLUGIN_RESOURCE_URI_SCHEME, PLUGIN_SKILL_PREFIX } from "./constants.js";
 
 export interface PluginClientResult {
   tools: PluginTool[];
+  skills: PluginSkillRef[];
+  prompts: PluginPromptRef[];
+  resources: PluginResourceRef[];
   callTool: (toolName: string, args: Record<string, unknown>) => Promise<PluginToolCallResult>;
+  getPrompt: (name: string, args?: Record<string, unknown>) => Promise<{ messages: Array<{ role: string; content: { type: string; text?: string } }> }>;
+  readResource: (uri: string) => Promise<{ contents: Array<{ uri: string; mimeType?: string; text?: string }> }>;
   close: () => Promise<void>;
 }
 
 export type CreatePluginClientResult =
-  | { ok: true; tools: PluginTool[]; callTool: PluginClientResult["callTool"]; close: () => Promise<void> }
+  | { ok: true; tools: PluginTool[]; skills: PluginSkillRef[]; prompts: PluginPromptRef[]; resources: PluginResourceRef[]; callTool: PluginClientResult["callTool"]; getPrompt: PluginClientResult["getPrompt"]; readResource: PluginClientResult["readResource"]; close: () => Promise<void> }
   | { ok: false; error: string };
 
 /**
@@ -78,6 +90,62 @@ export async function createPluginClient(
     return { ok: false, error: `listTools: ${message}` };
   }
 
+  let skills: PluginSkillRef[] = [];
+  let prompts: PluginPromptRef[] = [];
+  let resources: PluginResourceRef[] = [];
+  const clientAny = client as unknown as {
+    listSkills?: () => Promise<{ skills?: Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }> }>;
+    listPrompts?: () => Promise<{ prompts?: Array<{ name: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }> }>;
+    listResources?: () => Promise<{ resources?: Array<{ uri: string; name?: string; description?: string; mimeType?: string }> }>;
+    getPrompt?: (params: { name: string; arguments?: Record<string, unknown> }) => Promise<{ messages?: Array<{ role: string; content?: { type: string; text?: string } }> }>;
+    readResource?: (params: { uri: string }) => Promise<{ contents?: Array<{ uri: string; mimeType?: string; text?: string }> }>;
+  };
+  try {
+    if (typeof clientAny.listSkills === "function") {
+      const sk = await clientAny.listSkills();
+      skills = (sk.skills ?? []).map((s) => ({
+        name: `${PLUGIN_SKILL_PREFIX}${config.id}:${s.name}`,
+        originalName: s.name,
+        description: s.description,
+        inputSchema: s.inputSchema,
+      }));
+    }
+  } catch (err) {
+    console.warn(`[rs4it-mcp] Plugin ${config.id} listSkills failed (skipping):`, err);
+  }
+  try {
+    if (typeof clientAny.listPrompts === "function") {
+      const pr = await clientAny.listPrompts();
+      prompts = (pr.prompts ?? []).map((p) => ({
+        name: `${PLUGIN_PROMPT_PREFIX}${config.id}:${p.name}`,
+        originalName: p.name,
+        description: p.description,
+        arguments: p.arguments,
+      }));
+    }
+  } catch (err) {
+    console.warn(`[rs4it-mcp] Plugin ${config.id} listPrompts failed (skipping):`, err);
+  }
+  try {
+    if (typeof clientAny.listResources === "function") {
+      const res = await clientAny.listResources();
+      resources = (res.resources ?? []).map((r) => {
+        const origUri = r.uri;
+        const slug = r.name ?? origUri;
+        return {
+          name: `${PLUGIN_PROMPT_PREFIX}${config.id}:${slug}`,
+          originalName: slug,
+          uri: `${PLUGIN_RESOURCE_URI_SCHEME}://${config.id}/${encodeURIComponent(origUri)}`,
+          originalUri: origUri,
+          description: r.description,
+          mimeType: r.mimeType,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn(`[rs4it-mcp] Plugin ${config.id} listResources failed (skipping):`, err);
+  }
+
   async function callTool(
     toolName: string,
     args: Record<string, unknown>
@@ -102,10 +170,56 @@ export async function createPluginClient(
     }
   }
 
+  async function getPrompt(
+    name: string,
+    args?: Record<string, unknown>
+  ): Promise<{ messages: Array<{ role: "user" | "assistant"; content: { type: "text"; text: string } }> }> {
+    if (typeof clientAny.getPrompt !== "function") {
+      return { messages: [{ role: "user", content: { type: "text", text: "Plugin does not support getPrompt" } }] };
+    }
+    try {
+      const out = await clientAny.getPrompt({ name, arguments: args });
+      const messages = (out.messages ?? []).map((m) => ({
+        role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+        content: typeof m.content === "object" && m.content && "type" in m.content
+          ? { type: "text" as const, text: String((m.content as { text?: string }).text ?? "") }
+          : { type: "text" as const, text: String(m.content ?? "") },
+      }));
+      return { messages };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { messages: [{ role: "user", content: { type: "text", text: `Plugin prompt error: ${message}` } }] };
+    }
+  }
+
+  async function readResource(uri: string): Promise<{ contents: Array<{ uri: string; mimeType?: string; text: string }> }> {
+    if (typeof clientAny.readResource !== "function") {
+      return { contents: [{ uri, text: "Plugin does not support readResource" }] };
+    }
+    try {
+      const out = await clientAny.readResource({ uri });
+      return {
+        contents: (out.contents ?? []).map((c) => ({
+          uri: c.uri,
+          mimeType: c.mimeType,
+          text: c.text ?? "",
+        })),
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { contents: [{ uri, text: `Plugin resource error: ${message}` }] };
+    }
+  }
+
   return {
     ok: true as const,
     tools,
+    skills,
+    prompts,
+    resources,
     callTool,
+    getPrompt,
+    readResource,
     close: () => transport.close(),
   };
 }

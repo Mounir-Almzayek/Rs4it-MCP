@@ -40,7 +40,20 @@ async function getMergedPluginConfigs(): Promise<PluginConfig[]> {
  */
 export async function loadAllPlugins(): Promise<void> {
   const configs = await getMergedPluginConfigs();
-  const statusEntries: Array<{ id: string; name: string; status: "connected" | "failed"; toolsCount?: number; tools?: Array<{ name: string; originalName?: string; description?: string }>; error?: string }> = [];
+  const statusEntries: Array<{
+    id: string;
+    name: string;
+    status: "connected" | "failed";
+    toolsCount?: number;
+    tools?: Array<{ name: string; originalName?: string; description?: string }>;
+    skillsCount?: number;
+    skills?: Array<{ name: string; originalName?: string; description?: string }>;
+    promptsCount?: number;
+    prompts?: Array<{ name: string; originalName?: string; description?: string }>;
+    resourcesCount?: number;
+    resources?: Array<{ name: string; originalName?: string; uri: string; description?: string; mimeType?: string }>;
+    error?: string;
+  }> = [];
 
   for (const config of configs) {
     if (loaded.has(config.id)) {
@@ -51,6 +64,12 @@ export async function loadAllPlugins(): Promise<void> {
         status: "connected",
         toolsCount: existing.tools.length,
         tools: existing.tools.map((t) => ({ name: t.name, originalName: t.originalName, description: t.description })),
+        skillsCount: existing.skills.length,
+        skills: existing.skills.map((s) => ({ name: s.name, originalName: s.originalName, description: s.description })),
+        promptsCount: existing.prompts.length,
+        prompts: existing.prompts.map((p) => ({ name: p.name, originalName: p.originalName, description: p.description })),
+        resourcesCount: existing.resources.length,
+        resources: existing.resources.map((r) => ({ name: r.name, originalName: r.originalName, uri: r.uri, description: r.description, mimeType: r.mimeType })),
       });
       continue;
     }
@@ -60,7 +79,12 @@ export async function loadAllPlugins(): Promise<void> {
         id: config.id,
         name: config.name,
         tools: result.tools,
+        skills: result.skills,
+        prompts: result.prompts,
+        resources: result.resources,
         callTool: result.callTool,
+        getPrompt: result.getPrompt,
+        readResource: result.readResource,
         close: result.close,
       };
       loaded.set(config.id, loadedPlugin);
@@ -70,6 +94,12 @@ export async function loadAllPlugins(): Promise<void> {
         status: "connected",
         toolsCount: result.tools.length,
         tools: result.tools.map((t) => ({ name: t.name, originalName: t.originalName, description: t.description })),
+        skillsCount: result.skills.length,
+        skills: result.skills.map((s) => ({ name: s.name, originalName: s.originalName, description: s.description })),
+        promptsCount: result.prompts.length,
+        prompts: result.prompts.map((p) => ({ name: p.name, originalName: p.originalName, description: p.description })),
+        resourcesCount: result.resources.length,
+        resources: result.resources.map((r) => ({ name: r.name, originalName: r.originalName, uri: r.uri, description: r.description, mimeType: r.mimeType })),
       });
     } else {
       statusEntries.push({
@@ -114,6 +144,35 @@ export async function callPluginTool(
     };
   }
   return plugin.callTool(toolName, args);
+}
+
+/**
+ * Get a prompt from a plugin by original name. Plugin id identifies the plugin.
+ */
+export async function getPluginPrompt(
+  pluginId: string,
+  promptName: string,
+  args?: Record<string, unknown>
+): Promise<{ messages: Array<{ role: string; content: { type: string; text?: string } }> }> {
+  const plugin = loaded.get(pluginId);
+  if (!plugin?.getPrompt) {
+    return { messages: [{ role: "user", content: { type: "text", text: `Plugin or getPrompt not available: ${pluginId}` } }] };
+  }
+  return plugin.getPrompt(promptName, args);
+}
+
+/**
+ * Read a resource from a plugin. uriOrOriginalUri: the plugin's original URI (or virtual URI resolved to original).
+ */
+export async function readPluginResource(
+  pluginId: string,
+  originalUri: string
+): Promise<{ contents: Array<{ uri: string; mimeType?: string; text?: string }> }> {
+  const plugin = loaded.get(pluginId);
+  if (!plugin?.readResource) {
+    return { contents: [{ uri: originalUri, text: `Plugin or readResource not available: ${pluginId}` }] };
+  }
+  return plugin.readResource(originalUri);
 }
 
 /**

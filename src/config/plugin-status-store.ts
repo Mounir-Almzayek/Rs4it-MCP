@@ -12,6 +12,26 @@ export interface PluginToolRef {
   description?: string;
 }
 
+export interface PluginSkillRef {
+  name: string;
+  originalName?: string;
+  description?: string;
+}
+
+export interface PluginPromptRef {
+  name: string;
+  originalName?: string;
+  description?: string;
+}
+
+export interface PluginResourceRef {
+  name: string;
+  originalName?: string;
+  uri: string;
+  description?: string;
+  mimeType?: string;
+}
+
 export interface PluginConnectionEntry {
   id: string;
   name: string;
@@ -21,6 +41,15 @@ export interface PluginConnectionEntry {
   toolsCount?: number;
   /** Tool list for Admin display (when status is connected). Read-only in Tools page. */
   tools?: PluginToolRef[];
+  /** Skills from this plugin (read-only in Skills page). */
+  skillsCount?: number;
+  skills?: PluginSkillRef[];
+  /** Prompts from this plugin (read-only in Prompts page). */
+  promptsCount?: number;
+  prompts?: PluginPromptRef[];
+  /** Resources from this plugin (read-only in Resources page). */
+  resourcesCount?: number;
+  resources?: PluginResourceRef[];
   /** Error message when status is failed. */
   error?: string;
 }

@@ -13,13 +13,20 @@ async function fetchRegistry() {
   return res.json();
 }
 
-async function fetchPluginStatus(): Promise<{
-  plugins: Array<{ id: string; status: string; tools?: unknown[] }>;
-}> {
+type PluginStatusPlugin = {
+  id: string;
+  status: string;
+  tools?: unknown[];
+  skills?: unknown[];
+  prompts?: unknown[];
+  resources?: unknown[];
+};
+
+async function fetchPluginStatus(): Promise<{ plugins: PluginStatusPlugin[] }> {
   const res = await fetch("/api/plugin-status", { cache: "no-store" });
   if (!res.ok) return { plugins: [] };
   const data = await res.json();
-  return { plugins: Array.isArray(data?.plugins) ? data.plugins : [] };
+  return { plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginStatusPlugin[]) : [] };
 }
 
 async function fetchRolesCount() {
@@ -56,10 +63,25 @@ export default function DashboardPage() {
     .reduce((sum, p) => sum + (p.tools?.length ?? 0), 0);
   const toolsCount = registryToolsCount + pluginToolsCount;
 
-  const skillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
+  const registrySkillsCount = Array.isArray(data?.skills) ? data.skills.length : 0;
+  const pluginSkillsCount = (pluginStatus?.plugins ?? [])
+    .filter((p) => p.status === "connected" && Array.isArray(p.skills))
+    .reduce((sum, p) => sum + (p.skills?.length ?? 0), 0);
+  const skillsCount = registrySkillsCount + pluginSkillsCount;
+
   const pluginsCount = Array.isArray(data?.plugins) ? data.plugins.length : 0;
-  const promptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
-  const resourcesCount = Array.isArray(data?.resources) ? data.resources.length : 0;
+
+  const registryPromptsCount = Array.isArray(data?.prompts) ? data.prompts.length : 0;
+  const pluginPromptsCount = (pluginStatus?.plugins ?? [])
+    .filter((p) => p.status === "connected" && Array.isArray(p.prompts))
+    .reduce((sum, p) => sum + (p.prompts?.length ?? 0), 0);
+  const promptsCount = registryPromptsCount + pluginPromptsCount;
+
+  const registryResourcesCount = Array.isArray(data?.resources) ? data.resources.length : 0;
+  const pluginResourcesCount = (pluginStatus?.plugins ?? [])
+    .filter((p) => p.status === "connected" && Array.isArray(p.resources))
+    .reduce((sum, p) => sum + (p.resources?.length ?? 0), 0);
+  const resourcesCount = registryResourcesCount + pluginResourcesCount;
 
   return (
     <div className="space-y-8">
@@ -118,7 +140,7 @@ export default function DashboardPage() {
               {isLoading ? "—" : skillsCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              Orchestration workflows
+              Registry + MCP plugin skills
             </p>
             <Link href="/skills" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
               Manage skills →
@@ -152,7 +174,7 @@ export default function DashboardPage() {
               {isLoading ? "—" : promptsCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              Template prompts in registry
+              Registry + MCP plugin prompts
             </p>
             <Link href="/prompts" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
               Manage prompts →
@@ -169,7 +191,7 @@ export default function DashboardPage() {
               {isLoading ? "—" : resourcesCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              Static resources (URIs)
+              Registry + MCP plugin resources
             </p>
             <Link href="/resources" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
               Manage resources →

@@ -24,6 +24,19 @@ async function fetchSkills() {
   return res.json() as Promise<DynamicSkillEntry[]>;
 }
 
+type PluginStatusEntry = {
+  id: string;
+  status: string;
+  skills?: Array<{ name: string; originalName?: string; description?: string }>;
+};
+
+async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { plugins: [] };
+  const data = await res.json();
+  return { plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginStatusEntry[]) : [] };
+}
+
 async function fetchRoles() {
   const res = await fetch("/api/roles");
   if (!res.ok) throw new Error("Failed to fetch roles");
@@ -72,11 +85,46 @@ function SkillsContent() {
     queryKey: ["skills"],
     queryFn: fetchSkills,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+  });
   const { data: rolesConfig } = useQuery({
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
   const roles = rolesConfig?.roles ?? [];
+
+  /** One row: registry (editable) or plugin (read-only). */
+  type SkillRow =
+    | (DynamicSkillEntry & { isPluginSkill?: false })
+    | {
+        name: string;
+        description: string;
+        steps: DynamicSkillStep[];
+        enabled: boolean;
+        allowedRoles?: string[];
+        source: "mcp";
+        origin: string;
+        isPluginSkill: true;
+      };
+  const skillRows: SkillRow[] = [
+    ...(skills ?? []).map((s) => ({ ...s, isPluginSkill: false as const })),
+    ...(pluginStatus?.plugins ?? [])
+      .filter((p) => p.status === "connected" && Array.isArray(p.skills))
+      .flatMap((p) =>
+        (p.skills ?? []).map((sk) => ({
+          name: sk.name,
+          description: sk.description ?? "",
+          steps: [],
+          enabled: true,
+          allowedRoles: [],
+          source: "mcp" as const,
+          origin: p.id,
+          isPluginSkill: true as const,
+        }))
+      ),
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicSkillEntry) => {
@@ -237,7 +285,7 @@ function SkillsContent() {
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
-          ) : !skills?.length ? (
+          ) : !skillRows.length ? (
             <p className="text-muted-foreground">No skills yet.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
@@ -255,7 +303,7 @@ function SkillsContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {skills.map((s) => (
+                  {skillRows.map((s) => (
                     <tr key={s.name} className="border-b last:border-0">
                       <TableCellText text={s.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={s.description} label="Description" maxWidthClass="max-w-[200px]" />
@@ -283,20 +331,26 @@ function SkillsContent() {
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label="Edit">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this skill?"))
-                              deleteMutation.mutate(s.name);
-                          }}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {"isPluginSkill" in s && s.isPluginSkill ? (
+                          <span className="text-muted-foreground text-xs">Read-only</span>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(s as DynamicSkillEntry)} aria-label="Edit">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Delete this skill?"))
+                                  deleteMutation.mutate(s.name);
+                              }}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

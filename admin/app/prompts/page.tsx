@@ -24,6 +24,19 @@ async function fetchPrompts() {
   return res.json() as Promise<DynamicPromptEntry[]>;
 }
 
+type PluginStatusEntry = {
+  id: string;
+  status: string;
+  prompts?: Array<{ name: string; originalName?: string; description?: string }>;
+};
+
+async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
+  const res = await fetch("/api/plugin-status", { cache: "no-store" });
+  if (!res.ok) return { plugins: [] };
+  const data = await res.json();
+  return { plugins: Array.isArray(data?.plugins) ? (data.plugins as PluginStatusEntry[]) : [] };
+}
+
 async function fetchRoles() {
   const res = await fetch("/api/roles");
   if (!res.ok) throw new Error("Failed to fetch roles");
@@ -51,11 +64,46 @@ function PromptsContent() {
     queryKey: ["prompts"],
     queryFn: fetchPrompts,
   });
+  const { data: pluginStatus } = useQuery({
+    queryKey: ["plugin-status"],
+    queryFn: fetchPluginStatus,
+  });
   const { data: rolesConfig } = useQuery({
     queryKey: ["roles"],
     queryFn: fetchRoles,
   });
   const roles = rolesConfig?.roles ?? [];
+
+  type PromptRow = (DynamicPromptEntry & { isPluginPrompt?: false }) | {
+    name: string;
+    title?: string;
+    description: string;
+    template: string;
+    enabled: boolean;
+    allowedRoles?: string[];
+    updatedAt?: string;
+    source: "mcp";
+    origin: string;
+    isPluginPrompt: true;
+  };
+  const promptRows: PromptRow[] = [
+    ...(prompts ?? []).map((p) => ({ ...p, isPluginPrompt: false as const })),
+    ...(pluginStatus?.plugins ?? [])
+      .filter((p) => p.status === "connected" && Array.isArray(p.prompts))
+      .flatMap((p) =>
+        (p.prompts ?? []).map((pr) => ({
+          name: pr.name,
+          title: pr.originalName ?? pr.name,
+          description: pr.description ?? "",
+          template: "",
+          enabled: true,
+          allowedRoles: [],
+          source: "mcp" as const,
+          origin: p.id,
+          isPluginPrompt: true as const,
+        }))
+      ),
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (body: DynamicPromptEntry) => {
@@ -199,14 +247,14 @@ function PromptsContent() {
         <CardHeader>
           <CardTitle>Dynamic prompts</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Prompts defined in the registry. Use {"{{argName}}"} in the template for substitution.
+            Registry prompts (editable) and prompts from connected MCP plugins (read-only).
           </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
-          ) : !prompts?.length ? (
-            <p className="text-muted-foreground">No prompts yet. Create one to get started.</p>
+          ) : promptRows.length === 0 ? (
+            <p className="text-muted-foreground">No prompts yet. Create one or connect MCP plugins that expose prompts.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
@@ -224,8 +272,8 @@ function PromptsContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {prompts.map((p) => (
-                    <tr key={p.name} className="border-b last:border-0">
+                  {promptRows.map((p) => (
+                    <tr key={p.source === "mcp" ? `${p.origin}:${p.name}` : p.name} className="border-b last:border-0">
                       <TableCellText text={p.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={p.title ?? ""} label="Title" maxWidthClass="max-w-[180px]" innerClassName="text-muted-foreground" />
                       <TableCellText text={p.description} label="Description" maxWidthClass="max-w-[200px]" />
@@ -257,25 +305,31 @@ function PromptsContent() {
                           : "—"}
                       </td>
                       <td className="p-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(p)}
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this prompt?"))
-                              deleteMutation.mutate(p.name);
-                          }}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {p.isPluginPrompt ? (
+                          <span className="text-xs text-muted-foreground">Read-only</span>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(p)}
+                              aria-label="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Delete this prompt?"))
+                                  deleteMutation.mutate(p.name);
+                              }}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
