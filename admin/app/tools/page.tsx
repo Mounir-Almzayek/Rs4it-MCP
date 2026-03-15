@@ -29,6 +29,7 @@ type PluginStatusEntry = {
   name: string;
   status: string;
   tools?: Array<{ name: string; description?: string }>;
+  allowedRoles?: string[];
 };
 
 async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
@@ -98,7 +99,7 @@ function ToolsContent() {
         name: t.name,
         description: t.description ?? "",
         handlerRef: "—",
-        allowedRoles: [] as string[],
+        allowedRoles: p.allowedRoles ?? [],
         source: "mcp" as const,
         origin: p.id,
         enabled: true,

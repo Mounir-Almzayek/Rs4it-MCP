@@ -28,6 +28,7 @@ type PluginStatusEntry = {
   id: string;
   status: string;
   resources?: Array<{ name: string; originalName?: string; uri: string; description?: string; mimeType?: string }>;
+  allowedRoles?: string[];
 };
 
 async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
@@ -98,7 +99,7 @@ function ResourcesContent() {
           mimeType: res.mimeType ?? "text/plain",
           content: "",
           enabled: true,
-          allowedRoles: [],
+          allowedRoles: p.allowedRoles ?? [],
           source: "mcp" as const,
           origin: p.id,
           isPluginResource: true as const,

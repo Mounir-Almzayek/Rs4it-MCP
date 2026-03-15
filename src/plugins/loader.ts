@@ -37,9 +37,19 @@ async function getMergedPluginConfigs(): Promise<PluginConfig[]> {
  * Load all plugins from config. Call once at startup.
  * Failed plugins are logged and skipped; Hub continues without them.
  * Writes connection status (connected/failed + error) to plugin status file for Admin.
+ * Plugin allowedRoles from dynamic registry are written so Admin can show them for tools/skills/prompts/resources.
  */
 export async function loadAllPlugins(): Promise<void> {
-  const configs = await getMergedPluginConfigs();
+  const [configs, dynamic] = await Promise.all([
+    getMergedPluginConfigs(),
+    loadDynamicRegistry(),
+  ]);
+  const pluginAllowedMap = new Map<string, string[]>();
+  for (const p of dynamic.plugins) {
+    if (Array.isArray(p.allowedRoles) && p.allowedRoles.length > 0) {
+      pluginAllowedMap.set(p.id, p.allowedRoles);
+    }
+  }
   const statusEntries: Array<{
     id: string;
     name: string;
@@ -52,10 +62,12 @@ export async function loadAllPlugins(): Promise<void> {
     prompts?: Array<{ name: string; originalName?: string; description?: string }>;
     resourcesCount?: number;
     resources?: Array<{ name: string; originalName?: string; uri: string; description?: string; mimeType?: string }>;
+    allowedRoles?: string[];
     error?: string;
   }> = [];
 
   for (const config of configs) {
+    const allowedRoles = pluginAllowedMap.get(config.id) ?? [];
     if (loaded.has(config.id)) {
       const existing = loaded.get(config.id)!;
       statusEntries.push({
@@ -70,6 +82,7 @@ export async function loadAllPlugins(): Promise<void> {
         prompts: existing.prompts.map((p) => ({ name: p.name, originalName: p.originalName, description: p.description })),
         resourcesCount: existing.resources.length,
         resources: existing.resources.map((r) => ({ name: r.name, originalName: r.originalName, uri: r.uri, description: r.description, mimeType: r.mimeType })),
+        allowedRoles: allowedRoles.length > 0 ? allowedRoles : undefined,
       });
       continue;
     }
@@ -100,12 +113,14 @@ export async function loadAllPlugins(): Promise<void> {
         prompts: result.prompts.map((p) => ({ name: p.name, originalName: p.originalName, description: p.description })),
         resourcesCount: result.resources.length,
         resources: result.resources.map((r) => ({ name: r.name, originalName: r.originalName, uri: r.uri, description: r.description, mimeType: r.mimeType })),
+        allowedRoles: allowedRoles.length > 0 ? allowedRoles : undefined,
       });
     } else {
       statusEntries.push({
         id: config.id,
         name: config.name,
         status: "failed",
+        allowedRoles: allowedRoles.length > 0 ? allowedRoles : undefined,
         error: result.error,
       });
     }

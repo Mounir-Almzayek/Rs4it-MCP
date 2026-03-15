@@ -50,6 +50,8 @@ export interface PluginConnectionEntry {
   /** Resources from this plugin (read-only in Resources page). */
   resourcesCount?: number;
   resources?: PluginResourceRef[];
+  /** Role ids that can see/use this plugin (inherited by its tools/skills/prompts/resources in Admin). */
+  allowedRoles?: string[];
   /** Error message when status is failed. */
   error?: string;
 }

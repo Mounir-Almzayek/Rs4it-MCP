@@ -28,6 +28,7 @@ type PluginStatusEntry = {
   id: string;
   status: string;
   prompts?: Array<{ name: string; originalName?: string; description?: string }>;
+  allowedRoles?: string[];
 };
 
 async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
@@ -97,7 +98,7 @@ function PromptsContent() {
           description: pr.description ?? "",
           template: "",
           enabled: true,
-          allowedRoles: [],
+          allowedRoles: p.allowedRoles ?? [],
           source: "mcp" as const,
           origin: p.id,
           isPluginPrompt: true as const,

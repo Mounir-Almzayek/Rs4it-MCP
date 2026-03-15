@@ -28,6 +28,7 @@ type PluginStatusEntry = {
   id: string;
   status: string;
   skills?: Array<{ name: string; originalName?: string; description?: string }>;
+  allowedRoles?: string[];
 };
 
 async function fetchPluginStatus(): Promise<{ plugins: PluginStatusEntry[] }> {
@@ -118,7 +119,7 @@ function SkillsContent() {
           description: sk.description ?? "",
           steps: [],
           enabled: true,
-          allowedRoles: [],
+          allowedRoles: p.allowedRoles ?? [],
           source: "mcp" as const,
           origin: p.id,
           isPluginSkill: true as const,
