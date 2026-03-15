@@ -66,3 +66,11 @@ There is no separate capability (e.g. `skills/list`); everything goes through `t
 - **When it is updated**: On every meaningful MCP request (e.g. `initialize`, POST with session, GET for SSE), if the session has a user name, the Hub updates that user’s `last_used_at` (and increments `request_count`) in a non-blocking way so that latency is not affected.
 - **Admin panel**: A dedicated “MCP Users” tab lists all recorded users with name and last used time (and optionally first seen and request count). Data is read from the same file via `GET /api/mcp-users` (authenticated).
 - **Security**: The user name is not authenticated; it is whatever the client sends. Use for visibility and usage tracking only.
+
+## Usage tracking (Phase 12)
+
+- **Purpose**: Record every tool/skill/plugin invocation: **how many times** each was called and **by whom** (same user name from `X-MCP-User-Name` or anonymous), for visibility in the admin panel.
+- **When it is recorded**: On each `tools/call`, the Hub calls an optional **onToolInvoked(toolName)** callback. The HTTP entry passes a callback that appends one event (tool name + session user name) to the usage store in a **fire-and-forget** way so request latency is not affected.
+- **Storage**: A JSON file (e.g. `config/mcp_usage.json`, or path from **`MCP_USAGE_FILE`**) with a list of events: `toolName`, `userName` (optional), `timestamp`. The Hub writes; the admin panel reads and aggregates (by entity, by user). A cap on the number of stored events (e.g. 50,000) avoids unbounded growth.
+- **stdio**: When the Hub runs over stdio, no user context is available; the callback is not passed, so usage is not recorded. Tracking is only active for HTTP transport.
+- **Admin panel**: A "Usage" tab shows per-entity stats (name, type tool/skill/plugin, total invocations, breakdown by user) and optionally the last N recent invocations. Data is read via `GET /api/usage` (authenticated).

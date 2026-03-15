@@ -31,6 +31,10 @@ import type { DynamicSkillStep } from "../types/dynamic-registry.js";
 export interface CreateServerOptions {
   /** When set, only tools/skills/plugins allowed for this role (and inherited roles) are registered. */
   role?: string;
+  /** Called after each tool/skill/plugin invocation (Phase 12). HTTP layer passes a callback that includes user. */
+  onToolInvoked?: (toolName: string) => void;
+  /** Base URL of the Hub (e.g. http://localhost:3000). When set, serverInfo includes icon URL for Cursor/IDE. */
+  baseUrl?: string;
 }
 
 const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
@@ -134,26 +138,40 @@ async function runDynamicSkillSteps(
  */
 export async function createServer(options?: CreateServerOptions): Promise<McpServer> {
   const role = options?.role;
+  const onToolInvoked = options?.onToolInvoked;
+  const baseUrl = options?.baseUrl;
   registerBuiltInTools();
   registerBuiltInSkills();
 
+  const serverInfo: { name: string; version: string; icon?: { src: string; mimeType: string; sizes?: string[] } } = {
+    name: SERVER_NAME,
+    version: SERVER_VERSION,
+  };
+  if (baseUrl) {
+    serverInfo.icon = {
+      src: `${baseUrl.replace(/\/$/, "")}/logo`,
+      mimeType: "image/webp",
+      sizes: ["48x48"],
+    };
+  }
   const server = new McpServer(
-    {
-      name: SERVER_NAME,
-      version: SERVER_VERSION,
-    },
+    serverInfo as { name: string; version: string },
     { capabilities: DEFAULT_CAPABILITIES }
   );
 
   // Built-in tools: no allowedRoles → visible to all
   for (const tool of getAllTools()) {
+    const name = tool.name;
     server.registerTool(
-      tool.name,
+      name,
       {
         description: tool.description,
         inputSchema: tool.inputSchema as Record<string, unknown>,
       } as Parameters<McpServer["registerTool"]>[1],
-      async (args: unknown) => toolResultCast(await executeTool(tool.name, args))
+      async (args: unknown) => {
+        onToolInvoked?.(name);
+        return toolResultCast(await executeTool(name, args));
+      }
     );
   }
 
@@ -166,8 +184,10 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         description: `[Skill] ${skill.description}`,
         inputSchema: skill.inputSchema as Record<string, unknown>,
       } as Parameters<McpServer["registerTool"]>[1],
-      async (args: unknown) =>
-        toolResultCast(await executeSkill(skill.name, args))
+      async (args: unknown) => {
+        onToolInvoked?.(toolName);
+        return toolResultCast(await executeSkill(skill.name, args));
+      }
     );
   }
 
@@ -177,14 +197,17 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const handlerRef = entry.handlerRef;
+    const toolName = entry.name;
     server.registerTool(
-      entry.name,
+      toolName,
       {
         description: entry.description,
         inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
-      async (args: unknown) =>
-        toolResultCast(await executeTool(handlerRef, args))
+      async (args: unknown) => {
+        onToolInvoked?.(toolName);
+        return toolResultCast(await executeTool(handlerRef, args));
+      }
     );
   }
   for (const entry of dynamic.skills) {
@@ -199,6 +222,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
+        onToolInvoked?.(toolName);
         const result = await runDynamicSkillSteps(
           steps,
           (args as Record<string, unknown>) ?? {}
@@ -223,13 +247,15 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     for (const pt of plugin.tools) {
       const pluginId = plugin.id;
       const originalName = pt.originalName;
+      const toolName = pt.name;
       server.registerTool(
-        pt.name,
+        toolName,
         {
           description: pt.description ?? `[Plugin ${plugin.name}] ${pt.originalName}`,
           inputSchema: jsonSchemaToZod((pt.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
+          onToolInvoked?.(toolName);
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
           return toolResultCast({
             content: result.content.map((c) => ({ type: "text" as const, text: c.text ?? "" })),

@@ -29,6 +29,8 @@ The server will listen on the port defined by `PORT` or `MCP_PORT` (default: `30
 | `MCP_ROLE` | Connection role (Phase 09, optional) | — |
 | `MCP_ROLES_CONFIG` | Path to roles file (Phase 09) | `config/roles.json` |
 | `MCP_USERS_FILE` | Path to MCP users tracking file (Phase 11) | `config/mcp_users.json` |
+| `MCP_USAGE_FILE` | Path to usage log file (Phase 12: tool/skill/plugin invocations) | `config/mcp_usage.json` |
+| `MCP_LOGO_PATH` | Path to logo image (WebP) for Cursor/IDE server icon. If not set, `assets/rs4it-logo.webp` is used. | — |
 | `MCP_ALLOWED_HOSTS` | Comma-separated hostnames allowed in the `Host` header (when the Hub is behind a reverse proxy). Example: `rs4it-mcp.ai.system2030.com`. Localhost is always added. If not set, only localhost is allowed. | — |
 
 ### Endpoint
@@ -93,7 +95,7 @@ docker compose down -v        # Stop and remove containers and config volume
 | **Hub** | Image from root `Dockerfile`: build TypeScript then run `node dist/server/http-entry.js`. Runs as **non-root user** `mcp` (entrypoint seeds config as root, then drops to `mcp` via gosu). |
 | **Admin** | Image from `admin/Dockerfile`: Next.js standalone on port 3001. Runs as **non-root user** `nextjs`. |
 | **Container names** | Auto-generated from project directory name (e.g. `rs4it-mcp-hub-1`, `rs4it-mcp-admin-1`), so they stay unique per project folder. |
-| **Volume** | `config_data` is scoped by project name (directory name), e.g. `rs4it-mcp_config_data`; stores `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json`, `mcp_users.json`. |
+| **Volume** | `config_data` is scoped by project name (directory name), e.g. `rs4it-mcp_config_data`; stores `roles.json`, `dynamic-registry.json`, `mcp_plugins.json`, `admin-credentials.json`, `mcp_users.json`, `mcp_usage.json`. |
 | **Workspace** | Optional: mount host directory at `/workspace` for the Hub (file tools). Default in `.env`: `WORKSPACE_PATH=./workspace`. |
 
 ### Environment variables (Compose)
@@ -186,6 +188,7 @@ You can put MCP config in `.cursor/mcp.json` at the project root:
 
 - **Cursor** also supports **stdio** (local run: `npm run start` and add the server in MCP as a `node`/`npx` command).
 - Any MCP client that supports **Streamable HTTP** can connect to `BASE_URL/mcp` and follow the initialize-then-requests flow with `mcp-session-id`.
+- **Server logo in Cursor**: To show a custom icon (e.g. RS4IT logo) next to the server name in Tools & MCP, place your logo at `assets/rs4it-logo.webp` (or set `MCP_LOGO_PATH`). The Hub serves it at `GET /logo` and includes it in the MCP `initialize` response; Cursor may display it like the Figma plugin icon.
 
 ## Verifying It Works
 

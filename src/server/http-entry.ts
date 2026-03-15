@@ -4,7 +4,9 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
@@ -13,6 +15,7 @@ import { createServer } from "./server.js";
 import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 import { getPort, getBaseUrl } from "../config/transport.js";
 import { upsertMcpUser } from "../config/mcp-users-store.js";
+import { recordInvocation } from "../config/usage-store.js";
 
 type SessionId = string;
 interface SessionState {
@@ -58,12 +61,17 @@ function trackMcpUserUsage(userName: string | undefined): void {
 }
 
 async function createSession(role?: string, userName?: string): Promise<SessionState> {
-  const server = await createServer(role ? { role } : undefined);
   const state: SessionState = {
     transport: undefined!,
-    server,
+    server: undefined!,
     userName,
   };
+  const baseUrl = getBaseUrl();
+  state.server = await createServer({
+    role: role ? role : undefined,
+    onToolInvoked: (toolName) => recordInvocation(toolName, state.userName),
+    baseUrl,
+  });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (sessionId) => {
@@ -183,6 +191,22 @@ async function main(): Promise<void> {
       ? { host: "0.0.0.0", allowedHosts }
       : undefined
   );
+
+  const logoPath = process.env.MCP_LOGO_PATH
+    ? path.resolve(process.env.MCP_LOGO_PATH)
+    : path.join(process.cwd(), "assets", "rs4it-logo.webp");
+  app.get("/logo", async (_req: IncomingMessage, res: ServerResponse) => {
+    try {
+      const data = await readFile(logoPath);
+      res.setHeader("Content-Type", "image/webp");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.end(data);
+    } catch {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "text/plain");
+      res.end("Not found");
+    }
+  });
 
   app.post("/mcp", (req: IncomingMessage & { body?: unknown }, res: ServerResponse) => {
     void handlePost(req, res);
