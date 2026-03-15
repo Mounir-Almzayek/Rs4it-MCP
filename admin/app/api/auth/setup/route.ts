@@ -34,10 +34,17 @@ export async function POST(request: NextRequest) {
     res.cookies.set(cookie.name, cookie.value, cookie.options as Record<string, string | number | boolean>);
     return res;
   } catch (e) {
-    if ((e as Error).message?.includes("SESSION_SECRET")) {
+    const err = e as NodeJS.ErrnoException;
+    if (err.message?.includes("SESSION_SECRET")) {
       return NextResponse.json(
         { error: "Server misconfigured: set SESSION_SECRET" },
         { status: 503 }
+      );
+    }
+    if (err.code === "EACCES" || err.code === "EPERM") {
+      return NextResponse.json(
+        { error: "Cannot write credentials file. Check that the config directory (e.g. /config in Docker) is writable by the app." },
+        { status: 500 }
       );
     }
     console.error(e);

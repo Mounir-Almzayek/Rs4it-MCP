@@ -7,7 +7,7 @@ import path from "path";
 import fs from "fs/promises";
 import { hash, compare } from "bcryptjs";
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 8;
 const DEFAULT_PATH = path.join(process.cwd(), "..", "config", "admin-credentials.json");
 
 export interface StoredCredentials {

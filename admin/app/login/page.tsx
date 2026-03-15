@@ -59,19 +59,35 @@ function LoginContent() {
       return;
     }
     setLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
       const res = await fetch("/api/auth/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError((data as { error?: string }).error ?? "Setup failed");
+        const msg = (data as { error?: string }).error ?? "Setup failed";
+        if (res.status === 400 && msg === "Admin already configured") {
+          window.location.href = "/login";
+          return;
+        }
+        setError(msg);
         return;
       }
       window.location.href = "/";
       return;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if ((err as Error).name === "AbortError") {
+        setError("Request timed out. Setup can take a few seconds; try again. If using Docker, check that the admin container can write to the config volume.");
+      } else {
+        setError("Network error. Check the server and try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -159,6 +175,11 @@ function LoginContent() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Please wait…" : isSetup ? "Create account" : "Sign in"}
             </Button>
+            {isSetup && (
+              <p className="text-center text-xs text-muted-foreground">
+                First-time setup may take a few seconds.
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>
