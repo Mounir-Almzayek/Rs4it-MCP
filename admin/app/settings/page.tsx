@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/toast";
 import { Settings } from "lucide-react";
-import { Checkbox } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/switch";
 
 async function fetchUsername() {
   const res = await fetch("/api/auth/credentials");
@@ -347,21 +347,21 @@ export default function SettingsPage() {
             <p className="text-sm font-medium">Include in export</p>
             <div className="space-y-1">
               <label className="flex items-center gap-2 text-sm">
-                <Checkbox
+                <Switch
                   checked={exportRoles}
                   onCheckedChange={(v) => setExportRoles(Boolean(v))}
                 />
                 <span>Roles configuration (roles.json)</span>
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <Checkbox
+                <Switch
                   checked={exportDynamicRegistry}
                   onCheckedChange={(v) => setExportDynamicRegistry(Boolean(v))}
                 />
                 <span>Dynamic registry (tools, skills, plugins, prompts, resources)</span>
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <Checkbox
+                <Switch
                   checked={exportMcpPlugins}
                   onCheckedChange={(v) => setExportMcpPlugins(Boolean(v))}
                 />
@@ -406,21 +406,21 @@ export default function SettingsPage() {
               <p className="text-sm font-medium">Apply from file</p>
               <div className="space-y-1">
                 <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
+                  <Switch
                     checked={importIncludeRoles}
                     onCheckedChange={(v) => setImportIncludeRoles(Boolean(v))}
                   />
                   <span>Roles configuration</span>
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
+                  <Switch
                     checked={importIncludeDynamicRegistry}
                     onCheckedChange={(v) => setImportIncludeDynamicRegistry(Boolean(v))}
                   />
                   <span>Dynamic registry</span>
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
+                  <Switch
                     checked={importIncludeMcpPlugins}
                     onCheckedChange={(v) => setImportIncludeMcpPlugins(Boolean(v))}
                   />
