@@ -74,7 +74,8 @@ export async function createPluginClient(
   try {
     const result = await client.listTools();
     tools = (result.tools ?? []).map((t) => ({
-      name: `${PLUGIN_TOOL_PREFIX}${config.id}:${t.name}`,
+      // plugin_<pluginId>_<toolName>
+      name: `${PLUGIN_TOOL_PREFIX}${config.id}_${t.name}`,
       originalName: t.name,
       description: t.description,
       inputSchema: t.inputSchema as Record<string, unknown>,
@@ -104,7 +105,8 @@ export async function createPluginClient(
     if (typeof clientAny.listSkills === "function") {
       const sk = await clientAny.listSkills();
       skills = (sk.skills ?? []).map((s) => ({
-        name: `${PLUGIN_SKILL_PREFIX}${config.id}:${s.name}`,
+        // skill_plugin_<pluginId>_<skillName>
+        name: `${PLUGIN_SKILL_PREFIX}${config.id}_${s.name}`,
         originalName: s.name,
         description: s.description,
         inputSchema: s.inputSchema,
@@ -117,7 +119,8 @@ export async function createPluginClient(
     if (typeof clientAny.listPrompts === "function") {
       const pr = await clientAny.listPrompts();
       prompts = (pr.prompts ?? []).map((p) => ({
-        name: `${PLUGIN_PROMPT_PREFIX}${config.id}:${p.name}`,
+        // plugin_<pluginId>_<promptName>
+        name: `${PLUGIN_PROMPT_PREFIX}${config.id}_${p.name}`,
         originalName: p.name,
         description: p.description,
         arguments: p.arguments,
@@ -133,7 +136,8 @@ export async function createPluginClient(
         const origUri = r.uri;
         const slug = r.name ?? origUri;
         return {
-          name: `${PLUGIN_PROMPT_PREFIX}${config.id}:${slug}`,
+          // plugin_<pluginId>_<resourceSlug>
+          name: `${PLUGIN_PROMPT_PREFIX}${config.id}_${slug}`,
           originalName: slug,
           uri: `${PLUGIN_RESOURCE_URI_SCHEME}://${config.id}/${encodeURIComponent(origUri)}`,
           originalUri: origUri,

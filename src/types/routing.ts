@@ -34,14 +34,14 @@ export function getToolSource(toolName: string): ToolSource {
 }
 
 /**
- * Parse plugin tool name (plugin:<id>:<originalName>) into plugin id and original tool name.
+ * Parse plugin tool name (plugin_<id>_<originalName>) into plugin id and original tool name.
  */
 export function parsePluginToolName(
   prefixedName: string
 ): { pluginId: string; originalName: string } | null {
   if (!prefixedName.startsWith(PLUGIN_TOOL_PREFIX)) return null;
   const rest = prefixedName.slice(PLUGIN_TOOL_PREFIX.length);
-  const idx = rest.indexOf(":");
+  const idx = rest.indexOf("_");
   if (idx <= 0) return null;
   return {
     pluginId: rest.slice(0, idx),

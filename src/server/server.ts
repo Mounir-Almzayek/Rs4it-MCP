@@ -119,11 +119,11 @@ async function runDynamicSkillSteps(
           ? PLUGIN_TOOL_PREFIX
           : null;
       const match = prefix
-        ? step.target.slice(prefix.length).split(":")
+        ? step.target.slice(prefix.length).split("_")
         : [];
       if (match.length >= 2) {
         const [pluginId, ...rest] = match;
-        const originalName = rest.join(":");
+        const originalName = rest.join("_");
         const out = await callPluginTool(
           pluginId,
           originalName,

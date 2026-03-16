@@ -22,9 +22,9 @@ export interface SkillDefinition<TArgs = unknown> {
 
 /**
  * Prefix used when exposing skills as MCP tools so the client can distinguish them.
- * Tool name format: skill:<skill_name>
+ * Tool name format: skill_<skill_name>
  */
-export const SKILL_TOOL_PREFIX = "skill:";
+export const SKILL_TOOL_PREFIX = "skill_";
 
 /**
  * Returns the MCP tool name for a skill (e.g. skill:create_api_endpoint).
