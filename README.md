@@ -135,6 +135,8 @@ All of this is managed from a web **Admin Panel** with **role‑based visibility
   - Reads/writes dynamic configuration (tools, skills, plugins, roles).
   - Triggers Hub reloads when configuration changes.
 
+For detailed architectural decisions and trade‑offs, see `docs/architecture.md`.
+
 ---
 
 ## Core Concepts: Tools, Skills, Plugins, Prompts, Resources & Roles
@@ -215,6 +217,14 @@ This section describes the core conceptual layer of the Hub. Everything else bui
   - Filters `tools/list` and other responses returned to the client.
   - Applies the same logic inside the Admin Panel when displaying and managing entities.
 
+For the step‑by‑step evolution of these concepts, see:
+
+- `docs/phases/02-phase-tool-layer.md`
+- `docs/phases/03-phase-skills-registry.md`
+- `docs/phases/04-phase-external-plugins.md`
+- `docs/phases/09-phase-roles-and-visibility.md`
+- `docs/phases/13-phase-prompts-and-resources.md`
+
 ---
 
 ## Configuration Files
@@ -261,6 +271,11 @@ The main runtime configuration lives under `config/`:
   - Additional files as documented in `docs/requirements.md` and `docs/architecture.md`.
 
 Configuration is meant to be **edited via the Admin Panel** in normal usage; direct JSON editing is for advanced/bootstrapping scenarios.
+
+For a complete list of config files and environment variables, see:
+
+- `docs/requirements.md`
+- `docs/phases/04-phase-external-plugins.md`
 
 ---
 
@@ -394,6 +409,14 @@ From the Admin Panel you can:
     - Last time they invoked a tool or skill.
     - Which role(s) they used.
   - View aggregated usage analytics (which entities are used most, by which roles/users) as described in phases 11–12 in `docs/phases/`.
+
+The Admin Panel implementation and flows are described in:
+
+- `docs/phases/08-phase-admin-panel.md`
+- `docs/phases/09-phase-roles-and-visibility.md`
+- `docs/phases/11-phase-mcp-users-tracking.md`
+- `docs/phases/12-phase-usage-tracking.md`
+- `docs/phases/13-phase-prompts-and-resources.md`
 
 ---
 
@@ -576,23 +599,21 @@ Phases are meant to be followed in order; each builds on the previous.
 
 ## Screenshots
 
-Screens from the latest Admin Panel UI are available under `docs/screen`:
+Screens from the latest Admin Panel UI (from `docs/screen`):
 
-- Dashboard and global status
-- Tools, Skills, Plugins management
-- Roles graph and permission matrix
-- Usage and MCP users analytics
-- Resources and Prompts views
+![Dashboard and status](docs/screen/Screenshot%202026-03-16%20122532.png)
 
-Example files:
+![Tools, skills, plugins management](docs/screen/Screenshot%202026-03-16%20122550.png)
 
-- `docs/screen/Screenshot 2026-03-16 122532.png`
-- `docs/screen/Screenshot 2026-03-16 122550.png`
-- `docs/screen/Screenshot 2026-03-16 122610.png`
-- `docs/screen/Screenshot 2026-03-16 122626.png`
-- `docs/screen/Screenshot 2026-03-16 122701.png`
-- `docs/screen/Screenshot 2026-03-16 122751.png`
-- `docs/screen/Screenshot 2026-03-16 122805.png`
+![Roles graph and permissions](docs/screen/Screenshot%202026-03-16%20122610.png)
+
+![Usage analytics](docs/screen/Screenshot%202026-03-16%20122626.png)
+
+![MCP users](docs/screen/Screenshot%202026-03-16%20122701.png)
+
+![Resources view](docs/screen/Screenshot%202026-03-16%20122751.png)
+
+![Prompts view](docs/screen/Screenshot%202026-03-16%20122805.png)
 
 ---
 
