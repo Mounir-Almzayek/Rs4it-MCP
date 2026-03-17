@@ -79,7 +79,7 @@ function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodObject<Record<st
     const d = (def ?? {}) as Record<string, unknown>;
     const type = String(d["type"] ?? "string");
     const desc = typeof d["description"] === "string" ? d["description"] : undefined;
-    const hasDefault = "default" in d && d["default"] !== undefined;
+    const hasDefault = typeof d === "object" && d !== null && "default" in d && d["default"] !== undefined;
     const isRequired = required.has(key) && !hasDefault;
     let field: z.ZodTypeAny;
     if (type === "string") field = z.string();
