@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:20-bullseye-slim AS builder
 
 WORKDIR /app
 
@@ -20,12 +20,21 @@ RUN npm run build \
 # -----------------------------------------------------------------------------
 # Stage 2: Production (runs as non-root user "mcp")
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:20-bullseye-slim AS runner
 
-# Create non-root user: main process runs as mcp (entrypoint runs as root only to seed config, then gosu to mcp)
+# Install runtime dependencies (Dart + gosu) and create non-root user
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    gnupg \
+    wget \
+    gosu \
+  && wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+  && wget -qO /etc/apt/sources.list.d/dart_stable.list https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list \
+  && apt-get update && apt-get install -y --no-install-recommends dart \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 mcp \
-  && apk add --no-cache gosu
+  && adduser --system --uid 1001 mcp
 
 WORKDIR /app
 
