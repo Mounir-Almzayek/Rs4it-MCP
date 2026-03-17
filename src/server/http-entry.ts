@@ -106,11 +106,52 @@ async function handlePost(
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
       const role = getRoleFromRequest(req);
       const userName = getUserNameFromRequest(req);
-      const state = await createSession(role, userName);
-      await state.server.connect(state.transport);
-      await state.transport.handleRequest(req, res, req.body);
-      trackMcpUserUsage(state.userName);
-      return;
+      let state: SessionState;
+      try {
+        state = await createSession(role, userName);
+      } catch (sessionErr) {
+        const msg = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
+        const stack = sessionErr instanceof Error ? sessionErr.stack : undefined;
+        console.error("[rs4it-mcp] Session creation failed:", msg);
+        if (stack) console.error(stack);
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32603, message: detail },
+              id: null,
+            })
+          );
+        }
+        return;
+      }
+      try {
+        await state.server.connect(state.transport);
+        await state.transport.handleRequest(req, res, req.body);
+        trackMcpUserUsage(state.userName);
+        return;
+      } catch (connectErr) {
+        const msg = connectErr instanceof Error ? connectErr.message : String(connectErr);
+        const stack = connectErr instanceof Error ? connectErr.stack : undefined;
+        console.error("[rs4it-mcp] Connect/handleRequest failed:", msg);
+        if (stack) console.error(stack);
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32603, message: detail },
+              id: null,
+            })
+          );
+        }
+        return;
+      }
     }
 
     res.statusCode = 400;
@@ -126,14 +167,18 @@ async function handlePost(
       })
     );
   } catch (err) {
-    console.error("[rs4it-mcp] HTTP POST error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[rs4it-mcp] HTTP POST error:", msg);
+    if (stack) console.error(stack);
     if (!res.headersSent) {
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
+      const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
       res.end(
         JSON.stringify({
           jsonrpc: "2.0",
-          error: { code: -32603, message: "Internal server error" },
+          error: { code: -32603, message: detail },
           id: null,
         })
       );
