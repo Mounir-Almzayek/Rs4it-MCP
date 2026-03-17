@@ -23,6 +23,8 @@ import {
   skillToToolName,
 } from "../skills/index.js";
 import { getLoadedPlugins, callPluginTool, getPluginPrompt, readPluginResource } from "../plugins/index.js";
+import { registerBuiltInPrompts } from "../prompts/index.js";
+import { registerBuiltInResources } from "../resources/index.js";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
 import { isAllowedForRole } from "../config/roles.js";
 import { PLUGIN_TOOL_PREFIX, PLUGIN_SKILL_PREFIX, PLUGIN_PROMPT_PREFIX, PLUGIN_RESOURCE_URI_SCHEME } from "../plugins/constants.js";
@@ -167,6 +169,10 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     serverInfo as { name: string; version: string },
     { capabilities: DEFAULT_CAPABILITIES }
   );
+
+  // Built-in prompts and resources so prompts/list and resources/list are implemented (fixes MCP -32601 Method not found)
+  registerBuiltInPrompts(server);
+  registerBuiltInResources(server);
 
   // Built-in tools: no allowedRoles → visible to all
   for (const tool of getAllTools()) {
