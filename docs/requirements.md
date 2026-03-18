@@ -29,6 +29,11 @@ node -v
 
 - **`MCP_WORKSPACE_ROOT`** (optional): Workspace root path for file operations (create_file, read_file). See [docs/security.md](security.md).
 - **`MCP_PLUGINS_CONFIG`** (optional): Path to external plugins config file (JSON). If not set, `config/mcp_plugins.json` is used relative to the working directory.
+- **Skill Compiler (Hybrid skill authoring)**:
+  - **`OPENROUTER_API_KEY`** or **`MCP_OPENROUTER_API_KEY`** (required to enable compiler): API key used by the Hub to compile skill text into a draft skill.
+  - **`OPENROUTER_MODEL`** or **`MCP_SKILL_COMPILER_MODEL`** (optional): OpenRouter model id. Default: `openai/gpt-4o-mini`.
+  - **`MCP_ADMIN_API_SECRET`** (optional, recommended): If set, Hub requires header `X-Admin-Secret` for `/api/skill-compiler/*` endpoints. Admin panel can pass it via `ADMIN_HUB_SECRET` or `MCP_ADMIN_API_SECRET`.
+  - **`MCP_SKILL_EXECUTIONS_FILE`** (optional): Path to store execution traces for `/api/skill-compiler/execute`. Default: `config/skill_executions.json`.
 - **Roles (Phase 09)**:
   - **`MCP_ROLE`** (optional, stdio): Connection role (e.g. `web_engineer`, `full_stack`). When set, the Hub exposes only tools/skills/plugins allowed for that role (with inheritance). If not set, all tools are exposed.
   - **`MCP_ROLES_CONFIG`** (optional): Path to roles definition file (JSON). If not set, `config/roles.json` is used.

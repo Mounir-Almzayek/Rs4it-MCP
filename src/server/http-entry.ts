@@ -16,6 +16,12 @@ import { loadAllPlugins, closeAllPlugins } from "../plugins/index.js";
 import { getPort, getBaseUrl } from "../config/transport.js";
 import { upsertMcpUser } from "../config/mcp-users-store.js";
 import { recordInvocation } from "../config/usage-store.js";
+import { buildToolCatalog } from "../skill-compiler/tool-catalog.js";
+import { compileSkill } from "../skill-compiler/compiler.js";
+import { evaluateDraftAgainstPolicies } from "../skill-compiler/policies.js";
+import { dryRunRequestSchema } from "../skill-compiler/types.js";
+import { executeDraft } from "../skill-compiler/executor.js";
+import { appendSkillExecution } from "../config/skill-execution-store.js";
 
 type SessionId = string;
 interface SessionState {
@@ -25,6 +31,16 @@ interface SessionState {
 }
 
 const sessions = new Map<SessionId, SessionState>();
+
+function requireAdminSecret(req: IncomingMessage): { ok: true } | { ok: false; status: number; error: string } {
+  const secret = process.env["MCP_ADMIN_API_SECRET"];
+  if (!secret) return { ok: true };
+  const header = req.headers["x-admin-secret"];
+  if (typeof header !== "string" || header !== secret) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+  return { ok: true };
+}
 
 function getRoleFromRequest(req: IncomingMessage & { body?: unknown }): string | undefined {
   const h = req.headers["x-mcp-role"];
@@ -285,6 +301,101 @@ async function main(): Promise<void> {
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ ok: false, error: String(err) }));
+    }
+  });
+
+  // Skill Compiler API (for Admin panel UX). Protected by MCP_ADMIN_API_SECRET if set.
+  app.post("/api/skill-compiler/compile", async (req: IncomingMessage & { body?: unknown }, res: ServerResponse) => {
+    const auth = requireAdminSecret(req);
+    if (!auth.ok) {
+      res.statusCode = auth.status;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: auth.error }));
+      return;
+    }
+    try {
+      const toolCatalog = await buildToolCatalog();
+      const compiled = await compileSkill({ req: req.body, toolCatalog });
+      const policy = evaluateDraftAgainstPolicies({
+        draft: compiled.draft,
+        toolCatalog,
+        role:
+          (req.body && typeof req.body === "object" && "role" in (req.body as Record<string, unknown>))
+            ? String((req.body as Record<string, unknown>)["role"] ?? "")
+            : undefined,
+      });
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ...compiled, policy }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    }
+  });
+
+  app.post("/api/skill-compiler/dry-run", async (req: IncomingMessage & { body?: unknown }, res: ServerResponse) => {
+    const auth = requireAdminSecret(req);
+    if (!auth.ok) {
+      res.statusCode = auth.status;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: auth.error }));
+      return;
+    }
+    try {
+      const parsed = dryRunRequestSchema.parse(req.body);
+      const toolCatalog = await buildToolCatalog();
+      const decision = evaluateDraftAgainstPolicies({ draft: parsed.draft, toolCatalog, role: parsed.role });
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: decision.blocked.length === 0, blocked: decision.blocked, warnings: decision.warnings }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    }
+  });
+
+  app.post("/api/skill-compiler/execute", async (req: IncomingMessage & { body?: unknown }, res: ServerResponse) => {
+    const auth = requireAdminSecret(req);
+    if (!auth.ok) {
+      res.statusCode = auth.status;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: auth.error }));
+      return;
+    }
+    try {
+      const body = req.body as Record<string, unknown>;
+      const parsed = dryRunRequestSchema.parse({ draft: body?.draft, role: body?.role });
+      const toolCatalog = await buildToolCatalog();
+      const decision = evaluateDraftAgainstPolicies({ draft: parsed.draft, toolCatalog, role: parsed.role });
+      if (decision.blocked.length > 0) {
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: false, blocked: decision.blocked, warnings: decision.warnings }));
+        return;
+      }
+      const input = (body?.input && typeof body.input === "object" && !Array.isArray(body.input))
+        ? (body.input as Record<string, unknown>)
+        : {};
+      const { result, trace } = await executeDraft({ draft: parsed.draft, input });
+      const id = randomUUID();
+      await appendSkillExecution({
+        id,
+        skillName: parsed.draft.name,
+        createdAt: new Date().toISOString(),
+        trace,
+      });
+      res.statusCode = result.isError ? 500 : 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: !result.isError, result, traceId: id, trace }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: msg }));
     }
   });
 

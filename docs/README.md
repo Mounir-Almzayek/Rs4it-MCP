@@ -10,6 +10,7 @@ This folder contains the project documentation and implementation phases.
 | **phases/** | Implementation phases: 00–06 (foundation) then 07–11 (hosting, panel, roles, panel auth, MCP users tracking) — follow in order |
 | **[architecture.md](architecture.md)** | Design decisions (exposing skills as tools with `skill:` prefix) and layers |
 | **[skill-template.md](skill-template.md)** | Template for adding a new skill without changing the server core |
+| **[skill-authoring-ux-and-compiler.md](skill-authoring-ux-and-compiler.md)** | Cursor-like skill authoring UX + internal Skill Compiler (hybrid approach) — phased implementation plan |
 | **[security.md](security.md)** | Tool security policy (workspace, blocklist) |
 | **[requirements.md](requirements.md)** | Runtime requirements and environment variables |
 | **[deployment.md](deployment.md)** | Hosting the Hub over HTTP in production (Phase 07) |

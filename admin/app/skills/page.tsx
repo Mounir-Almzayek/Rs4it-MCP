@@ -44,6 +44,22 @@ async function fetchRoles() {
   return res.json() as Promise<RoleConfig>;
 }
 
+type CompilerDraft = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  steps: DynamicSkillStep[];
+};
+
+type CompilerResponse = {
+  draft: CompilerDraft;
+  preview?: { summary?: string; steps?: string[] };
+  risks?: string[];
+  policy?: { blocked?: Array<{ reason: string; stepIndex?: number }>; warnings?: string[] };
+  ok?: boolean;
+  error?: string;
+};
+
 function StepRow({
   step,
   onRemove,
@@ -70,6 +86,13 @@ function SkillsContent() {
   const toast = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DynamicSkillEntry | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiPreferredName, setAiPreferredName] = useState("");
+  const [aiResult, setAiResult] = useState<CompilerResponse | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiDryRunBusy, setAiDryRunBusy] = useState(false);
+  const [aiDryRun, setAiDryRun] = useState<{ ok: boolean; blocked?: any[]; warnings?: string[]; error?: string } | null>(null);
   const [form, setForm] = useState<Partial<DynamicSkillEntry>>({
     name: "",
     description: "",
@@ -211,6 +234,14 @@ function SkillsContent() {
     setDialogOpen(true);
   }
 
+  function openAi() {
+    setAiText("");
+    setAiPreferredName("");
+    setAiResult(null);
+    setAiDryRun(null);
+    setAiOpen(true);
+  }
+
   function openEdit(s: DynamicSkillEntry) {
     setEditing(s);
     setForm({
@@ -262,6 +293,69 @@ function SkillsContent() {
     }
   }
 
+  async function runAiCompile() {
+    if (!aiText.trim()) return;
+    setAiBusy(true);
+    setAiResult(null);
+    setAiDryRun(null);
+    try {
+      const res = await fetch("/api/skill-compiler/compile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skillText: aiText,
+          preferredName: aiPreferredName.trim() || undefined,
+          role: "admin",
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as CompilerResponse;
+      if (!res.ok) throw new Error(data.error ?? "Compile failed");
+      setAiResult(data);
+    } catch (e) {
+      toast.add("error", e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function runAiDryRun() {
+    if (!aiResult?.draft) return;
+    setAiDryRunBusy(true);
+    setAiDryRun(null);
+    try {
+      const res = await fetch("/api/skill-compiler/dry-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: aiResult.draft, role: "admin" }),
+      });
+      const data = (await res.json().catch(() => ({}))) as any;
+      setAiDryRun(data);
+      if (!res.ok) throw new Error(data.error ?? "Dry-run failed");
+    } catch (e) {
+      toast.add("error", e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiDryRunBusy(false);
+    }
+  }
+
+  function applyAiToForm() {
+    if (!aiResult?.draft) return;
+    const d = aiResult.draft;
+    setEditing(null);
+    setForm({
+      name: d.name,
+      description: d.description,
+      inputSchema: d.inputSchema ?? {},
+      steps: d.steps ?? [],
+      enabled: true,
+      allowedRoles: [],
+    });
+    setSchemaJson(JSON.stringify(d.inputSchema ?? {}, null, 2));
+    setDialogOpen(true);
+    setAiOpen(false);
+    toast.add("success", "Applied AI draft to form");
+  }
+
   useEffect(() => {
     if (searchParams.get("create") === "1") openCreate();
   }, [searchParams]);
@@ -270,10 +364,15 @@ function SkillsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Skills</h2>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Skill
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={openAi}>
+            AI Generate
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Skill
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -450,6 +549,138 @@ function SkillsContent() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      <Dialog open={aiOpen} onOpenChange={setAiOpen} title="AI Generate Skill">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="aiText">Skill description</Label>
+            <Textarea
+              id="aiText"
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              rows={6}
+              className="mt-1"
+              placeholder="Describe what you want the skill to do. Include inputs and constraints."
+            />
+          </div>
+          <div>
+            <Label htmlFor="aiPreferredName">Preferred name (optional)</Label>
+            <Input
+              id="aiPreferredName"
+              value={aiPreferredName}
+              onChange={(e) => setAiPreferredName(e.target.value)}
+              placeholder="create_api_endpoint"
+              className="mt-1 font-mono"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={runAiCompile} disabled={aiBusy || !aiText.trim()}>
+              {aiBusy ? "Generating…" : "Generate"}
+            </Button>
+            <Button variant="outline" onClick={runAiDryRun} disabled={aiDryRunBusy || !aiResult?.draft}>
+              {aiDryRunBusy ? "Checking…" : "Dry-run"}
+            </Button>
+            <Button variant="secondary" onClick={applyAiToForm} disabled={!aiResult?.draft}>
+              Apply to form
+            </Button>
+          </div>
+
+          {aiResult?.preview?.summary ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Preview</CardTitle>
+                <p className="text-sm text-muted-foreground">{aiResult.preview.summary}</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {(aiResult.preview.steps ?? []).length ? (
+                  <ul className="list-disc pl-5 text-sm">
+                    {(aiResult.preview.steps ?? []).map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No preview steps.</p>
+                )}
+                {(aiResult.risks ?? []).length ? (
+                  <div>
+                    <div className="text-sm font-medium">Risks</div>
+                    <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                      {(aiResult.risks ?? []).map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {(aiResult.policy?.blocked?.length ?? 0) > 0 ? (
+                  <div>
+                    <div className="text-sm font-medium text-destructive">Blocked</div>
+                    <ul className="list-disc pl-5 text-sm text-destructive">
+                      {(aiResult.policy?.blocked ?? []).map((b, i) => (
+                        <li key={i}>
+                          {b.stepIndex !== undefined ? `Step ${b.stepIndex}: ` : ""}
+                          {b.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {(aiResult.policy?.warnings?.length ?? 0) > 0 ? (
+                  <div>
+                    <div className="text-sm font-medium">Warnings</div>
+                    <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                      {(aiResult.policy?.warnings ?? []).map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {aiDryRun ? (
+                  <div>
+                    <div className="text-sm font-medium">Dry-run</div>
+                    <div className="text-sm text-muted-foreground">
+                      {aiDryRun.ok ? "OK" : "Blocked"}
+                    </div>
+                    {Array.isArray(aiDryRun.blocked) && aiDryRun.blocked.length ? (
+                      <ul className="list-disc pl-5 text-sm text-destructive">
+                        {aiDryRun.blocked.map((b: any, i: number) => (
+                          <li key={i}>
+                            {b.stepIndex !== undefined ? `Step ${b.stepIndex}: ` : ""}
+                            {b.reason ?? String(b)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {Array.isArray(aiDryRun.warnings) && aiDryRun.warnings.length ? (
+                      <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                        {aiDryRun.warnings.map((w: string, i: number) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {aiResult?.draft ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Draft</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {aiResult.draft.name} — {(aiResult.draft.steps ?? []).length} steps
+                </p>
+              </CardHeader>
+              <CardContent>
+                <pre className="max-h-64 overflow-auto rounded bg-muted p-3 text-xs">
+                  {JSON.stringify(aiResult.draft, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
       </Dialog>
     </div>
   );
