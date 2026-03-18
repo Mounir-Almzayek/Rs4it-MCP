@@ -34,6 +34,32 @@ import type {
   DynamicResourceEntry,
 } from "../types/dynamic-registry.js";
 
+const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+function headersValidationError(args: unknown): { isError: true; message: string } | null {
+  if (!args || typeof args !== "object") return null;
+  if (!("headers" in (args as Record<string, unknown>))) return null;
+  const headers = (args as Record<string, unknown>)["headers"];
+  if (headers === undefined) return null;
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
+    return { isError: true, message: `Invalid headers: expected an object like {"User-Agent":"..."}` };
+  }
+  for (const [k, v] of Object.entries(headers as Record<string, unknown>)) {
+    const name = String(k ?? "").trim();
+    if (!name) return { isError: true, message: "Invalid headers: empty header name" };
+    if (!HEADER_NAME_RE.test(name)) return { isError: true, message: `Invalid headers: bad header name "${name}"` };
+    if (v === null || v === undefined) return { isError: true, message: `Invalid headers: "${name}" value must be a string` };
+    if (!(typeof v === "string" || typeof v === "number" || typeof v === "boolean")) {
+      return { isError: true, message: `Invalid headers: "${name}" value must be a string` };
+    }
+  }
+  return null;
+}
+
+function errorResult(message: string) {
+  return { content: [{ type: "text" as const, text: message }], isError: true as const };
+}
+
 export interface CreateServerOptions {
   /** When set, only tools/skills/plugins allowed for this role (and inherited roles) are registered. */
   role?: string;
@@ -184,6 +210,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         inputSchema: tool.inputSchema as Record<string, unknown>,
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
         onToolInvoked?.(name);
         return toolResultCast(await executeTool(name, args));
       }
@@ -200,6 +228,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         inputSchema: skill.inputSchema as Record<string, unknown>,
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
         onToolInvoked?.(toolName);
         return toolResultCast(await executeSkill(skill.name, args));
       }
@@ -220,6 +250,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
         onToolInvoked?.(toolName);
         return toolResultCast(await executeTool(handlerRef, args));
       }
@@ -237,6 +269,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
         onToolInvoked?.(toolName);
         const result = await runDynamicSkillSteps(
           steps,
@@ -270,6 +304,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
           inputSchema: jsonSchemaToZod((pt.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
           onToolInvoked?.(toolName);
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
           return toolResultCast({
@@ -290,6 +326,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
           inputSchema: jsonSchemaToZod((ps.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
           onToolInvoked?.(toolName);
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
           return toolResultCast({

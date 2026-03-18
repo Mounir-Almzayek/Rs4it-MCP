@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readRegistry, writeRegistry, type DynamicToolEntry } from "@/lib/registry";
+import { validateAllowedRoles } from "@/lib/validate";
 
 export async function PUT(
   _request: NextRequest,
@@ -8,6 +9,13 @@ export async function PUT(
   const id = decodeURIComponent((await params).id);
   try {
     const body = (await _request.json()) as Partial<DynamicToolEntry>;
+    if (body.allowedRoles !== undefined) {
+      const rolesValidation = await validateAllowedRoles(body.allowedRoles);
+      if (!rolesValidation.ok) {
+        return NextResponse.json({ error: rolesValidation.error }, { status: 400 });
+      }
+      body.allowedRoles = rolesValidation.value;
+    }
     const registry = await readRegistry();
     const idx = registry.tools.findIndex((t) => t.name === id);
     if (idx === -1) {
@@ -19,7 +27,7 @@ export async function PUT(
       ...body,
       name: body.name ?? existing.name,
       updatedAt: new Date().toISOString(),
-      allowedRoles: body.allowedRoles !== undefined ? body.allowedRoles : existing.allowedRoles,
+      allowedRoles: body.allowedRoles !== undefined ? (body.allowedRoles as string[] | undefined) : existing.allowedRoles,
       source: body.source !== undefined ? body.source : existing.source,
       origin: body.origin !== undefined ? body.origin : existing.origin,
     };

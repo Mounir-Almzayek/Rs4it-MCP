@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readRegistry, writeRegistry, type DynamicToolEntry } from "@/lib/registry";
+import { validateAllowedRoles } from "@/lib/validate";
 
 const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", Pragma: "no-cache" };
 
@@ -21,6 +22,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Partial<DynamicToolEntry>;
+    const rolesValidation = await validateAllowedRoles(body.allowedRoles);
+    if (!rolesValidation.ok) {
+      return NextResponse.json({ error: rolesValidation.error }, { status: 400 });
+    }
     const entry: DynamicToolEntry = {
       name: body.name ?? "",
       description: body.description ?? "",
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
       handlerRef: body.handlerRef ?? "",
       enabled: body.enabled ?? true,
       updatedAt: new Date().toISOString(),
-      allowedRoles: Array.isArray(body.allowedRoles) ? body.allowedRoles : undefined,
+      allowedRoles: rolesValidation.value,
       source: body.source === "mcp" ? "mcp" : "admin",
       origin: body.origin,
     };
