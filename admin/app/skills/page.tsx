@@ -60,6 +60,39 @@ type CompilerResponse = {
   error?: string;
 };
 
+function errorToMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const o = e as Record<string, unknown>;
+    const maybe =
+      (typeof o.error === "string" && o.error) ||
+      (typeof o.message === "string" && o.message) ||
+      (typeof o.detail === "string" && o.detail);
+    if (maybe) return maybe;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return "[Unknown error object]";
+    }
+  }
+  return String(e);
+}
+
+async function readJsonOrText(res: Response): Promise<{ json: unknown | null; text: string | null }> {
+  try {
+    const json = await res.json();
+    return { json, text: null };
+  } catch {
+    try {
+      const text = await res.text();
+      return { json: null, text };
+    } catch {
+      return { json: null, text: null };
+    }
+  }
+}
+
 function StepRow({
   step,
   onRemove,
@@ -308,11 +341,18 @@ function SkillsContent() {
           role: "admin",
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as CompilerResponse;
-      if (!res.ok) throw new Error(data.error ?? "Compile failed");
+      const { json, text } = await readJsonOrText(res);
+      const data = (json ?? {}) as CompilerResponse;
+      if (!res.ok) {
+        const msg =
+          (typeof data.error === "string" && data.error) ||
+          (text ? text.slice(0, 400) : "") ||
+          "Compile failed";
+        throw new Error(msg);
+      }
       setAiResult(data);
     } catch (e) {
-      toast.add("error", e instanceof Error ? e.message : String(e));
+      toast.add("error", errorToMessage(e));
     } finally {
       setAiBusy(false);
     }
@@ -328,11 +368,18 @@ function SkillsContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draft: aiResult.draft, role: "admin" }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
+      const { json, text } = await readJsonOrText(res);
+      const data = (json ?? {}) as any;
       setAiDryRun(data);
-      if (!res.ok) throw new Error(data.error ?? "Dry-run failed");
+      if (!res.ok) {
+        const msg =
+          (typeof data?.error === "string" && data.error) ||
+          (text ? text.slice(0, 400) : "") ||
+          "Dry-run failed";
+        throw new Error(msg);
+      }
     } catch (e) {
-      toast.add("error", e instanceof Error ? e.message : String(e));
+      toast.add("error", errorToMessage(e));
     } finally {
       setAiDryRunBusy(false);
     }
