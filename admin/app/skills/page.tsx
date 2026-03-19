@@ -414,23 +414,70 @@ function SkillsContent() {
     }
   }
 
-  function applyAiToForm() {
+  async function applyAiToForm() {
     if (!aiResult?.draft) return;
     const d = aiResult.draft;
+
+    const templateText = aiText.trim();
+    const allowedRoles = aiRole.trim() ? [aiRole.trim()] : undefined;
+
+    // Store the generated skill text as a Prompt with the same name.
+    // If prompt already exists we update it.
+    if (templateText) {
+      try {
+        const createRes = await fetch("/api/prompts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: d.name,
+            description: d.description,
+            template: templateText,
+            enabled: true,
+            allowedRoles,
+          }),
+        });
+
+        if (!createRes.ok) {
+          if (createRes.status === 409) {
+            const putRes = await fetch(`/api/prompts/${encodeURIComponent(d.name)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                description: d.description,
+                template: templateText,
+                enabled: true,
+                allowedRoles,
+              }),
+            });
+            if (!putRes.ok) {
+              const err = await putRes.json().catch(() => ({}));
+              throw new Error((err as { error?: string }).error ?? putRes.statusText);
+            }
+          } else {
+            const err = await createRes.json().catch(() => ({}));
+            throw new Error((err as { error?: string }).error ?? createRes.statusText);
+          }
+        }
+      } catch (e) {
+        // Prompt creation should not block the skill flow.
+        toast.add("error", `Prompt upsert failed: ${errorToMessage(e)}`);
+      }
+    }
+
     setEditing(null);
     setForm({
       name: d.name,
       description: d.description,
-      instructions: aiText.trim() || "",
+      instructions: templateText || "",
       inputSchema: d.inputSchema ?? {},
       steps: d.steps ?? [],
       enabled: true,
-      allowedRoles: aiRole.trim() ? [aiRole.trim()] : [],
+      allowedRoles: allowedRoles ?? [],
     });
     setSchemaJson(JSON.stringify(d.inputSchema ?? {}, null, 2));
     setDialogOpen(true);
     setAiOpen(false);
-    toast.add("success", "Applied AI draft to form (role and instructions preserved)");
+    toast.add("success", "Applied AI draft to form (prompt updated with generated text)");
   }
 
   async function createSuggestedTools() {
@@ -758,7 +805,7 @@ function SkillsContent() {
             <Button variant="outline" onClick={runAiDryRun} disabled={aiDryRunBusy || !aiResult?.draft}>
               {aiDryRunBusy ? "Checking…" : "Dry-run"}
             </Button>
-            <Button variant="secondary" onClick={applyAiToForm} disabled={!aiResult?.draft}>
+            <Button variant="secondary" onClick={() => void applyAiToForm()} disabled={!aiResult?.draft}>
               Apply to form
             </Button>
           </div>
