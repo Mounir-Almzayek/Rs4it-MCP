@@ -349,6 +349,52 @@ function SkillsContent() {
     }
   }
 
+  async function upsertPromptByName(args: {
+    name: string;
+    description?: string;
+    template: string;
+    allowedRoles?: string[];
+  }) {
+    const { name, description, template, allowedRoles } = args;
+    const templateText = template.trim();
+    if (!name.trim() || !templateText) return;
+
+    // Upsert prompt: POST then PUT on 409.
+    const createRes = await fetch("/api/prompts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        description: description ?? "",
+        template: templateText,
+        enabled: true,
+        allowedRoles: allowedRoles && allowedRoles.length > 0 ? allowedRoles : undefined,
+      }),
+    });
+
+    if (createRes.ok) return;
+    if (createRes.status !== 409) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error ?? createRes.statusText);
+    }
+
+    const putRes = await fetch(`/api/prompts/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: description ?? "",
+        template: templateText,
+        enabled: true,
+        allowedRoles: allowedRoles && allowedRoles.length > 0 ? allowedRoles : undefined,
+      }),
+    });
+
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error ?? putRes.statusText);
+    }
+  }
+
   async function runAiCompile() {
     if (!aiText.trim()) return;
     setAiBusy(true);
@@ -377,6 +423,22 @@ function SkillsContent() {
         throw new Error(msg);
       }
       setAiResult(data);
+
+      // Create/update the prompt right after Generate so it appears immediately in /prompts.
+      // Template is the "skill text" the user generated/entered (aiText), as that's what this UI
+      // currently treats as the full instructions/checklist text.
+      try {
+        const templateText = aiText.trim();
+        const allowedRoles = aiRole.trim() ? [aiRole.trim()] : undefined;
+        await upsertPromptByName({
+          name: data.draft.name,
+          description: data.draft.description,
+          template: templateText,
+          allowedRoles,
+        });
+      } catch (e) {
+        toast.add("error", `Prompt upsert failed: ${errorToMessage(e)}`);
+      }
     } catch (e) {
       toast.add("error", errorToMessage(e));
     } finally {
@@ -421,49 +483,6 @@ function SkillsContent() {
     const templateText = aiText.trim();
     const allowedRoles = aiRole.trim() ? [aiRole.trim()] : undefined;
 
-    // Store the generated skill text as a Prompt with the same name.
-    // If prompt already exists we update it.
-    if (templateText) {
-      try {
-        const createRes = await fetch("/api/prompts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: d.name,
-            description: d.description,
-            template: templateText,
-            enabled: true,
-            allowedRoles,
-          }),
-        });
-
-        if (!createRes.ok) {
-          if (createRes.status === 409) {
-            const putRes = await fetch(`/api/prompts/${encodeURIComponent(d.name)}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                description: d.description,
-                template: templateText,
-                enabled: true,
-                allowedRoles,
-              }),
-            });
-            if (!putRes.ok) {
-              const err = await putRes.json().catch(() => ({}));
-              throw new Error((err as { error?: string }).error ?? putRes.statusText);
-            }
-          } else {
-            const err = await createRes.json().catch(() => ({}));
-            throw new Error((err as { error?: string }).error ?? createRes.statusText);
-          }
-        }
-      } catch (e) {
-        // Prompt creation should not block the skill flow.
-        toast.add("error", `Prompt upsert failed: ${errorToMessage(e)}`);
-      }
-    }
-
     setEditing(null);
     setForm({
       name: d.name,
@@ -477,7 +496,7 @@ function SkillsContent() {
     setSchemaJson(JSON.stringify(d.inputSchema ?? {}, null, 2));
     setDialogOpen(true);
     setAiOpen(false);
-    toast.add("success", "Applied AI draft to form (prompt updated with generated text)");
+    toast.add("success", "Applied AI draft to form");
   }
 
   async function createSuggestedTools() {
