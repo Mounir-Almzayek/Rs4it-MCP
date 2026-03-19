@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       allowedRoles: rolesValidation.value,
       source: body.source === "mcp" ? "mcp" : "admin",
       origin: body.origin,
+      instructions: body.instructions,
     };
     const registry = await readRegistry();
     if (registry.skills.some((s) => s.name === entry.name)) {

@@ -132,6 +132,7 @@ function SkillsContent() {
   const [form, setForm] = useState<Partial<DynamicSkillEntry>>({
     name: "",
     description: "",
+    instructions: "",
     inputSchema: {},
     steps: [],
     enabled: true,
@@ -255,6 +256,7 @@ function SkillsContent() {
     setForm({
       name: "",
       description: "",
+      instructions: "",
       inputSchema: {},
       steps: [],
       enabled: true,
@@ -286,6 +288,7 @@ function SkillsContent() {
     setForm({
       name: s.name,
       description: s.description,
+      instructions: s.instructions ?? "",
       inputSchema: s.inputSchema,
       steps: s.steps ?? [],
       enabled: s.enabled,
@@ -404,15 +407,16 @@ function SkillsContent() {
     setForm({
       name: d.name,
       description: d.description,
+      instructions: aiText.trim() || "",
       inputSchema: d.inputSchema ?? {},
       steps: d.steps ?? [],
       enabled: true,
-      allowedRoles: [],
+      allowedRoles: aiRole.trim() ? [aiRole.trim()] : [],
     });
     setSchemaJson(JSON.stringify(d.inputSchema ?? {}, null, 2));
     setDialogOpen(true);
     setAiOpen(false);
-    toast.add("success", "Applied AI draft to form");
+    toast.add("success", "Applied AI draft to form (role and instructions preserved)");
   }
 
   useEffect(() => {
@@ -551,6 +555,20 @@ function SkillsContent() {
             />
           </div>
           <div>
+            <Label htmlFor="instructions">Full instructions (markdown)</Label>
+            <Textarea
+              id="instructions"
+              value={form.instructions ?? ""}
+              onChange={(e) => setForm((s) => ({ ...s, instructions: e.target.value }))}
+              placeholder="Full skill text / checklist / workflow (e.g. from AI Generate). Preserved when you Apply to form."
+              rows={12}
+              className="mt-1 font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Optional. When using AI Generate → Apply to form, your skill text is stored here so the skill keeps its full context.
+            </p>
+          </div>
+          <div>
             <Label>Steps</Label>
             <div className="mt-1 space-y-2">
               {(form.steps ?? []).map((step, i) => (
@@ -640,7 +658,7 @@ function SkillsContent() {
             />
           </div>
           <div>
-            <Label htmlFor="aiRole">Role (assign skill to)</Label>
+            <Label htmlFor="aiRole">Role</Label>
             <select
               id="aiRole"
               value={aiRole}
@@ -658,7 +676,7 @@ function SkillsContent() {
               )}
             </select>
             <p className="mt-1 text-xs text-muted-foreground">
-              Role used for policy checks and to assign visibility for this skill.
+              Used for policy checks (Generate/Dry-run) and, when you Apply to form, set as Allowed Roles so you don’t choose twice.
             </p>
           </div>
 

@@ -31,6 +31,7 @@ export async function PUT(
       allowedRoles: body.allowedRoles !== undefined ? (body.allowedRoles as string[] | undefined) : existing.allowedRoles,
       source: body.source !== undefined ? body.source : existing.source,
       origin: body.origin !== undefined ? body.origin : existing.origin,
+      instructions: body.instructions !== undefined ? body.instructions : existing.instructions,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.skills[idx]);

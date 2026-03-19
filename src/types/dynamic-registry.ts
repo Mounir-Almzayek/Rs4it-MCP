@@ -44,6 +44,8 @@ export interface DynamicSkillEntry {
   allowedRoles?: string[];
   source?: RegistrySource;
   origin?: string;
+  /** Full instructions / skill text (markdown). Used by AI when executing the skill; preserved from compiler input. */
+  instructions?: string;
 }
 
 /** External MCP plugin entry (same shape as PluginConfig, plus enabled). */

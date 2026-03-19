@@ -37,6 +37,8 @@ export interface DynamicSkillEntry {
   allowedRoles?: string[];
   source?: RegistrySource;
   origin?: string;
+  /** Full instructions / skill text (markdown). Preserved when using AI Generate → Apply to form. */
+  instructions?: string;
 }
 
 export interface DynamicPluginEntry {
