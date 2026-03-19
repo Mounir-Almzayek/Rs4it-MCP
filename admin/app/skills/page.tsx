@@ -122,10 +122,13 @@ function SkillsContent() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiPreferredName, setAiPreferredName] = useState("");
+  const [aiRole, setAiRole] = useState("");
   const [aiResult, setAiResult] = useState<CompilerResponse | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDryRunBusy, setAiDryRunBusy] = useState(false);
   const [aiDryRun, setAiDryRun] = useState<{ ok: boolean; blocked?: any[]; warnings?: string[]; error?: string } | null>(null);
+  const [compileRawResponse, setCompileRawResponse] = useState<{ status: number; body: unknown } | null>(null);
+  const [dryRunRawResponse, setDryRunRawResponse] = useState<{ status: number; body: unknown } | null>(null);
   const [form, setForm] = useState<Partial<DynamicSkillEntry>>({
     name: "",
     description: "",
@@ -270,8 +273,11 @@ function SkillsContent() {
   function openAi() {
     setAiText("");
     setAiPreferredName("");
+    setAiRole(roles[0]?.id ?? "admin");
     setAiResult(null);
     setAiDryRun(null);
+    setCompileRawResponse(null);
+    setDryRunRawResponse(null);
     setAiOpen(true);
   }
 
@@ -331,6 +337,7 @@ function SkillsContent() {
     setAiBusy(true);
     setAiResult(null);
     setAiDryRun(null);
+    setCompileRawResponse(null);
     try {
       const res = await fetch("/api/skill-compiler/compile", {
         method: "POST",
@@ -338,10 +345,12 @@ function SkillsContent() {
         body: JSON.stringify({
           skillText: aiText,
           preferredName: aiPreferredName.trim() || undefined,
-          role: "admin",
+          role: aiRole.trim() || undefined,
         }),
       });
       const { json, text } = await readJsonOrText(res);
+      const body = json ?? text ?? null;
+      setCompileRawResponse({ status: res.status, body });
       const data = (json ?? {}) as CompilerResponse;
       if (!res.ok) {
         const msg =
@@ -362,13 +371,16 @@ function SkillsContent() {
     if (!aiResult?.draft) return;
     setAiDryRunBusy(true);
     setAiDryRun(null);
+    setDryRunRawResponse(null);
     try {
       const res = await fetch("/api/skill-compiler/dry-run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft: aiResult.draft, role: "admin" }),
+        body: JSON.stringify({ draft: aiResult.draft, role: aiRole.trim() || undefined }),
       });
       const { json, text } = await readJsonOrText(res);
+      const body = json ?? text ?? null;
+      setDryRunRawResponse({ status: res.status, body });
       const data = (json ?? {}) as any;
       setAiDryRun(data);
       if (!res.ok) {
@@ -406,6 +418,12 @@ function SkillsContent() {
   useEffect(() => {
     if (searchParams.get("create") === "1") openCreate();
   }, [searchParams]);
+
+  useEffect(() => {
+    if (aiOpen && roles.length > 0 && !roles.some((r) => r.id === aiRole)) {
+      setAiRole(roles[0].id);
+    }
+  }, [aiOpen, roles, aiRole]);
 
   return (
     <div className="space-y-6">
@@ -621,6 +639,28 @@ function SkillsContent() {
               className="mt-1 font-mono"
             />
           </div>
+          <div>
+            <Label htmlFor="aiRole">Role (assign skill to)</Label>
+            <select
+              id="aiRole"
+              value={aiRole}
+              onChange={(e) => setAiRole(e.target.value)}
+              className="mt-1 w-full rounded border bg-background px-3 py-2 text-sm"
+            >
+              {roles.length === 0 ? (
+                <option value="admin">admin</option>
+              ) : (
+                roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name ?? r.id}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Role used for policy checks and to assign visibility for this skill.
+            </p>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={runAiCompile} disabled={aiBusy || !aiText.trim()}>
@@ -727,6 +767,43 @@ function SkillsContent() {
               </CardContent>
             </Card>
           ) : null}
+
+          {(compileRawResponse !== null || dryRunRawResponse !== null) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Response from Hub / Open Router</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Raw API response (success or failure) for debugging.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {compileRawResponse !== null && (
+                  <div>
+                    <div className="mb-1 text-sm font-medium">
+                      Compile — HTTP {compileRawResponse.status}
+                    </div>
+                    <pre className="max-h-48 overflow-auto rounded bg-muted p-3 text-xs">
+                      {typeof compileRawResponse.body === "object" && compileRawResponse.body !== null
+                        ? JSON.stringify(compileRawResponse.body, null, 2)
+                        : String(compileRawResponse.body)}
+                    </pre>
+                  </div>
+                )}
+                {dryRunRawResponse !== null && (
+                  <div>
+                    <div className="mb-1 text-sm font-medium">
+                      Dry-run — HTTP {dryRunRawResponse.status}
+                    </div>
+                    <pre className="max-h-48 overflow-auto rounded bg-muted p-3 text-xs">
+                      {typeof dryRunRawResponse.body === "object" && dryRunRawResponse.body !== null
+                        ? JSON.stringify(dryRunRawResponse.body, null, 2)
+                        : String(dryRunRawResponse.body)}
+                    </pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </Dialog>
     </div>
