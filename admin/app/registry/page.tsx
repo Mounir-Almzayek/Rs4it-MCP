@@ -9,6 +9,21 @@ async function fetchRegistry() {
   return res.json();
 }
 
+function snippet(s: string, max = 160): string {
+  const t = s.trim();
+  if (!t) return "";
+  return t.length <= max ? t : `${t.slice(0, max)}…`;
+}
+
+function jsonSnippet(obj: unknown, max = 120): string {
+  try {
+    const j = JSON.stringify(obj);
+    return snippet(j, max);
+  } catch {
+    return "";
+  }
+}
+
 export default function RegistryPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["registry"],
@@ -52,11 +67,16 @@ export default function RegistryPage() {
             <p className="text-muted-foreground">No dynamic tools.</p>
           ) : (
             <ul className="space-y-2 font-mono text-sm">
-              {tools.filter((t: { enabled?: boolean }) => t.enabled !== false).map((t: { name: string; description?: string }) => (
+              {tools.filter((t: { enabled?: boolean }) => t.enabled !== false).map((t: { name: string; description?: string; inputSchema?: unknown }) => (
                 <li key={t.name} className="rounded border px-3 py-2">
                   <span className="font-semibold">{t.name}</span>
                   {t.description && (
                     <span className="ml-2 text-muted-foreground">— {t.description}</span>
+                  )}
+                  {t.inputSchema != null && (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      inputSchema: {jsonSnippet(t.inputSchema)}
+                    </span>
                   )}
                 </li>
               ))}
@@ -79,12 +99,21 @@ export default function RegistryPage() {
             <p className="text-muted-foreground">No dynamic skills.</p>
           ) : (
             <ul className="space-y-2 font-mono text-sm">
-              {skills.filter((s: { enabled?: boolean }) => s.enabled !== false).map((s: { name: string; description?: string }) => (
+              {skills.filter((s: { enabled?: boolean }) => s.enabled !== false).map((s: {
+                name: string;
+                description?: string;
+                steps?: unknown[];
+                instructions?: string;
+              }) => (
                 <li key={s.name} className="rounded border px-3 py-2">
                   <span className="font-semibold">skill:{s.name}</span>
                   {s.description && (
                     <span className="ml-2 text-muted-foreground">— {s.description}</span>
                   )}
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {(s.steps ?? []).length} step(s)
+                    {s.instructions?.trim() ? ` · instructions: ${snippet(s.instructions, 140)}` : ""}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -136,7 +165,13 @@ export default function RegistryPage() {
             <p className="text-muted-foreground">No dynamic prompts in registry.</p>
           ) : (
             <ul className="space-y-2 font-mono text-sm">
-              {prompts.filter((p: { enabled?: boolean }) => p.enabled !== false).map((p: { name: string; title?: string; description?: string }) => (
+              {prompts.filter((p: { enabled?: boolean }) => p.enabled !== false).map((p: {
+                name: string;
+                title?: string;
+                description?: string;
+                template?: string;
+                argsSchema?: unknown;
+              }) => (
                 <li key={p.name} className="rounded border px-3 py-2">
                   <span className="font-semibold">{p.name}</span>
                   {p.title && (
@@ -144,6 +179,16 @@ export default function RegistryPage() {
                   )}
                   {p.description && (
                     <span className="ml-2 block text-muted-foreground">{p.description}</span>
+                  )}
+                  {p.template?.trim() && (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      template: {snippet(p.template, 200)}
+                    </span>
+                  )}
+                  {p.argsSchema != null && Object.keys(p.argsSchema as object).length > 0 && (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      argsSchema: {jsonSnippet(p.argsSchema, 160)}
+                    </span>
                   )}
                 </li>
               ))}
@@ -166,12 +211,23 @@ export default function RegistryPage() {
             <p className="text-muted-foreground">No dynamic resources in registry.</p>
           ) : (
             <ul className="space-y-2 font-mono text-sm">
-              {resources.filter((r: { enabled?: boolean }) => r.enabled !== false).map((r: { name: string; uri: string; description?: string }) => (
+              {resources.filter((r: { enabled?: boolean }) => r.enabled !== false).map((r: {
+                name: string;
+                uri: string;
+                description?: string;
+                content?: string;
+              }) => (
                 <li key={r.name} className="rounded border px-3 py-2">
                   <span className="font-semibold">{r.name}</span>
                   <span className="ml-2 text-muted-foreground">{r.uri}</span>
                   {r.description && (
                     <span className="ml-2 block text-muted-foreground">{r.description}</span>
+                  )}
+                  {(r.content ?? "").length > 0 && (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      content: {(r.content ?? "").length} chars
+                      {snippet(r.content ?? "", 120) ? ` · ${snippet(r.content ?? "", 120)}` : ""}
+                    </span>
                   )}
                 </li>
               ))}

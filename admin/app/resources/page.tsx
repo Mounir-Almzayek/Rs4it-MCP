@@ -252,6 +252,7 @@ function ResourcesContent() {
                     <th className="p-3 text-left font-medium">URI</th>
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">MIME</th>
+                    <th className="p-3 text-left font-medium">Content</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Source</th>
                     <th className="p-3 text-left font-medium">Origin</th>
@@ -267,6 +268,16 @@ function ResourcesContent() {
                       <TableCellText text={r.uri} label="URI" maxWidthClass="max-w-[200px]" innerClassName="font-mono text-muted-foreground" />
                       <TableCellText text={r.description ?? ""} label="Description" maxWidthClass="max-w-[160px]" />
                       <td className="p-3 text-muted-foreground">{r.mimeType}</td>
+                      <TableCellText
+                        text={(r.content ?? "").trim() ? (r.content ?? "") : ""}
+                        label={
+                          (r.content ?? "").trim()
+                            ? `Content (${(r.content ?? "").length} chars)`
+                            : "Content"
+                        }
+                        maxWidthClass="max-w-[240px]"
+                        innerClassName="font-mono text-xs text-muted-foreground"
+                      />
                       <td className="p-3">
                         {(r.allowedRoles?.length ?? 0) > 0
                           ? (r.allowedRoles ?? []).map((roleId) => (

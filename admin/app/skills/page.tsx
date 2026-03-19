@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { TableCellText } from "@/components/table-cell-text";
+import { jsonForTableCell } from "@/lib/format-table-cell";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import type { DynamicSkillEntry, DynamicSkillStep } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
@@ -172,6 +173,8 @@ function SkillsContent() {
         name: string;
         description: string;
         steps: DynamicSkillStep[];
+        inputSchema?: Record<string, unknown>;
+        instructions?: string;
         enabled: boolean;
         allowedRoles?: string[];
         source: "mcp";
@@ -187,6 +190,8 @@ function SkillsContent() {
           name: sk.name,
           description: sk.description ?? "",
           steps: [],
+          inputSchema: {},
+          instructions: undefined,
           enabled: true,
           allowedRoles: p.allowedRoles ?? [],
           source: "mcp" as const,
@@ -505,6 +510,8 @@ function SkillsContent() {
                   <tr className="border-b bg-muted/50">
                     <th className="p-3 text-left font-medium">Name</th>
                     <th className="p-3 text-left font-medium">Description</th>
+                    <th className="p-3 text-left font-medium">Instructions</th>
+                    <th className="p-3 text-left font-medium">Input schema</th>
                     <th className="p-3 text-left font-medium">Steps</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Source</th>
@@ -518,6 +525,25 @@ function SkillsContent() {
                     <tr key={s.name} className="border-b last:border-0">
                       <TableCellText text={s.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={s.description} label="Description" maxWidthClass="max-w-[200px]" />
+                      <TableCellText
+                        text={
+                          "isPluginSkill" in s && s.isPluginSkill
+                            ? "—"
+                            : (s as DynamicSkillEntry).instructions ?? ""
+                        }
+                        label="Instructions"
+                        maxWidthClass="max-w-[220px]"
+                      />
+                      <TableCellText
+                        text={
+                          "isPluginSkill" in s && s.isPluginSkill
+                            ? "—"
+                            : jsonForTableCell((s as DynamicSkillEntry).inputSchema)
+                        }
+                        label="Input schema"
+                        maxWidthClass="max-w-[200px]"
+                        innerClassName="font-mono text-xs"
+                      />
                       <td className="p-3">{(s.steps ?? []).length} steps</td>
                       <td className="p-3">
                         {(s.allowedRoles?.length ?? 0) > 0

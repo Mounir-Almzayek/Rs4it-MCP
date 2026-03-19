@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/lib/toast";
 import { AllowedRolesPicker } from "@/components/roles/allowed-roles-picker";
 import { TableCellText } from "@/components/table-cell-text";
+import { jsonForTableCell } from "@/lib/format-table-cell";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { DynamicToolEntry } from "@/lib/registry";
 import type { RoleConfig } from "@/lib/roles";
@@ -260,6 +261,7 @@ function ToolsContent() {
                     <th className="p-3 text-left font-medium">Name</th>
                     <th className="p-3 text-left font-medium">Description</th>
                     <th className="p-3 text-left font-medium">Handler</th>
+                    <th className="p-3 text-left font-medium">Input schema</th>
                     <th className="p-3 text-left font-medium">Allowed Roles</th>
                     <th className="p-3 text-left font-medium">Source</th>
                     <th className="p-3 text-left font-medium">Origin</th>
@@ -274,6 +276,16 @@ function ToolsContent() {
                       <TableCellText text={t.name} label="Name" maxWidthClass="max-w-[160px]" innerClassName="font-mono" />
                       <TableCellText text={t.description} label="Description" maxWidthClass="max-w-[200px]" />
                       <TableCellText text={t.handlerRef} label="Handler" maxWidthClass="max-w-[140px]" innerClassName="font-mono text-muted-foreground" />
+                      <TableCellText
+                        text={
+                          t.isPluginTool
+                            ? "—"
+                            : jsonForTableCell((t as DynamicToolEntry).inputSchema)
+                        }
+                        label="Input schema"
+                        maxWidthClass="max-w-[200px]"
+                        innerClassName="font-mono text-xs"
+                      />
                       <td className="p-3">
                         {(t.allowedRoles?.length ?? 0) > 0
                           ? (t.allowedRoles ?? []).map((r) => (
