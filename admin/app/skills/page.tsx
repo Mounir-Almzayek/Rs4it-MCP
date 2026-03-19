@@ -768,6 +768,25 @@ function SkillsContent() {
             </Card>
           ) : null}
 
+          {compileRawResponse !== null &&
+            typeof compileRawResponse.body === "object" &&
+            compileRawResponse.body !== null &&
+            "rawOpenRouterOutput" in (compileRawResponse.body as Record<string, unknown>) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Raw Open Router output (before compiler)</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Exact LLM response before schema validation — use this to see why validation failed.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-muted p-3 text-xs">
+                    {String((compileRawResponse.body as Record<string, unknown>).rawOpenRouterOutput)}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+
           {(compileRawResponse !== null || dryRunRawResponse !== null) && (
             <Card>
               <CardHeader>

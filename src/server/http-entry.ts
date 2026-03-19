@@ -17,7 +17,7 @@ import { getPort, getBaseUrl } from "../config/transport.js";
 import { upsertMcpUser } from "../config/mcp-users-store.js";
 import { recordInvocation } from "../config/usage-store.js";
 import { buildToolCatalog } from "../skill-compiler/tool-catalog.js";
-import { compileSkill } from "../skill-compiler/compiler.js";
+import { compileSkill, CompileError } from "../skill-compiler/compiler.js";
 import { evaluateDraftAgainstPolicies } from "../skill-compiler/policies.js";
 import { dryRunRequestSchema } from "../skill-compiler/types.js";
 import { executeDraft } from "../skill-compiler/executor.js";
@@ -329,9 +329,14 @@ async function main(): Promise<void> {
       res.end(JSON.stringify({ ...compiled, policy }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      const rawOpenRouterOutput = e instanceof CompileError ? e.rawOpenRouterOutput : undefined;
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ ok: false, error: msg }));
+      res.end(
+        JSON.stringify(
+          rawOpenRouterOutput !== undefined ? { ok: false, error: msg, rawOpenRouterOutput } : { ok: false, error: msg },
+        ),
+      );
     }
   });
 

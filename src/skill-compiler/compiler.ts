@@ -8,6 +8,17 @@ import {
   type CompileResponse,
 } from "./types.js";
 
+/** Thrown when compile fails; may include raw LLM output for debugging. */
+export class CompileError extends Error {
+  constructor(
+    message: string,
+    public readonly rawOpenRouterOutput?: string,
+  ) {
+    super(message);
+    this.name = "CompileError";
+  }
+}
+
 const modelEnv = () =>
   process.env["OPENROUTER_MODEL"] ??
   process.env["MCP_SKILL_COMPILER_MODEL"] ??
@@ -82,8 +93,13 @@ async function callCompilerLLM(args: {
     maxTokens: 1400,
   });
 
-  const parsed = jsonObjectSchema.parse(JSON.parse(content));
-  return compileResponseSchema.parse(parsed);
+  try {
+    const parsed = jsonObjectSchema.parse(JSON.parse(content));
+    return compileResponseSchema.parse(parsed);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new CompileError(msg, content);
+  }
 }
 
 async function callRepairLLM(args: {
@@ -121,8 +137,13 @@ async function callRepairLLM(args: {
     maxTokens: 1600,
   });
 
-  const parsed = jsonObjectSchema.parse(JSON.parse(content));
-  return compileResponseSchema.parse(parsed);
+  try {
+    const parsed = jsonObjectSchema.parse(JSON.parse(content));
+    return compileResponseSchema.parse(parsed);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new CompileError(msg, content);
+  }
 }
 
 export async function compileSkill(args: {
@@ -139,6 +160,7 @@ export async function compileSkill(args: {
   try {
     return await callCompilerLLM({ req, toolCatalog: args.toolCatalog, model, apiKey });
   } catch (e) {
+    const firstRaw = e instanceof CompileError ? e.rawOpenRouterOutput : undefined;
     // One repair attempt when schema parsing fails.
     const msg = e instanceof Error ? e.message : String(e);
     try {
@@ -153,7 +175,8 @@ export async function compileSkill(args: {
       });
     } catch (e2) {
       const msg2 = e2 instanceof Error ? e2.message : String(e2);
-      throw new Error(`Skill compiler failed: ${msg2}`);
+      const repairRaw = e2 instanceof CompileError ? e2.rawOpenRouterOutput : undefined;
+      throw new CompileError(`Skill compiler failed: ${msg2}`, firstRaw ?? repairRaw);
     }
   }
 }
