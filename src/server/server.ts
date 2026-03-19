@@ -73,15 +73,54 @@ const toolResultCast = (r: Awaited<ReturnType<typeof executeTool>>) =>
   r as Awaited<ReturnType<Parameters<McpServer["registerTool"]>[2]>>;
 
 /**
+ * Convert a single property value from Zod-internal shape to JSON Schema.
+ * Handles stored schema that was serialized from Zod (_def.typeName, _def.description).
+ */
+function normalizePropertyToJsonSchema(prop: unknown): Record<string, unknown> {
+  if (!prop || typeof prop !== "object") return { type: "string" };
+  const p = prop as Record<string, unknown>;
+  const def = p["_def"] as Record<string, unknown> | undefined;
+  if (def && typeof def === "object") {
+    const typeName = String(def["typeName"] ?? "ZodString");
+    const description = typeof def["description"] === "string" ? def["description"] : undefined;
+    const type =
+      typeName === "ZodNumber" ? "number"
+      : typeName === "ZodBoolean" ? "boolean"
+      : typeName === "ZodArray" ? "array"
+      : "string";
+    return description ? { type, description } : { type };
+  }
+  if (typeof p["type"] === "string") {
+    return {
+      type: p["type"],
+      ...(typeof p["description"] === "string" && { description: p["description"] }),
+    };
+  }
+  return { type: "string" };
+}
+
+/**
  * Normalize inputSchema: dashboard stores flat { paramName: { type, description? } };
+ * or Zod-serialized { paramName: { _def: { typeName, description } } };
  * we need full JSON Schema { type: "object", properties, required }.
  */
 function normalizeInputSchemaToMcp(schema: Record<string, unknown>): Record<string, unknown> {
   if (!schema || typeof schema !== "object") return { type: "object", properties: {} };
   const hasObjectType = schema["type"] === "object";
   const hasProperties = "properties" in schema && schema["properties"] != null;
-  if (hasObjectType && hasProperties) return schema;
-  const properties = hasProperties ? (schema["properties"] as Record<string, unknown>) : schema;
+  if (hasObjectType && hasProperties) {
+    const props = schema["properties"] as Record<string, unknown>;
+    const normalizedProps: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(props ?? {})) {
+      normalizedProps[k] = normalizePropertyToJsonSchema(v);
+    }
+    return { ...schema, properties: normalizedProps };
+  }
+  const rawProperties = hasProperties ? (schema["properties"] as Record<string, unknown>) : schema;
+  const properties: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(rawProperties ?? {})) {
+    properties[k] = normalizePropertyToJsonSchema(v);
+  }
   const required = Object.keys(properties).filter(
     (k) => (properties[k] as Record<string, unknown>)?.type != null
   );

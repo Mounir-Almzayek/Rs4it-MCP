@@ -609,6 +609,9 @@ function SkillsContent() {
               rows={4}
               className="mt-1 font-mono text-sm"
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use plain JSON: {`{ "paramName": { "type": "string", "description": "..." } }`} so parameter descriptions show in the tooltip. Zod format is auto-normalized on save.
+            </p>
           </div>
           <AllowedRolesPicker
             roles={roles}

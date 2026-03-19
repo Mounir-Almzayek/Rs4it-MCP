@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readRegistry, writeRegistry, type DynamicSkillEntry } from "@/lib/registry";
 import { validateAllowedRoles } from "@/lib/validate";
+import { normalizeInputSchemaForRegistry } from "@/lib/input-schema";
 
 const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", Pragma: "no-cache" };
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const entry: DynamicSkillEntry = {
       name: body.name ?? "",
       description: body.description ?? "",
-      inputSchema: body.inputSchema ?? {},
+      inputSchema: normalizeInputSchemaForRegistry((body.inputSchema ?? {}) as Record<string, unknown>),
       steps: body.steps ?? [],
       enabled: body.enabled ?? true,
       updatedAt: new Date().toISOString(),
