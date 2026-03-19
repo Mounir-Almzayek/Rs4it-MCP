@@ -301,6 +301,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const steps = entry.steps ?? [];
     const toolName = skillToToolName(entry.name);
+    const instructions = entry.instructions?.trim();
     server.registerTool(
       toolName,
       {
@@ -315,6 +316,21 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
           steps,
           (args as Record<string, unknown>) ?? {}
         );
+        if (instructions) {
+          const stepText = result.content
+            .map((c) => ("text" in c ? (c as { text?: string }).text : ""))
+            .join("")
+            .trim();
+          return toolResultCast({
+            content: [
+              {
+                type: "text" as const,
+                text: `## Skill instructions\n\n${instructions}\n\n---\n\n## Step results\n\n${stepText || "(no output)"}`,
+              },
+            ],
+            isError: result.isError,
+          });
+        }
         return toolResultCast(result);
       }
     );

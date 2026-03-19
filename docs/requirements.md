@@ -32,6 +32,7 @@ node -v
 - **Skill Compiler (Hybrid skill authoring)**:
   - **`OPENROUTER_API_KEY`** or **`MCP_OPENROUTER_API_KEY`** (required to enable compiler): API key used by the Hub to compile skill text into a draft skill.
   - **`OPENROUTER_MODEL`** or **`MCP_SKILL_COMPILER_MODEL`** (optional): OpenRouter model id. Default: `openai/gpt-4o-mini`.
+  - **`OPENROUTER_EMBEDDING_MODEL`** or **`MCP_EMBEDDING_MODEL`** (optional): OpenRouter embedding model for vector search over the tool catalog. When set (with the same API key), the compiler retrieves only the top-k tools most relevant to the skill text. Default: `openai/text-embedding-3-small`.
   - **`MCP_ADMIN_API_SECRET`** (optional, recommended): If set, Hub requires header `X-Admin-Secret` for `/api/skill-compiler/*` endpoints. Admin panel can pass it via `ADMIN_HUB_SECRET` or `MCP_ADMIN_API_SECRET`.
   - **`MCP_SKILL_EXECUTIONS_FILE`** (optional): Path to store execution traces for `/api/skill-compiler/execute`. Default: `config/skill_executions.json`.
 - **Roles (Phase 09)**:

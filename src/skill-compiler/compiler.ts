@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ToolCatalogItem } from "./tool-catalog.js";
 import { openRouterChat } from "./openrouter.js";
+import { isEmbeddingAvailable, retrieveRelevantTools } from "./embeddings.js";
 import {
   compileRequestSchema,
   compileResponseSchema,
@@ -38,13 +39,15 @@ function buildSystemPrompt(): string {
     '  "draft": { "name": "snake_case", "description": "string", "inputSchema": { ... }, "steps": [ { "type": "tool|plugin", "target": "string", "argsMap": { "argName": "inputKeyOrLiteral" } } ] },',
     '  "preview": { "summary": "string", "steps": ["human readable step", "..."] },',
     '  "risks": ["...", "..."]',
+    ',  "suggestedTools": [ { "name": "snake_case", "description": "string", "inputSchema": { "paramName": { "type": "string", "description": "..." } }, "handlerRef": "create_file"|"read_file"|"run_command" } ]  // optional',
     "}",
     "",
     "Rules:",
     "- draft.name must be snake_case, short, stable.",
     "- steps[].type MUST be exactly \"tool\" or \"plugin\" (the tool/plugin name goes in \"target\" only).",
-    "- steps[].target MUST be one of the provided tool names exactly.",
-    "- Prefer using existing tools/skills over inventing new ones.",
+    "- steps[].target MUST be one of the provided tool names OR one of the names you put in suggestedTools.",
+    "- Prefer using existing tools/skills. If the user's request needs a capability no existing tool provides, add one or more entries to suggestedTools (name, description, inputSchema, handlerRef). handlerRef must be exactly one of: create_file, read_file, run_command.",
+    "- In preview.summary, mention if you suggested new tools (e.g. \"Suggested 2 new tools: x, y. Use them in Admin → Tools then apply this skill.\").",
     "- argsMap: keys are argument names; values MUST be strings (inputSchema key name or literal). No nested objects or arrays in argsMap.",
     "- Keep inputSchema minimal: only what is necessary for the steps; add type/description when clear.",
     "- If you are unsure, output fewer steps and add a risk note rather than guessing unsafe actions.",
@@ -68,7 +71,7 @@ function buildUserPrompt(args: {
     req.skillText,
     "",
     req.preferredName ? `Preferred name: ${req.preferredName}` : "",
-    req.role ? `Author role: ${req.role}` : "",
+    req.role ? `Author role: ${req.role} (only tools/skills visible to this role are listed below).` : "",
     "",
     "Available tools (name/description/inputSchema):",
     JSON.stringify(tools, null, 2),
@@ -107,9 +110,29 @@ function normalizeCompileOutput(raw: Record<string, unknown>): Record<string, un
     return { ...s, type, argsMap };
   });
 
+  let suggestedTools = raw.suggestedTools;
+  if (Array.isArray(suggestedTools)) {
+    const allowed = new Set(["create_file", "read_file", "run_command"]);
+    suggestedTools = suggestedTools
+      .filter((t): t is Record<string, unknown> => t && typeof t === "object" && typeof (t as Record<string, unknown>).name === "string")
+      .map((t) => {
+        const s = t as Record<string, unknown>;
+        const ref = String(s.handlerRef ?? "create_file");
+        return {
+          name: String(s.name),
+          description: String(s.description ?? ""),
+          inputSchema: (s.inputSchema && typeof s.inputSchema === "object" && !Array.isArray(s.inputSchema)) ? s.inputSchema as Record<string, unknown> : {},
+          handlerRef: allowed.has(ref) ? ref : "create_file",
+        };
+      });
+  } else {
+    suggestedTools = [];
+  }
+
   return {
     ...raw,
     draft: { ...draft, steps: normalizedSteps },
+    suggestedTools,
   };
 }
 
@@ -183,6 +206,13 @@ async function callRepairLLM(args: {
   }
 }
 
+const VECTOR_SEARCH_TOP_K = 30;
+
+/**
+ * Compile skill text into a draft using:
+ * 1. Vector search (OpenRouter embeddings): when available, retrieves top-k tools most relevant to the skill text so the LLM sees the best context. Integrates with LangChain-style retriever pattern.
+ * 2. Single LLM call (Open Router) to produce draft + preview + optional suggestedTools.
+ */
 export async function compileSkill(args: {
   req: unknown;
   toolCatalog: ToolCatalogItem[];
@@ -194,8 +224,13 @@ export async function compileSkill(args: {
   }
   const model = modelEnv();
 
+  const toolCatalogForLLM =
+    isEmbeddingAvailable() && args.toolCatalog.length > VECTOR_SEARCH_TOP_K
+      ? await retrieveRelevantTools(req.skillText, args.toolCatalog, { topK: VECTOR_SEARCH_TOP_K })
+      : args.toolCatalog;
+
   try {
-    return await callCompilerLLM({ req, toolCatalog: args.toolCatalog, model, apiKey });
+    return await callCompilerLLM({ req, toolCatalog: toolCatalogForLLM, model, apiKey });
   } catch (e) {
     const firstRaw = e instanceof CompileError ? e.rawOpenRouterOutput : undefined;
     // One repair attempt when schema parsing fails.

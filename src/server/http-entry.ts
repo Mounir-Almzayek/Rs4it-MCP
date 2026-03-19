@@ -314,15 +314,25 @@ async function main(): Promise<void> {
       return;
     }
     try {
-      const toolCatalog = await buildToolCatalog();
+      const role =
+        (req.body && typeof req.body === "object" && "role" in (req.body as Record<string, unknown>))
+          ? String((req.body as Record<string, unknown>)["role"] ?? "")
+          : undefined;
+      const toolCatalog = await buildToolCatalog(role);
       const compiled = await compileSkill({ req: req.body, toolCatalog });
+      const catalogForPolicy = [
+        ...toolCatalog,
+        ...(compiled.suggestedTools ?? []).map((t) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema,
+          source: "dynamic" as const,
+        })),
+      ];
       const policy = evaluateDraftAgainstPolicies({
         draft: compiled.draft,
-        toolCatalog,
-        role:
-          (req.body && typeof req.body === "object" && "role" in (req.body as Record<string, unknown>))
-            ? String((req.body as Record<string, unknown>)["role"] ?? "")
-            : undefined,
+        toolCatalog: catalogForPolicy,
+        role: role || undefined,
       });
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json");
@@ -350,7 +360,7 @@ async function main(): Promise<void> {
     }
     try {
       const parsed = dryRunRequestSchema.parse(req.body);
-      const toolCatalog = await buildToolCatalog();
+      const toolCatalog = await buildToolCatalog(parsed.role);
       const decision = evaluateDraftAgainstPolicies({ draft: parsed.draft, toolCatalog, role: parsed.role });
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json");
@@ -374,7 +384,7 @@ async function main(): Promise<void> {
     try {
       const body = req.body as Record<string, unknown>;
       const parsed = dryRunRequestSchema.parse({ draft: body?.draft, role: body?.role });
-      const toolCatalog = await buildToolCatalog();
+      const toolCatalog = await buildToolCatalog(parsed.role);
       const decision = evaluateDraftAgainstPolicies({ draft: parsed.draft, toolCatalog, role: parsed.role });
       if (decision.blocked.length > 0) {
         res.statusCode = 400;

@@ -30,6 +30,14 @@ export const compileRequestSchema = z.object({
   role: z.string().optional(),
 });
 
+/** Suggested new tool (create in Admin → Tools); handlerRef must be a built-in tool name. */
+export const suggestedToolSchema = z.object({
+  name: z.string().min(1).regex(/^[a-z0-9_]+$/, "tool name must be snake_case"),
+  description: z.string().min(1),
+  inputSchema: z.record(z.string(), z.unknown()).default({}),
+  handlerRef: z.enum(["create_file", "read_file", "run_command"]),
+});
+
 export const compileResponseSchema = z.object({
   draft: dynamicSkillEntryDraftSchema,
   preview: z.object({
@@ -37,10 +45,13 @@ export const compileResponseSchema = z.object({
     steps: z.array(z.string()).default([]),
   }),
   risks: z.array(z.string()).default([]),
+  /** Optional: new tools the LLM suggests creating; draft steps may reference these names. */
+  suggestedTools: z.array(suggestedToolSchema).optional().default([]),
 });
 
 export type CompileRequest = z.infer<typeof compileRequestSchema>;
 export type CompileResponse = z.infer<typeof compileResponseSchema>;
+export type SuggestedTool = z.infer<typeof suggestedToolSchema>;
 
 export const dryRunRequestSchema = z.object({
   draft: dynamicSkillEntryDraftSchema,

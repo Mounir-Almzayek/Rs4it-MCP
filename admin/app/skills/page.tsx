@@ -51,10 +51,18 @@ type CompilerDraft = {
   steps: DynamicSkillStep[];
 };
 
+type SuggestedTool = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  handlerRef: string;
+};
+
 type CompilerResponse = {
   draft: CompilerDraft;
   preview?: { summary?: string; steps?: string[] };
   risks?: string[];
+  suggestedTools?: SuggestedTool[];
   policy?: { blocked?: Array<{ reason: string; stepIndex?: number }>; warnings?: string[] };
   ok?: boolean;
   error?: string;
@@ -129,6 +137,7 @@ function SkillsContent() {
   const [aiDryRun, setAiDryRun] = useState<{ ok: boolean; blocked?: any[]; warnings?: string[]; error?: string } | null>(null);
   const [compileRawResponse, setCompileRawResponse] = useState<{ status: number; body: unknown } | null>(null);
   const [dryRunRawResponse, setDryRunRawResponse] = useState<{ status: number; body: unknown } | null>(null);
+  const [aiSuggestedToolsBusy, setAiSuggestedToolsBusy] = useState(false);
   const [form, setForm] = useState<Partial<DynamicSkillEntry>>({
     name: "",
     description: "",
@@ -419,6 +428,39 @@ function SkillsContent() {
     toast.add("success", "Applied AI draft to form (role and instructions preserved)");
   }
 
+  async function createSuggestedTools() {
+    const tools = aiResult?.suggestedTools;
+    if (!tools?.length) return;
+    setAiSuggestedToolsBusy(true);
+    const allowedRoles = aiRole.trim() ? [aiRole.trim()] : undefined;
+    try {
+      for (const t of tools) {
+        const res = await fetch("/api/tools", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema ?? {},
+            handlerRef: t.handlerRef,
+            enabled: true,
+            allowedRoles,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error ?? res.statusText);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["registry"] });
+      toast.add("success", `Created ${tools.length} suggested tool(s). You can now Apply to form for the skill.`);
+    } catch (e) {
+      toast.add("error", errorToMessage(e));
+    } finally {
+      setAiSuggestedToolsBusy(false);
+    }
+  }
+
   useEffect(() => {
     if (searchParams.get("create") === "1") openCreate();
   }, [searchParams]);
@@ -694,6 +736,35 @@ function SkillsContent() {
               Apply to form
             </Button>
           </div>
+
+          {aiResult?.suggestedTools && aiResult.suggestedTools.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Suggested new tools</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  The compiler suggested these tools for this skill. Create them so the skill steps can use them, then Apply to form.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <ul className="list-disc pl-5 text-sm">
+                  {aiResult.suggestedTools.map((t) => (
+                    <li key={t.name}>
+                      <span className="font-mono">{t.name}</span> — {t.description}
+                      {t.handlerRef ? ` (handler: ${t.handlerRef})` : ""}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={createSuggestedTools}
+                  disabled={aiSuggestedToolsBusy}
+                >
+                  {aiSuggestedToolsBusy ? "Creating…" : "Create all suggested tools"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {aiResult?.preview?.summary ? (
             <Card>
