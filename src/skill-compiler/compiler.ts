@@ -42,9 +42,10 @@ function buildSystemPrompt(): string {
     "",
     "Rules:",
     "- draft.name must be snake_case, short, stable.",
+    "- steps[].type MUST be exactly \"tool\" or \"plugin\" (the tool/plugin name goes in \"target\" only).",
     "- steps[].target MUST be one of the provided tool names exactly.",
     "- Prefer using existing tools/skills over inventing new ones.",
-    "- argsMap values: if it matches an inputSchema key, it will be substituted; otherwise treated as a literal string.",
+    "- argsMap: keys are argument names; values MUST be strings (inputSchema key name or literal). No nested objects or arrays in argsMap.",
     "- Keep inputSchema minimal: only what is necessary for the steps; add type/description when clear.",
     "- If you are unsure, output fewer steps and add a risk note rather than guessing unsafe actions.",
   ].join("\n");
@@ -78,6 +79,40 @@ function buildUserPrompt(args: {
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
+/**
+ * Normalize LLM output so it passes the strict schema without a second LLM call.
+ * - steps[].type: only "tool" | "plugin" allowed → map e.g. "plugin_foo" to "plugin"
+ * - steps[].argsMap: values must be string → stringify objects/arrays
+ */
+function normalizeCompileOutput(raw: Record<string, unknown>): Record<string, unknown> {
+  const draft = raw.draft as Record<string, unknown> | undefined;
+  if (!draft || typeof draft !== "object") return raw;
+
+  const steps = Array.isArray(draft.steps) ? [...draft.steps] : [];
+  const normalizedSteps = steps.map((step: unknown) => {
+    if (!step || typeof step !== "object") return step;
+    const s = step as Record<string, unknown>;
+    let type = s.type;
+    if (type !== "tool" && type !== "plugin") {
+      const target = String(s.target ?? "");
+      type = /plugin|plugin_/i.test(target) || (typeof type === "string" && /plugin/i.test(type)) ? "plugin" : "tool";
+    }
+    let argsMap = s.argsMap;
+    if (argsMap != null && typeof argsMap === "object" && !Array.isArray(argsMap)) {
+      const entries = Object.entries(argsMap as Record<string, unknown>);
+      argsMap = Object.fromEntries(
+        entries.map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]),
+      );
+    }
+    return { ...s, type, argsMap };
+  });
+
+  return {
+    ...raw,
+    draft: { ...draft, steps: normalizedSteps },
+  };
+}
+
 async function callCompilerLLM(args: {
   req: CompileRequest;
   toolCatalog: ToolCatalogItem[];
@@ -94,8 +129,9 @@ async function callCompilerLLM(args: {
   });
 
   try {
-    const parsed = jsonObjectSchema.parse(JSON.parse(content));
-    return compileResponseSchema.parse(parsed);
+    const parsed = jsonObjectSchema.parse(JSON.parse(content)) as Record<string, unknown>;
+    const normalized = normalizeCompileOutput(parsed);
+    return compileResponseSchema.parse(normalized);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new CompileError(msg, content);
@@ -138,8 +174,9 @@ async function callRepairLLM(args: {
   });
 
   try {
-    const parsed = jsonObjectSchema.parse(JSON.parse(content));
-    return compileResponseSchema.parse(parsed);
+    const parsed = jsonObjectSchema.parse(JSON.parse(content)) as Record<string, unknown>;
+    const normalized = normalizeCompileOutput(parsed);
+    return compileResponseSchema.parse(normalized);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new CompileError(msg, content);
