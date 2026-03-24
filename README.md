@@ -632,6 +632,21 @@ After hosting the Hub (locally or remotely), you can add it in **Cursor** as a c
 For more details (including `.cursor/mcp.json` configuration and other MCP clients), see  
 `docs/deployment.md` → “Connecting Cursor or another MCP client”.
 
+### Troubleshooting (Cursor / `-32603` / SSE)
+
+- **`Streamable HTTP` error with `-32603` on first connect**  
+  The Hub failed while creating the MCP session (building the server or handling `initialize`). Check **Hub process logs** for lines like `[rs4it-mcp] Session creation failed` or `Connect/handleRequest failed`.  
+  To return a short error message in the JSON-RPC response (for debugging only), set **`MCP_DEBUG=true`** or **`MCP_EXPOSE_CLIENT_ERRORS=true`** on the Hub process, then retry.
+
+- **SSE fallback shows `400`**  
+  This Hub expects **Streamable HTTP** for the initial handshake. `GET /mcp` without a valid `mcp-session-id` returns **400** by design. Fix the **POST `/mcp` (initialize)** failure first; do not rely on SSE alone.
+
+- **`SSE stream disconnected: TypeError: terminated`**  
+  Often a **timeout**, **proxy**, or **client reconnect**; the Cursor MCP client usually reconnects. If it loops forever, verify the Hub URL/port, firewall, and that the Hub stayed running.
+
+- **After editing MCP config in Cursor (`config_server_modified`)**  
+  Confirm the **URL** still matches the Hub (same host, port, path `/mcp`, `http` vs `https`). Restart the Hub if needed.
+
 ---
 
 ## License & Project Status

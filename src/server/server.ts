@@ -282,19 +282,23 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const handlerRef = entry.handlerRef;
     const toolName = entry.name;
-    server.registerTool(
-      toolName,
-      {
-        description: entry.description,
-        inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
-      } as Parameters<McpServer["registerTool"]>[1],
-      async (args: unknown) => {
-        const hdrErr = headersValidationError(args);
-        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
-        onToolInvoked?.(toolName);
-        return toolResultCast(await executeTool(handlerRef, args));
-      }
-    );
+    try {
+      server.registerTool(
+        toolName,
+        {
+          description: entry.description,
+          inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
+        } as Parameters<McpServer["registerTool"]>[1],
+        async (args: unknown) => {
+          const hdrErr = headersValidationError(args);
+          if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+          onToolInvoked?.(toolName);
+          return toolResultCast(await executeTool(handlerRef, args));
+        }
+      );
+    } catch (e) {
+      console.error(`[rs4it-mcp] Skipping dynamic tool "${toolName}":`, e);
+    }
   }
   for (const entry of dynamic.skills) {
     if (!entry.enabled) continue;
@@ -302,38 +306,42 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     const steps = entry.steps ?? [];
     const toolName = skillToToolName(entry.name);
     const instructions = entry.instructions?.trim();
-    server.registerTool(
-      toolName,
-      {
-        description: `[Skill] ${entry.description}`,
-        inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
-      } as Parameters<McpServer["registerTool"]>[1],
-      async (args: unknown) => {
-        const hdrErr = headersValidationError(args);
-        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
-        onToolInvoked?.(toolName);
-        const result = await runDynamicSkillSteps(
-          steps,
-          (args as Record<string, unknown>) ?? {}
-        );
-        if (instructions) {
-          const stepText = result.content
-            .map((c) => ("text" in c ? (c as { text?: string }).text : ""))
-            .join("")
-            .trim();
-          return toolResultCast({
-            content: [
-              {
-                type: "text" as const,
-                text: `## Skill instructions\n\n${instructions}\n\n---\n\n## Step results\n\n${stepText || "(no output)"}`,
-              },
-            ],
-            isError: result.isError,
-          });
+    try {
+      server.registerTool(
+        toolName,
+        {
+          description: `[Skill] ${entry.description}`,
+          inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
+        } as Parameters<McpServer["registerTool"]>[1],
+        async (args: unknown) => {
+          const hdrErr = headersValidationError(args);
+          if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+          onToolInvoked?.(toolName);
+          const result = await runDynamicSkillSteps(
+            steps,
+            (args as Record<string, unknown>) ?? {}
+          );
+          if (instructions) {
+            const stepText = result.content
+              .map((c) => ("text" in c ? (c as { text?: string }).text : ""))
+              .join("")
+              .trim();
+            return toolResultCast({
+              content: [
+                {
+                  type: "text" as const,
+                  text: `## Skill instructions\n\n${instructions}\n\n---\n\n## Step results\n\n${stepText || "(no output)"}`,
+                },
+              ],
+              isError: result.isError,
+            });
+          }
+          return toolResultCast(result);
         }
-        return toolResultCast(result);
-      }
-    );
+      );
+    } catch (e) {
+      console.error(`[rs4it-mcp] Skipping dynamic skill "${entry.name}":`, e);
+    }
   }
 
   const pluginAllowedMap = new Map<string, string[]>();
@@ -469,27 +477,31 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       entry.argsSchema && Object.keys(entry.argsSchema as object).length > 0
         ? jsonSchemaToZod(entry.argsSchema as Record<string, unknown>).shape
         : undefined;
-    server.registerPrompt(
-      entry.name,
-      {
-        title: entry.title ?? entry.name,
-        description: entry.description,
-        argsSchema,
-      },
-      (args: Record<string, unknown> | undefined, _extra) => {
-        let text = template;
-        if (args && typeof args === "object") {
-          for (const [k, v] of Object.entries(args)) {
-            text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v ?? ""));
+    try {
+      server.registerPrompt(
+        entry.name,
+        {
+          title: entry.title ?? entry.name,
+          description: entry.description,
+          argsSchema,
+        },
+        (args: Record<string, unknown> | undefined, _extra) => {
+          let text = template;
+          if (args && typeof args === "object") {
+            for (const [k, v] of Object.entries(args)) {
+              text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v ?? ""));
+            }
           }
+          return Promise.resolve({
+            messages: [
+              { role: "user" as const, content: { type: "text" as const, text } },
+            ],
+          });
         }
-        return Promise.resolve({
-          messages: [
-            { role: "user" as const, content: { type: "text" as const, text } },
-          ],
-        });
-      }
-    );
+      );
+    } catch (e) {
+      console.error(`[rs4it-mcp] Skipping dynamic prompt "${entry.name}":`, e);
+    }
   }
 
   for (const entry of dynamic.resources) {
@@ -498,17 +510,21 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     const uri = entry.uri;
     const mimeType = entry.mimeType;
     const content = entry.content;
-    server.registerResource(
-      entry.name,
-      uri,
-      {
-        title: entry.name,
-        description: entry.description ?? undefined,
-      },
-      async () => ({
-        contents: [{ uri, mimeType, text: content }],
-      })
-    );
+    try {
+      server.registerResource(
+        entry.name,
+        uri,
+        {
+          title: entry.name,
+          description: entry.description ?? undefined,
+        },
+        async () => ({
+          contents: [{ uri, mimeType, text: content }],
+        })
+      );
+    } catch (e) {
+      console.error(`[rs4it-mcp] Skipping dynamic resource "${entry.name}":`, e);
+    }
   }
 
   return server;

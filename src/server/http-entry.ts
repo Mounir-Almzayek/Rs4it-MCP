@@ -32,6 +32,19 @@ interface SessionState {
 
 const sessions = new Map<SessionId, SessionState>();
 
+/** When true, JSON-RPC -32603 responses include a short error message (for debugging). */
+function exposeErrorsToClient(): boolean {
+  const d = process.env["MCP_DEBUG"];
+  const e = process.env["MCP_EXPOSE_CLIENT_ERRORS"];
+  return d === "1" || d === "true" || e === "1" || e === "true";
+}
+
+function clientErrorDetail(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  const max = 500;
+  return msg.length > max ? `${msg.slice(0, max)}…` : msg;
+}
+
 function requireAdminSecret(req: IncomingMessage): { ok: true } | { ok: false; status: number; error: string } {
   const secret = process.env["MCP_ADMIN_API_SECRET"];
   if (!secret) return { ok: true };
@@ -133,7 +146,7 @@ async function handlePost(
         if (!res.headersSent) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
-          const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
+          const detail = exposeErrorsToClient() ? clientErrorDetail(sessionErr) : "Internal server error";
           res.end(
             JSON.stringify({
               jsonrpc: "2.0",
@@ -157,7 +170,7 @@ async function handlePost(
         if (!res.headersSent) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
-          const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
+          const detail = exposeErrorsToClient() ? clientErrorDetail(connectErr) : "Internal server error";
           res.end(
             JSON.stringify({
               jsonrpc: "2.0",
@@ -190,7 +203,7 @@ async function handlePost(
     if (!res.headersSent) {
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
-      const detail = process.env["MCP_DEBUG"] ? msg : "Internal server error";
+      const detail = exposeErrorsToClient() ? clientErrorDetail(err) : "Internal server error";
       res.end(
         JSON.stringify({
           jsonrpc: "2.0",
