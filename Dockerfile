@@ -9,13 +9,13 @@ WORKDIR /app
 
 # Install all deps (devDependencies needed for tsc), then build
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build \
   && rm -rf node_modules \
-  && npm install --omit=dev
+  && npm install --omit=dev --ignore-scripts
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production (runs as non-root user "mcp")

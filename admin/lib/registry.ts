@@ -30,15 +30,13 @@ export interface DynamicToolEntry {
 export interface DynamicSkillEntry {
   name: string;
   description: string;
-  inputSchema: Record<string, unknown>;
-  steps: DynamicSkillStep[];
   enabled: boolean;
   updatedAt?: string;
   allowedRoles?: string[];
   source?: RegistrySource;
   origin?: string;
-  /** Full instructions / skill text (markdown). Preserved when using AI Generate → Apply to form. */
-  instructions?: string;
+  /** Full instructions / skill text (markdown). Cursor-like written skill content. */
+  instructions: string;
 }
 
 export interface DynamicPluginEntry {
@@ -82,12 +80,25 @@ export interface DynamicResourceEntry {
   origin?: string;
 }
 
+export interface DynamicRuleEntry {
+  name: string;
+  description: string;
+  content: string;
+  enabled: boolean;
+  updatedAt?: string;
+  allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
+  globs?: string;
+}
+
 export interface DynamicRegistry {
   tools: DynamicToolEntry[];
   skills: DynamicSkillEntry[];
   plugins: DynamicPluginEntry[];
   prompts: DynamicPromptEntry[];
   resources: DynamicResourceEntry[];
+  rules: DynamicRuleEntry[];
 }
 
 /** Candidate paths to try (env first, then cwd-relative). Used for read. */
@@ -114,7 +125,7 @@ function getRegistryPathForWrite(): string {
 }
 
 export async function readRegistry(): Promise<DynamicRegistry> {
-  const empty: DynamicRegistry = { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
+  const empty: DynamicRegistry = { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
   const candidates = getRegistryPathCandidates();
   for (const filePath of candidates) {
     try {
@@ -128,6 +139,7 @@ export async function readRegistry(): Promise<DynamicRegistry> {
         plugins: Array.isArray(o.plugins) ? o.plugins : [],
         prompts: Array.isArray(o.prompts) ? o.prompts : [],
         resources: Array.isArray(o.resources) ? o.resources : [],
+        rules: Array.isArray(o.rules) ? o.rules : [],
       };
     } catch {
       continue;

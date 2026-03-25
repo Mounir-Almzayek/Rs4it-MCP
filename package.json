@@ -9,7 +9,12 @@
     "start": "node dist/server/index.js",
     "start:server": "node dist/server/http-entry.js",
     "dev": "tsx src/server/index.ts",
-    "dev:server": "tsx src/server/http-entry.ts"
+    "dev:server": "tsx src/server/http-entry.ts",
+    "cursor:sync-plugin": "tsx src/cursor-plugin/sync-plugin.ts",
+    "cursor:sync-cursor": "tsx src/cursor-plugin/sync-cursor.ts",
+    "postinstall": "npm run cursor:sync-cursor",
+    "predev": "npm run cursor:sync-cursor",
+    "predev:server": "npm run cursor:sync-cursor"
   },
   "engines": {
     "node": ">=20.0.0"

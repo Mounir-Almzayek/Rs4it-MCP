@@ -3,7 +3,7 @@
  * Used by the Hub to merge dynamic tools, skills, and plugins.
  */
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { DynamicRegistry } from "../types/dynamic-registry.js";
 
@@ -19,6 +19,16 @@ export function getDynamicRegistryPath(): string {
 }
 
 /**
+ * Persist dynamic registry to disk (Phase 08/02).
+ * Used by MCP admin tools to make changes shared for all clients.
+ */
+export async function writeDynamicRegistry(registry: DynamicRegistry): Promise<void> {
+  const filePath = getDynamicRegistryPath();
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, JSON.stringify(registry, null, 2), "utf-8");
+}
+
+/**
  * Load and parse dynamic registry. Returns empty registry if file missing or invalid.
  */
 export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
@@ -27,15 +37,15 @@ export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
   try {
     raw = await readFile(filePath, "utf-8");
   } catch {
-    return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
+    return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
   }
   let data: unknown;
   try {
     data = JSON.parse(raw) as unknown;
   } catch {
-    return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
+    return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
   }
-  if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [], prompts: [], resources: [] };
+  if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
   const o = data as Record<string, unknown>;
   const normalizeSource = <T extends { source?: string }>(arr: T[]): T[] =>
     arr.map((e) => (e.source === "admin" || e.source === "mcp" ? e : { ...e, source: "admin" as const }));
@@ -45,6 +55,7 @@ export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
     plugins: normalizeSource(Array.isArray(o.plugins) ? o.plugins.filter(isDynamicPluginEntry) : []),
     prompts: normalizeSource(Array.isArray(o.prompts) ? o.prompts.filter(isDynamicPromptEntry) : []),
     resources: normalizeSource(Array.isArray(o.resources) ? o.resources.filter(isDynamicResourceEntry) : []),
+    rules: normalizeSource(Array.isArray(o.rules) ? o.rules.filter(isDynamicRuleEntry) : []),
   };
 }
 
@@ -85,7 +96,7 @@ function isDynamicSkillEntry(x: unknown): x is DynamicRegistry["skills"][0] {
     !!x &&
     typeof x === "object" &&
     typeof (x as Record<string, unknown>).name === "string" &&
-    Array.isArray((x as Record<string, unknown>).steps) &&
+    typeof (x as Record<string, unknown>).instructions === "string" &&
     typeof (x as Record<string, unknown>).enabled === "boolean"
   );
 }
@@ -97,6 +108,16 @@ function isDynamicPluginEntry(x: unknown): x is DynamicRegistry["plugins"][0] {
     typeof (x as Record<string, unknown>).id === "string" &&
     typeof (x as Record<string, unknown>).command === "string" &&
     Array.isArray((x as Record<string, unknown>).args) &&
+    typeof (x as Record<string, unknown>).enabled === "boolean"
+  );
+}
+
+function isDynamicRuleEntry(x: unknown): x is DynamicRegistry["rules"][0] {
+  return (
+    !!x &&
+    typeof x === "object" &&
+    typeof (x as Record<string, unknown>).name === "string" &&
+    typeof (x as Record<string, unknown>).content === "string" &&
     typeof (x as Record<string, unknown>).enabled === "boolean"
   );
 }

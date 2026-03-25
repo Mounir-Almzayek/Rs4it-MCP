@@ -53,13 +53,27 @@ export async function buildToolCatalog(role?: string): Promise<ToolCatalogItem[]
     out.push({
       name: skillToToolName(s.name),
       description: `[Skill] ${s.description}`,
-      inputSchema: s.inputSchema,
+      inputSchema: {},
       source: "dynamic",
     });
   }
 
-  for (const p of getLoadedPlugins()) {
-    for (const t of p.tools) {
+  // Plugins: apply the same allowedRoles visibility rule as the Hub does.
+  // Without this, the compiler may generate steps targeting plugin tools that the
+  // given role would not see at runtime.
+  const pluginAllowedMap = new Map<string, string[]>();
+  for (const p of dynamic.plugins) {
+    if (Array.isArray(p.allowedRoles) && p.allowedRoles.length > 0) {
+      pluginAllowedMap.set(p.id, p.allowedRoles);
+    }
+  }
+
+  for (const plugin of getLoadedPlugins()) {
+    if (role) {
+      const allowed = pluginAllowedMap.get(plugin.id);
+      if (allowed !== undefined && !(await isAllowedForRole(allowed, role))) continue;
+    }
+    for (const t of plugin.tools) {
       out.push({
         name: t.name,
         description: t.description,
@@ -67,7 +81,7 @@ export async function buildToolCatalog(role?: string): Promise<ToolCatalogItem[]
         source: "plugin",
       });
     }
-    for (const s of p.skills) {
+    for (const s of plugin.skills) {
       out.push({
         name: s.name,
         description: s.description,

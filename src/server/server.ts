@@ -6,6 +6,8 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import {
   SERVER_NAME,
   SERVER_VERSION,
@@ -25,14 +27,10 @@ import {
 import { getLoadedPlugins, callPluginTool, getPluginPrompt, readPluginResource } from "../plugins/index.js";
 import { registerBuiltInPrompts } from "../prompts/index.js";
 import { registerBuiltInResources } from "../resources/index.js";
-import { loadDynamicRegistry } from "../config/dynamic-config.js";
-import { isAllowedForRole } from "../config/roles.js";
+import { loadDynamicRegistry, writeDynamicRegistry } from "../config/dynamic-config.js";
+import { isAllowedForRole, loadRoleConfig, validateAllowedRoles, writeRoleConfig } from "../config/roles.js";
 import { PLUGIN_TOOL_PREFIX, PLUGIN_SKILL_PREFIX, PLUGIN_PROMPT_PREFIX, PLUGIN_RESOURCE_URI_SCHEME } from "../plugins/constants.js";
-import type {
-  DynamicSkillStep,
-  DynamicPromptEntry,
-  DynamicResourceEntry,
-} from "../types/dynamic-registry.js";
+import type { DynamicPromptEntry, DynamicResourceEntry } from "../types/dynamic-registry.js";
 
 const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
@@ -163,51 +161,6 @@ function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodObject<Record<st
   return z.object(shape);
 }
 
-async function runDynamicSkillSteps(
-  steps: DynamicSkillStep[],
-  args: Record<string, unknown>
-): Promise<Awaited<ReturnType<typeof executeTool>>> {
-  const results: string[] = [];
-  for (const step of steps) {
-    const stepArgs = step.argsMap
-      ? Object.fromEntries(
-          Object.entries(step.argsMap).map(([k, v]) => [k, args[v] ?? v])
-        )
-      : args;
-    if (step.type === "tool") {
-      const out = await executeTool(step.target, stepArgs);
-      results.push(
-        out.content.map((c) => ("text" in c ? c.text : "")).join("")
-      );
-    } else {
-      const prefix = step.target.startsWith(PLUGIN_SKILL_PREFIX)
-        ? PLUGIN_SKILL_PREFIX
-        : step.target.startsWith(PLUGIN_TOOL_PREFIX)
-          ? PLUGIN_TOOL_PREFIX
-          : null;
-      const match = prefix
-        ? step.target.slice(prefix.length).split("_")
-        : [];
-      if (match.length >= 2) {
-        const [pluginId, ...rest] = match;
-        const originalName = rest.join("_");
-        const out = await callPluginTool(
-          pluginId,
-          originalName,
-          stepArgs as Record<string, unknown>
-        );
-        results.push(
-          out.content.map((c) => c.text ?? "").join("")
-        );
-      }
-    }
-  }
-  return {
-    content: [{ type: "text" as const, text: results.join("\n\n") }],
-    isError: false,
-  };
-}
-
 /**
  * Creates and configures the MCP server: initialize, unified tools/list (local + skills + plugins + dynamic), tools/call routed by name.
  * If options.role is set, only entities allowed for that role (and inherited roles) are registered.
@@ -277,6 +230,559 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
 
   const dynamic = await loadDynamicRegistry();
 
+  // MCP admin tools (Phase 02): only visible when role is admin.
+  // These tools mutate config files (dynamic-registry.json / roles.json) and are intended for Cursor chat authoring.
+  if (role === "admin") {
+    const exportCursorPluginSchema = z.object({
+      pluginName: z
+        .string()
+        .min(1)
+        .regex(/^[a-z0-9][a-z0-9-_]*$/, "pluginName must be kebab-case like rs4it-hub"),
+      description: z.string().optional(),
+      version: z.string().optional().default("0.1.0"),
+      authorName: z.string().optional().default("RS4IT"),
+      outputDir: z
+        .string()
+        .optional()
+        .describe("Optional absolute output directory. If omitted, uses MCP_CURSOR_PLUGIN_EXPORT_DIR or ./exports/cursor-plugins"),
+      overwrite: z.boolean().optional().default(true),
+      includeSkills: z.boolean().optional().default(true),
+      includeRules: z.boolean().optional().default(true),
+    });
+    server.registerTool(
+      "admin_export_cursor_plugin",
+      {
+        description:
+          "Export registry skills/rules as a Cursor plugin folder you can install under ~/.cursor/plugins/local (admin-only).",
+        inputSchema: exportCursorPluginSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = exportCursorPluginSchema.parse(args);
+
+        const reg = await loadDynamicRegistry();
+        const baseOut =
+          parsed.outputDir?.trim() ||
+          process.env["MCP_CURSOR_PLUGIN_EXPORT_DIR"] ||
+          path.resolve(process.cwd(), "exports", "cursor-plugins");
+        const outDir = path.resolve(baseOut, parsed.pluginName);
+
+        if (parsed.overwrite) {
+          await rm(outDir, { recursive: true, force: true });
+        }
+        await mkdir(outDir, { recursive: true });
+
+        // Manifest
+        await mkdir(path.join(outDir, ".cursor-plugin"), { recursive: true });
+        const manifest = {
+          name: parsed.pluginName,
+          description: parsed.description ?? "Exported from RS4IT Hub registry",
+          version: parsed.version,
+          author: { name: parsed.authorName },
+        };
+        await writeFile(
+          path.join(outDir, ".cursor-plugin", "plugin.json"),
+          JSON.stringify(manifest, null, 2),
+          "utf-8"
+        );
+
+        // Skills → skills/<skillName>/SKILL.md
+        if (parsed.includeSkills) {
+          const skillsDir = path.join(outDir, "skills");
+          await mkdir(skillsDir, { recursive: true });
+          for (const s of reg.skills ?? []) {
+            if (!s.enabled) continue;
+            const folder = path.join(skillsDir, s.name);
+            await mkdir(folder, { recursive: true });
+            const content = String(s.instructions ?? "").trim();
+            if (!content) continue;
+            await writeFile(path.join(folder, "SKILL.md"), content + "\n", "utf-8");
+          }
+        }
+
+        // Rules → rules/<ruleName>.mdc
+        if (parsed.includeRules) {
+          const rulesDir = path.join(outDir, "rules");
+          await mkdir(rulesDir, { recursive: true });
+          for (const r of reg.rules ?? []) {
+            if (!r.enabled) continue;
+            const fileSafe = r.name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_");
+            const content = String(r.content ?? "").trim();
+            if (!content) continue;
+            await writeFile(path.join(rulesDir, `${fileSafe}.mdc`), content + "\n", "utf-8");
+          }
+        }
+
+        onToolInvoked?.("admin_export_cursor_plugin");
+        return toolResultCast({
+          content: [
+            {
+              type: "text" as const,
+              text:
+                `OK: exported Cursor plugin to:\n\n` +
+                `- ${outDir}\n\n` +
+                `Install (local plugin): copy/symlink this folder into your Cursor local plugins directory, then reload Cursor.\n` +
+                `- Windows: %USERPROFILE%\\.cursor\\plugins\\local\\${parsed.pluginName}\n` +
+                `- macOS/Linux: ~/.cursor/plugins/local/${parsed.pluginName}`,
+            },
+          ],
+          isError: false as const,
+        });
+      }
+    );
+
+    const publishCursorPluginBundleSchema = z.object({
+      repoName: z
+        .string()
+        .min(1)
+        .regex(/^[a-z0-9][a-z0-9-_]*$/, "repoName must be kebab-case like rs4it-cursor-plugin"),
+      pluginName: z
+        .string()
+        .min(1)
+        .regex(/^[a-z0-9][a-z0-9-_]*$/, "pluginName must be kebab-case like rs4it"),
+      description: z.string().optional(),
+      version: z.string().optional().default("0.1.0"),
+      authorName: z.string().optional().default("RS4IT"),
+      outputDir: z
+        .string()
+        .optional()
+        .describe("Optional absolute output directory. If omitted, uses MCP_CURSOR_PLUGIN_EXPORT_DIR or ./exports/cursor-plugin-repos"),
+      overwrite: z.boolean().optional().default(true),
+      includeSkills: z.boolean().optional().default(true),
+      includeRules: z.boolean().optional().default(true),
+      /**
+       * Optional: include an MCP config file inside the plugin bundle.
+       * Cursor plugins can bundle MCP servers; users then just install the plugin.
+       * We keep this optional because the Hub URL differs by environment.
+       */
+      includeMcpConfig: z.boolean().optional().default(false),
+      mcpServerName: z.string().optional().default("rs4it-hub"),
+      mcpUrl: z
+        .string()
+        .optional()
+        .describe("If includeMcpConfig=true: MCP server URL (e.g. http://localhost:3000/mcp or https://.../mcp)."),
+      mcpHeaders: z.record(z.string()).optional().describe("Optional headers for MCP server (e.g. Authorization)."),
+    });
+    server.registerTool(
+      "admin_publish_cursor_plugin_bundle",
+      {
+        description:
+          "Generate a git-ready Cursor Plugin repo (rules/skills + optional .mcp.json) suitable for Team Marketplace import (admin-only).",
+        inputSchema: publishCursorPluginBundleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = publishCursorPluginBundleSchema.parse(args);
+
+        const reg = await loadDynamicRegistry();
+        const baseOut =
+          parsed.outputDir?.trim() ||
+          process.env["MCP_CURSOR_PLUGIN_EXPORT_DIR"] ||
+          path.resolve(process.cwd(), "exports", "cursor-plugin-repos");
+        const repoDir = path.resolve(baseOut, parsed.repoName);
+
+        if (parsed.overwrite) {
+          await rm(repoDir, { recursive: true, force: true });
+        }
+        await mkdir(repoDir, { recursive: true });
+
+        // Manifest
+        await mkdir(path.join(repoDir, ".cursor-plugin"), { recursive: true });
+        const manifest = {
+          name: parsed.pluginName,
+          description: parsed.description ?? "RS4IT organization rules & skills",
+          version: parsed.version,
+          author: { name: parsed.authorName },
+        };
+        await writeFile(
+          path.join(repoDir, ".cursor-plugin", "plugin.json"),
+          JSON.stringify(manifest, null, 2),
+          "utf-8"
+        );
+
+        // Skills → skills/<skillName>/SKILL.md
+        let skillsWritten = 0;
+        if (parsed.includeSkills) {
+          const skillsDir = path.join(repoDir, "skills");
+          await mkdir(skillsDir, { recursive: true });
+          for (const s of reg.skills ?? []) {
+            if (!s.enabled) continue;
+            const folder = path.join(skillsDir, s.name);
+            await mkdir(folder, { recursive: true });
+            const content = String(s.instructions ?? "").trim();
+            if (!content) continue;
+            await writeFile(path.join(folder, "SKILL.md"), content + "\n", "utf-8");
+            skillsWritten++;
+          }
+        }
+
+        // Rules → rules/<ruleName>.mdc
+        let rulesWritten = 0;
+        if (parsed.includeRules) {
+          const rulesDir = path.join(repoDir, "rules");
+          await mkdir(rulesDir, { recursive: true });
+          for (const r of reg.rules ?? []) {
+            if (!r.enabled) continue;
+            const fileSafe = r.name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_");
+            const content = String(r.content ?? "").trim();
+            if (!content) continue;
+            await writeFile(path.join(rulesDir, `${fileSafe}.mdc`), content + "\n", "utf-8");
+            rulesWritten++;
+          }
+        }
+
+        // Optional MCP config inside plugin
+        if (parsed.includeMcpConfig) {
+          const url = String(parsed.mcpUrl ?? "").trim();
+          if (!url) {
+            return toolResultCast(
+              errorResult('includeMcpConfig=true requires "mcpUrl" (e.g. http://localhost:3000/mcp).')
+            );
+          }
+          const mcpConfig: Record<string, unknown> = {
+            mcpServers: {
+              [parsed.mcpServerName ?? "rs4it-hub"]: {
+                url,
+                ...(parsed.mcpHeaders && Object.keys(parsed.mcpHeaders).length > 0 ? { headers: parsed.mcpHeaders } : {}),
+              },
+            },
+          };
+          await writeFile(path.join(repoDir, ".mcp.json"), JSON.stringify(mcpConfig, null, 2), "utf-8");
+        }
+
+        await writeFile(
+          path.join(repoDir, "README.md"),
+          [
+            `# ${parsed.pluginName}`,
+            ``,
+            `This repository is a Cursor Plugin bundle generated from the RS4IT Hub registry.`,
+            ``,
+            `## Contents`,
+            `- Rules: \`rules/\` (${rulesWritten})`,
+            `- Skills: \`skills/\` (${skillsWritten})`,
+            parsed.includeMcpConfig ? `- MCP config: \`.mcp.json\`` : `- MCP config: (not included)`,
+            ``,
+            `## Install (local dev)`,
+            `Copy/symlink this repo folder into:`,
+            `- Windows: \`%USERPROFILE%\\.cursor\\plugins\\local\\${parsed.pluginName}\``,
+            `- macOS/Linux: \`~/.cursor/plugins/local/${parsed.pluginName}\``,
+            ``,
+            `Then reload Cursor.`,
+            ``,
+            `## Publish (Team Marketplace)`,
+            `1) Push this repo to GitHub.`,
+            `2) In Cursor Dashboard → Settings → Plugins → Team Marketplaces → Import, paste the repo URL.`,
+            ``,
+          ].join("\n"),
+          "utf-8"
+        );
+
+        onToolInvoked?.("admin_publish_cursor_plugin_bundle");
+        return toolResultCast({
+          content: [
+            {
+              type: "text" as const,
+              text:
+                `OK: generated Cursor Plugin repo at:\n\n- ${repoDir}\n\n` +
+                `Next steps:\n` +
+                `- Push this folder to a Git repo (GitHub).\n` +
+                `- Import it as a Team Marketplace plugin in Cursor Dashboard.\n` +
+                `- Install the plugin in Cursor → Marketplace.\n`,
+            },
+          ],
+          isError: false as const,
+        });
+      }
+    );
+
+    const upsertToolSchema = z.object({
+      name: z.string().min(1).describe("Tool name (unique)."),
+      description: z.string().optional().describe("Short description."),
+      inputSchema: z.record(z.unknown()).optional().describe("Input schema object (flat JSON)."),
+      handlerRef: z
+        .enum(["create_file", "read_file", "run_command"])
+        .describe("Built-in tool handler name used at runtime."),
+      enabled: z.boolean().optional().default(true),
+      allowedRoles: z.array(z.string()).optional().describe("Roles allowed to see/use this tool. Empty/omitted = visible to all."),
+    });
+    server.registerTool(
+      "admin_upsert_tool",
+      {
+        description: "Create or update a Tool in the Hub registry (admin-only).",
+        inputSchema: upsertToolSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = upsertToolSchema.parse(args);
+        const rolesValidation = await validateAllowedRoles(parsed.allowedRoles);
+        if (!rolesValidation.ok) return toolResultCast(errorResult(rolesValidation.error));
+
+        const reg = await loadDynamicRegistry();
+        reg.tools = Array.isArray(reg.tools) ? reg.tools : [];
+        const now = new Date().toISOString();
+        const idx = reg.tools.findIndex((t) => t.name === parsed.name);
+        const next = {
+          name: parsed.name,
+          description: parsed.description ?? "",
+          inputSchema: (parsed.inputSchema ?? {}) as Record<string, unknown>,
+          handlerRef: parsed.handlerRef,
+          enabled: parsed.enabled ?? true,
+          updatedAt: now,
+          allowedRoles: rolesValidation.value,
+          source: "admin" as const,
+        };
+        if (idx === -1) reg.tools.push(next as any);
+        else reg.tools[idx] = { ...reg.tools[idx], ...next } as any;
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_upsert_tool");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: tool "${parsed.name}" upserted. Reconnect client to refresh tools list if needed.` }], isError: false as const });
+      }
+    );
+
+    const deleteToolSchema = z.object({ name: z.string().min(1) });
+    server.registerTool(
+      "admin_delete_tool",
+      {
+        description: "Delete a Tool from the Hub registry (admin-only).",
+        inputSchema: deleteToolSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = deleteToolSchema.parse(args);
+        const reg = await loadDynamicRegistry();
+        reg.tools = Array.isArray(reg.tools) ? reg.tools : [];
+        const before = reg.tools.length;
+        reg.tools = reg.tools.filter((t) => t.name !== parsed.name);
+        if (reg.tools.length === before) return toolResultCast(errorResult(`Tool not found: ${parsed.name}`));
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_delete_tool");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: tool "${parsed.name}" deleted. Reconnect client to refresh tools list if needed.` }], isError: false as const });
+      }
+    );
+
+    const upsertRuleSchema = z.object({
+      name: z.string().min(1).describe("Rule name (unique)."),
+      description: z.string().optional().describe("Short description."),
+      content: z.string().min(1).describe("Markdown content."),
+      enabled: z.boolean().optional().default(true),
+      allowedRoles: z.array(z.string()).optional().describe("Roles allowed to see/use this rule. Empty/omitted = visible to all."),
+      globs: z.string().optional().describe("Optional file globs (Cursor-like)."),
+    });
+    server.registerTool(
+      "admin_upsert_rule",
+      {
+        description: "Create or update a markdown Rule in the Hub registry (admin-only).",
+        inputSchema: upsertRuleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = upsertRuleSchema.parse(args);
+        const rolesValidation = await validateAllowedRoles(parsed.allowedRoles);
+        if (!rolesValidation.ok) return toolResultCast(errorResult(rolesValidation.error));
+
+        const reg = await loadDynamicRegistry();
+        reg.rules = Array.isArray(reg.rules) ? reg.rules : [];
+        const now = new Date().toISOString();
+        const idx = reg.rules.findIndex((r) => r.name === parsed.name);
+        const next = {
+          name: parsed.name,
+          description: parsed.description ?? "",
+          content: parsed.content,
+          enabled: parsed.enabled ?? true,
+          updatedAt: now,
+          allowedRoles: rolesValidation.value,
+          source: "admin" as const,
+          globs: parsed.globs?.trim() ? parsed.globs : undefined,
+        };
+        if (idx === -1) reg.rules.push(next);
+        else reg.rules[idx] = { ...reg.rules[idx], ...next };
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_upsert_rule");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: rule "${parsed.name}" upserted. Reconnect client to refresh lists if needed.` }], isError: false as const });
+      }
+    );
+
+    const deleteRuleSchema = z.object({ name: z.string().min(1) });
+    server.registerTool(
+      "admin_delete_rule",
+      {
+        description: "Delete a Rule from the Hub registry (admin-only).",
+        inputSchema: deleteRuleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = deleteRuleSchema.parse(args);
+        const reg = await loadDynamicRegistry();
+        reg.rules = Array.isArray(reg.rules) ? reg.rules : [];
+        const before = reg.rules.length;
+        reg.rules = reg.rules.filter((r) => r.name !== parsed.name);
+        if (reg.rules.length === before) return toolResultCast(errorResult(`Rule not found: ${parsed.name}`));
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_delete_rule");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: rule "${parsed.name}" deleted. Reconnect client to refresh lists if needed.` }], isError: false as const });
+      }
+    );
+
+    const upsertSkillSchema = z.object({
+      name: z.string().min(1),
+      description: z.string().optional(),
+      instructions: z.string().min(1).describe("Markdown instructions for the skill."),
+      enabled: z.boolean().optional().default(true),
+      allowedRoles: z.array(z.string()).optional(),
+    });
+    server.registerTool(
+      "admin_upsert_skill",
+      {
+        description: "Create or update a written Skill (markdown) in the Hub registry (admin-only).",
+        inputSchema: upsertSkillSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = upsertSkillSchema.parse(args);
+        const rolesValidation = await validateAllowedRoles(parsed.allowedRoles);
+        if (!rolesValidation.ok) return toolResultCast(errorResult(rolesValidation.error));
+
+        const reg = await loadDynamicRegistry();
+        reg.skills = Array.isArray(reg.skills) ? reg.skills : [];
+        const now = new Date().toISOString();
+        const idx = reg.skills.findIndex((s) => s.name === parsed.name);
+        const next = {
+          name: parsed.name,
+          description: parsed.description ?? "",
+          enabled: parsed.enabled ?? true,
+          updatedAt: now,
+          allowedRoles: rolesValidation.value,
+          source: "admin" as const,
+          instructions: parsed.instructions,
+        };
+        if (idx === -1) reg.skills.push(next as any);
+        else reg.skills[idx] = { ...reg.skills[idx], ...next } as any;
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_upsert_skill");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: skill "${parsed.name}" upserted. Reconnect client to refresh tools list if needed.` }], isError: false as const });
+      }
+    );
+
+    const deleteSkillSchema = z.object({ name: z.string().min(1) });
+    server.registerTool(
+      "admin_delete_skill",
+      {
+        description: "Delete a Skill from the Hub registry (admin-only).",
+        inputSchema: deleteSkillSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = deleteSkillSchema.parse(args);
+        const reg = await loadDynamicRegistry();
+        reg.skills = Array.isArray(reg.skills) ? reg.skills : [];
+        const before = reg.skills.length;
+        reg.skills = reg.skills.filter((s) => s.name !== parsed.name);
+        if (reg.skills.length === before) return toolResultCast(errorResult(`Skill not found: ${parsed.name}`));
+        await writeDynamicRegistry(reg);
+        onToolInvoked?.("admin_delete_skill");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: skill "${parsed.name}" deleted. Reconnect client to refresh tools list if needed.` }], isError: false as const });
+      }
+    );
+
+    const upsertRoleSchema = z.object({
+      id: z.string().min(1),
+      name: z.string().optional(),
+      inherits: z.array(z.string()).optional(),
+    });
+    server.registerTool(
+      "admin_upsert_role",
+      {
+        description: "Create or update a Role definition (config/roles.json) (admin-only).",
+        inputSchema: upsertRoleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = upsertRoleSchema.parse(args);
+        const cfg = await loadRoleConfig();
+        cfg.roles = Array.isArray(cfg.roles) ? cfg.roles : [];
+        const idx = cfg.roles.findIndex((r) => r.id === parsed.id);
+        const entry = {
+          id: parsed.id,
+          name: (parsed.name ?? parsed.id).trim(),
+          inherits: parsed.inherits && parsed.inherits.length > 0 ? parsed.inherits : undefined,
+        };
+        if (idx === -1) cfg.roles.push(entry);
+        else cfg.roles[idx] = { ...cfg.roles[idx], ...entry };
+        await writeRoleConfig(cfg);
+        onToolInvoked?.("admin_upsert_role");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: role "${parsed.id}" upserted. Reconnect client to refresh visibility if needed.` }], isError: false as const });
+      }
+    );
+
+    const deleteRoleSchema = z.object({ id: z.string().min(1) });
+    server.registerTool(
+      "admin_delete_role",
+      {
+        description: "Delete a Role definition (admin-only).",
+        inputSchema: deleteRoleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = deleteRoleSchema.parse(args);
+        const cfg = await loadRoleConfig();
+        cfg.roles = Array.isArray(cfg.roles) ? cfg.roles : [];
+        const before = cfg.roles.length;
+        cfg.roles = cfg.roles.filter((r) => r.id !== parsed.id);
+        if (cfg.roles.length === before) return toolResultCast(errorResult(`Role not found: ${parsed.id}`));
+        if (cfg.defaultRole === parsed.id) cfg.defaultRole = undefined;
+        await writeRoleConfig(cfg);
+        onToolInvoked?.("admin_delete_role");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: role "${parsed.id}" deleted.` }], isError: false as const });
+      }
+    );
+
+    const setDefaultRoleSchema = z.object({ id: z.string().min(1) });
+    server.registerTool(
+      "admin_set_default_role",
+      {
+        description: "Set default role used when client doesn't send X-MCP-Role (admin-only).",
+        inputSchema: setDefaultRoleSchema,
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (args: unknown) => {
+        const hdrErr = headersValidationError(args);
+        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+        const parsed = setDefaultRoleSchema.parse(args);
+        const cfg = await loadRoleConfig();
+        const known = new Set((cfg.roles ?? []).map((r) => r.id));
+        if (!known.has(parsed.id)) return toolResultCast(errorResult(`Unknown role id: ${parsed.id}`));
+        cfg.defaultRole = parsed.id;
+        await writeRoleConfig(cfg);
+        onToolInvoked?.("admin_set_default_role");
+        return toolResultCast({ content: [{ type: "text" as const, text: `OK: defaultRole set to "${parsed.id}".` }], isError: false as const });
+      }
+    );
+
+    server.registerTool(
+      "admin_hint_reconnect",
+      {
+        description: "Return a note to reconnect/re-initialize to refresh tool lists (admin-only).",
+        inputSchema: z.object({}),
+      } as Parameters<McpServer["registerTool"]>[1],
+      async (_args: unknown) => {
+        onToolInvoked?.("admin_hint_reconnect");
+        return toolResultCast({
+          content: [{ type: "text" as const, text: "Reconnect / re-initialize your MCP connection to refresh tools/resources after registry changes." }],
+          isError: false as const,
+        });
+      }
+    );
+  }
+
   for (const entry of dynamic.tools) {
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
@@ -303,40 +809,30 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   for (const entry of dynamic.skills) {
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
-    const steps = entry.steps ?? [];
     const toolName = skillToToolName(entry.name);
-    const instructions = entry.instructions?.trim();
+    const instructions = String(entry.instructions ?? "").trim();
     try {
       server.registerTool(
         toolName,
         {
           description: `[Skill] ${entry.description}`,
-          inputSchema: jsonSchemaToZod((entry.inputSchema ?? {}) as Record<string, unknown>),
+          inputSchema: jsonSchemaToZod({} as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
           const hdrErr = headersValidationError(args);
           if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
           onToolInvoked?.(toolName);
-          const result = await runDynamicSkillSteps(
-            steps,
-            (args as Record<string, unknown>) ?? {}
-          );
-          if (instructions) {
-            const stepText = result.content
-              .map((c) => ("text" in c ? (c as { text?: string }).text : ""))
-              .join("")
-              .trim();
-            return toolResultCast({
-              content: [
-                {
-                  type: "text" as const,
-                  text: `## Skill instructions\n\n${instructions}\n\n---\n\n## Step results\n\n${stepText || "(no output)"}`,
-                },
-              ],
-              isError: result.isError,
-            });
-          }
-          return toolResultCast(result);
+          return toolResultCast({
+            content: [
+              {
+                type: "text" as const,
+                text: instructions
+                  ? `## Skill\n\n${instructions}`
+                  : "Skill has no instructions.",
+              },
+            ],
+            isError: false,
+          });
         }
       );
     } catch (e) {
@@ -524,6 +1020,31 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       );
     } catch (e) {
       console.error(`[rs4it-mcp] Skipping dynamic resource "${entry.name}":`, e);
+    }
+  }
+
+  // Dynamic rules: exposed as resources (Cursor-like rules as markdown).
+  for (const entry of dynamic.rules ?? []) {
+    if (!entry.enabled) continue;
+    if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
+    const uri = `rs4it://rules/${encodeURIComponent(entry.name)}`;
+    const mimeType = "text/markdown";
+    const text = entry.content ?? "";
+    const resourceName = `rule:${entry.name}`;
+    try {
+      server.registerResource(
+        resourceName,
+        uri,
+        {
+          title: entry.name,
+          description: entry.description ?? undefined,
+        },
+        async () => ({
+          contents: [{ uri, mimeType, text }],
+        })
+      );
+    } catch (e) {
+      console.error(`[rs4it-mcp] Skipping dynamic rule "${entry.name}":`, e);
     }
   }
 

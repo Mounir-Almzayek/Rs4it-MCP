@@ -45,6 +45,7 @@ export default function RegistryPage() {
   const plugins = Array.isArray(data?.plugins) ? data.plugins : [];
   const prompts = Array.isArray(data?.prompts) ? data.prompts : [];
   const resources = Array.isArray(data?.resources) ? data.resources : [];
+  const rules = Array.isArray(data?.rules) ? data.rules : [];
 
   return (
     <div className="space-y-8">
@@ -102,7 +103,6 @@ export default function RegistryPage() {
               {skills.filter((s: { enabled?: boolean }) => s.enabled !== false).map((s: {
                 name: string;
                 description?: string;
-                steps?: unknown[];
                 instructions?: string;
               }) => (
                 <li key={s.name} className="rounded border px-3 py-2">
@@ -111,11 +111,44 @@ export default function RegistryPage() {
                     <span className="ml-2 text-muted-foreground">— {s.description}</span>
                   )}
                   <span className="mt-1 block text-xs text-muted-foreground">
-                    {(s.steps ?? []).length} step(s)
-                    {s.instructions?.trim() ? ` · instructions: ${snippet(s.instructions, 140)}` : ""}
+                    {s.instructions?.trim() ? `instructions: ${snippet(s.instructions, 160)}` : "instructions: (empty)"}
                   </span>
                 </li>
               ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Rules exposed to AI</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Markdown rules from registry. Exposed over MCP as resources (rs4it://rules/&lt;name&gt;).
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-muted-foreground">Loading…</p>
+          ) : rules.length === 0 ? (
+            <p className="text-muted-foreground">No rules in registry.</p>
+          ) : (
+            <ul className="space-y-2 font-mono text-sm">
+              {rules
+                .filter((r: { enabled?: boolean }) => r.enabled !== false)
+                .map((r: { name: string; description?: string; globs?: string; content?: string }) => (
+                  <li key={r.name} className="rounded border px-3 py-2">
+                    <span className="font-semibold">rule:{r.name}</span>
+                    {r.description && (
+                      <span className="ml-2 text-muted-foreground">— {r.description}</span>
+                    )}
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      uri: rs4it://rules/{r.name}
+                      {r.globs?.trim() ? ` · globs: ${r.globs}` : ""}
+                      {r.content?.trim() ? ` · content: ${snippet(r.content, 120)}` : ""}
+                    </span>
+                  </li>
+                ))}
             </ul>
           )}
         </CardContent>

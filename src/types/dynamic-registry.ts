@@ -36,16 +36,14 @@ export interface DynamicToolEntry {
 export interface DynamicSkillEntry {
   name: string;
   description: string;
-  inputSchema: Record<string, unknown>;
-  steps: DynamicSkillStep[];
   enabled: boolean;
   updatedAt?: string;
   /** Role ids that can see/use this skill (Phase 09). Empty = all roles. */
   allowedRoles?: string[];
   source?: RegistrySource;
   origin?: string;
-  /** Full instructions / skill text (markdown). Used by AI when executing the skill; preserved from compiler input. */
-  instructions?: string;
+  /** Full instructions / skill text (markdown). Cursor-like written skill content. */
+  instructions: string;
 }
 
 /** External MCP plugin entry (same shape as PluginConfig, plus enabled). */
@@ -99,6 +97,22 @@ export interface DynamicResourceEntry {
   origin?: string;
 }
 
+/** Dynamic rule: markdown guidance (Cursor-like rules). */
+export interface DynamicRuleEntry {
+  name: string;
+  description: string;
+  /** Full rule content (markdown). */
+  content: string;
+  enabled: boolean;
+  updatedAt?: string;
+  /** Role ids that can see/use this rule. Empty = all roles. */
+  allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
+  /** Optional file globs (Cursor-like). Not used by the Hub yet. */
+  globs?: string;
+}
+
 /** Full dynamic registry file. */
 export interface DynamicRegistry {
   tools: DynamicToolEntry[];
@@ -106,4 +120,5 @@ export interface DynamicRegistry {
   plugins: DynamicPluginEntry[];
   prompts: DynamicPromptEntry[];
   resources: DynamicResourceEntry[];
+  rules: DynamicRuleEntry[];
 }

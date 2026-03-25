@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readRegistry, writeRegistry, type DynamicSkillEntry } from "@/lib/registry";
 import { validateAllowedRoles } from "@/lib/validate";
-import { normalizeInputSchemaForRegistry } from "@/lib/input-schema";
 
 export async function PUT(
   _request: NextRequest,
@@ -23,21 +22,20 @@ export async function PUT(
       return NextResponse.json({ error: "Skill not found" }, { status: 404 });
     }
     const existing = registry.skills[idx];
-    const inputSchema =
-      body.inputSchema !== undefined
-        ? normalizeInputSchemaForRegistry(body.inputSchema as Record<string, unknown>)
-        : existing.inputSchema;
+    const instructions =
+      body.instructions !== undefined ? String(body.instructions ?? "").trim() : existing.instructions;
+    if (!instructions) {
+      return NextResponse.json({ error: "instructions is required" }, { status: 400 });
+    }
     registry.skills[idx] = {
       ...existing,
       ...body,
       name: body.name ?? existing.name,
-      steps: body.steps ?? existing.steps,
-      inputSchema,
       updatedAt: new Date().toISOString(),
       allowedRoles: body.allowedRoles !== undefined ? (body.allowedRoles as string[] | undefined) : existing.allowedRoles,
       source: body.source !== undefined ? body.source : existing.source,
       origin: body.origin !== undefined ? body.origin : existing.origin,
-      instructions: body.instructions !== undefined ? body.instructions : existing.instructions,
+      instructions,
     };
     await writeRegistry(registry);
     return NextResponse.json(registry.skills[idx]);

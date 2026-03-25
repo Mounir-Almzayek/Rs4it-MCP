@@ -2,7 +2,7 @@
  * Load role config and resolve effective roles (inheritance) for visibility (Phase 09).
  */
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { RoleConfig, RoleDefinition } from "../types/roles.js";
 
@@ -15,6 +15,10 @@ function getRolesConfigPath(): string {
 }
 
 let cachedConfig: RoleConfig | null = null;
+
+export function clearRoleConfigCache(): void {
+  cachedConfig = null;
+}
 
 /**
  * Load role config from file. Cached for the process.
@@ -35,6 +39,45 @@ export async function loadRoleConfig(): Promise<RoleConfig> {
     cachedConfig = { roles: [] };
     return cachedConfig;
   }
+}
+
+/**
+ * Persist role config to disk and clear cache.
+ */
+export async function writeRoleConfig(config: RoleConfig): Promise<void> {
+  const filePath = getRolesConfigPath();
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, JSON.stringify(config, null, 2), "utf-8");
+  clearRoleConfigCache();
+}
+
+export type ValidateAllowedRolesOk = { ok: true; value: string[] | undefined };
+export type ValidateAllowedRolesErr = { ok: false; error: string };
+
+/**
+ * Validate allowedRoles against known roles.
+ * - undefined → ok(undefined)
+ * - [] → ok(undefined) (means visible to all)
+ * - unknown role ids → error
+ */
+export async function validateAllowedRoles(
+  allowedRoles: unknown
+): Promise<ValidateAllowedRolesOk | ValidateAllowedRolesErr> {
+  if (allowedRoles === undefined) return { ok: true, value: undefined };
+  if (!Array.isArray(allowedRoles)) {
+    return { ok: false, error: "allowedRoles must be an array of role ids" };
+  }
+  const cleaned = allowedRoles.map((r) => String(r ?? "").trim());
+  const emptyIdx = cleaned.findIndex((r) => !r);
+  if (emptyIdx !== -1) return { ok: false, error: "allowedRoles cannot contain empty role ids" };
+  const cfg = await loadRoleConfig();
+  const known = new Set((cfg.roles ?? []).map((r) => r.id));
+  const unknown = [...new Set(cleaned.filter((r) => !known.has(r)))];
+  if (unknown.length > 0) {
+    return { ok: false, error: `Unknown role id(s): ${unknown.join(", ")}` };
+  }
+  const uniq = [...new Set(cleaned)];
+  return { ok: true, value: uniq.length > 0 ? uniq : undefined };
 }
 
 /**

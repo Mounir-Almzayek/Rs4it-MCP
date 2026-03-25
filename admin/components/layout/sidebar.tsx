@@ -10,6 +10,7 @@ import {
   Puzzle,
   MessageSquare,
   FileText,
+  BookOpen,
   Shield,
   Users,
   BarChart3,
@@ -33,6 +34,7 @@ const navGroups: NavGroup[] = [
       { href: "/plugins", label: "Plugins", icon: Puzzle },
       { href: "/prompts", label: "Prompts", icon: MessageSquare },
       { href: "/resources", label: "Resources", icon: FileText },
+      { href: "/rules", label: "Rules", icon: BookOpen },
     ],
   },
   {

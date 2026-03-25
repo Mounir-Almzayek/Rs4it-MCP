@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Wrench, Sparkles, Puzzle, MessageSquare, FileText, Shield, RefreshCw } from "lucide-react";
+import { Wrench, Sparkles, Puzzle, MessageSquare, FileText, Shield, RefreshCw, BookOpen } from "lucide-react";
 
 async function fetchRegistry() {
   const res = await fetch("/api/registry", { cache: "no-store" });
@@ -82,6 +82,8 @@ export default function DashboardPage() {
     .filter((p) => p.status === "connected" && Array.isArray(p.resources))
     .reduce((sum, p) => sum + (p.resources?.length ?? 0), 0);
   const resourcesCount = registryResourcesCount + pluginResourcesCount;
+
+  const rulesCount = Array.isArray(data?.rules) ? data.rules.length : 0;
 
   return (
     <div className="space-y-8">
@@ -200,6 +202,19 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rules</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoading ? "—" : rulesCount}</div>
+            <p className="text-xs text-muted-foreground">Markdown guidance (Cursor-like)</p>
+            <Link href="/rules" className={cn(buttonVariants({ variant: "link" }), "mt-2 h-auto p-0")}>
+              Manage rules →
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Roles</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -234,6 +249,9 @@ export default function DashboardPage() {
           </Link>
           <Link href="/resources?create=1" className={buttonVariants()}>
             Create Resource
+          </Link>
+          <Link href="/rules?create=1" className={buttonVariants()}>
+            Create Rule
           </Link>
           <Link href="/roles" className={buttonVariants({ variant: "outline" })}>
             Roles

@@ -32,6 +32,7 @@ export async function readRegistryResource(_uri: URL): Promise<{
     dynamic: {
       tools: dynamic.tools.filter((t) => t.enabled).map((t) => ({ name: t.name, description: t.description })),
       skills: dynamic.skills.filter((s) => s.enabled).map((s) => ({ name: `skill:${s.name}`, description: s.description })),
+      rules: (dynamic.rules ?? []).filter((r) => r.enabled).map((r) => ({ name: `rule:${r.name}`, description: r.description })),
     },
     plugins,
     updatedAt: new Date().toISOString(),

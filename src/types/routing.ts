@@ -19,7 +19,7 @@ export type ToolSource =
  * Naming convention:
  * - Local: direct name (e.g. create_file, run_command)
  * - Skill: skill:<skill_name> (e.g. skill:create_api_endpoint)
- * - Plugin: plugin:<plugin_id>:<original_tool_name> (e.g. plugin:hello:echo)
+ * - Plugin: plugin_<plugin_id>_<original_tool_name> (e.g. plugin_myplugin_echo)
  */
 export function getToolSource(toolName: string): ToolSource {
   if (toolName.startsWith(PLUGIN_TOOL_PREFIX)) {

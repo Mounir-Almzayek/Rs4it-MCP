@@ -20,14 +20,14 @@ There is no separate capability (e.g. `skills/list`); everything goes through `t
 |-------|---------|
 | **Tools** | Atomic tools (create_file, read_file, run_command) registered in the registry; called from skills or from the client. |
 | **Skills** | Composite workflows that call tools (local or plugins via `routeToolCall`); exposed as tools with names `skill:*`. |
-| **Plugins** | External MCP plugins; their tools are exposed with names `plugin:<id>:<name>`. |
+| **Plugins** | External MCP plugins; their tools are exposed with names `plugin_<id>_<name>`. |
 | **Server** | Registers all sources (tools + skills + plugin tools) on McpServer; unified response for `tools/list` and routing of `tools/call` by name (see `src/types/routing.ts` and `src/router.ts`). |
 
 ## External Plugins (Phase 04)
 
 - Plugins are loaded at Hub startup from `config/mcp_plugins.json` (or from `MCP_PLUGINS_CONFIG` path).
 - Each plugin runs as a subprocess (e.g. `npx -y package@latest`) and the Hub communicates with it via **stdio** as an MCP client.
-- Plugin tool lists are stored with names prefixed `plugin:<id>:<tool_name>` for integration in Phase 05.
+- Plugin tool lists are stored with names prefixed `plugin_<id>_<tool_name>` for integration in Phase 05.
 - Closing the Hub stops all plugin processes.
 
 ## Naming Convention and Unified Routing (Phase 05)
@@ -38,7 +38,7 @@ There is no separate capability (e.g. `skills/list`); everything goes through `t
 |--------|-------------|----------|
 | **Local** | Direct name | `create_file`, `run_command`, `read_file` |
 | **Skill** | `skill:<skill_name>` | `skill:create_api_endpoint` |
-| **Plugin** | `plugin:<plugin_id>:<original_tool_name>` | `plugin:hello:echo` |
+| **Plugin** | `plugin_<plugin_id>_<original_tool_name>` | `plugin_myplugin_echo` |
 
 - **tools/list**: Single unified response aggregating local tools + skills (as tools) + each loaded plugin’s tools, with no duplicate names. Description and input schema are preserved per tool.
 - **tools/call**: Source is determined from the tool name (local / skill / plugin), then the appropriate registry or plugin client is invoked and the result returned. Unknown tool or unavailable plugin → clear error message without crashing the server.
