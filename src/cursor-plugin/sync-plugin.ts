@@ -1,4 +1,5 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { loadDynamicRegistry } from "../config/dynamic-config.js";
 
@@ -143,7 +144,10 @@ async function syncPlugin({ pluginDir, clean }: SyncOptions): Promise<void> {
 
 const pluginDir =
   process.env["CURSOR_PLUGIN_DIR"] ??
-  path.resolve(process.cwd(), "workspace", "cursor-plugins", "rs4it-hub");
+  // Default to Cursor *local plugin* directory so skills/rules apply to all projects.
+  // Windows: %USERPROFILE%\.cursor\plugins\local\rs4it-hub
+  // macOS/Linux: ~/.cursor/plugins/local/rs4it-hub
+  path.resolve(os.homedir(), ".cursor", "plugins", "local", "rs4it-hub");
 
 if (!isSyncEnabled()) {
   process.stdout.write("Cursor plugin sync disabled via CURSOR_PLUGIN_SYNC=0\n");

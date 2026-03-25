@@ -22,6 +22,15 @@ const inputSchema = {
    * - both: writes both
    */
   mode: z.enum(["workspace-cursor", "plugin-bundle", "both"]).default("workspace-cursor"),
+  /**
+   * Optional: target project folder *within* the Hub workspace root.
+   * Useful in Docker where MCP_WORKSPACE_ROOT points to a mounted folder (e.g. /workspace).
+   *
+   * Examples:
+   * - "." (default) writes to <workspaceRoot>/.cursor
+   * - "my-app" writes to <workspaceRoot>/my-app/.cursor
+   */
+  targetRoot: z.string().optional().default("."),
   /** Overwrite generated files (always true-ish in practice). */
   overwrite: z.boolean().optional().default(true),
   /**
@@ -47,11 +56,15 @@ function safeRuleFileName(input: string): string {
   return String(input).replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_");
 }
 
-async function writeWorkspaceCursor(reg: Awaited<ReturnType<typeof loadDynamicRegistry>>, args: SyncCursorContentArgs) {
+async function writeWorkspaceCursor(
+  reg: Awaited<ReturnType<typeof loadDynamicRegistry>>,
+  args: SyncCursorContentArgs
+) {
   const workspaceRoot = getWorkspaceRoot();
 
-  const skillsOutRoot = resolveWithinWorkspace(workspaceRoot, ".cursor/skills");
-  const rulesOutRoot = resolveWithinWorkspace(workspaceRoot, ".cursor/rules");
+  const target = (args.targetRoot ?? ".").trim() || ".";
+  const skillsOutRoot = resolveWithinWorkspace(workspaceRoot, path.join(target, ".cursor", "skills"));
+  const rulesOutRoot = resolveWithinWorkspace(workspaceRoot, path.join(target, ".cursor", "rules"));
 
   await mkdir(skillsOutRoot, { recursive: true });
   await mkdir(rulesOutRoot, { recursive: true });
@@ -65,7 +78,7 @@ async function writeWorkspaceCursor(reg: Awaited<ReturnType<typeof loadDynamicRe
 
     const skillFile = resolveWithinWorkspace(
       workspaceRoot,
-      path.join(".cursor", "skills", folder, "SKILL.md")
+      path.join(target, ".cursor", "skills", folder, "SKILL.md")
     );
 
     if (args.cleanupGenerated) {
@@ -87,7 +100,7 @@ async function writeWorkspaceCursor(reg: Awaited<ReturnType<typeof loadDynamicRe
     const fileSafe = safeRuleFileName(r.name) || "rule";
     const ruleFile = resolveWithinWorkspace(
       workspaceRoot,
-      path.join(".cursor", "rules", `${fileSafe}.mdc`)
+      path.join(target, ".cursor", "rules", `${fileSafe}.mdc`)
     );
 
     if (args.cleanupGenerated) {
@@ -102,12 +115,16 @@ async function writeWorkspaceCursor(reg: Awaited<ReturnType<typeof loadDynamicRe
   return { skillsWritten, rulesWritten };
 }
 
-async function writePluginBundle(reg: Awaited<ReturnType<typeof loadDynamicRegistry>>, args: SyncCursorContentArgs) {
+async function writePluginBundle(
+  reg: Awaited<ReturnType<typeof loadDynamicRegistry>>,
+  args: SyncCursorContentArgs
+) {
   // Keep consistent with existing sync plugin script default.
   const workspaceRoot = getWorkspaceRoot();
+  const target = (args.targetRoot ?? ".").trim() || ".";
   const pluginDir = resolveWithinWorkspace(
     workspaceRoot,
-    path.join("workspace", "cursor-plugins", "rs4it-hub")
+    path.join(target, "workspace", "cursor-plugins", "rs4it-hub")
   );
 
   await mkdir(pluginDir, { recursive: true });
