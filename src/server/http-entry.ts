@@ -125,6 +125,19 @@ async function handlePost(
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
   try {
+    // Cursor/clients may omit a strict Accept header on the initial POST.
+    // The StreamableHTTP transport expects the client to accept BOTH JSON and event-stream.
+    // Make the server tolerant by defaulting Accept when missing/incomplete.
+    const accept = req.headers["accept"];
+    const acceptStr = Array.isArray(accept) ? accept.join(",") : (accept ?? "").toString();
+    // The MCP SDK requires both tokens explicitly (Accept: */* is not sufficient).
+    const hasJson = acceptStr.includes("application/json");
+    const hasSse = acceptStr.includes("text/event-stream");
+    if (!hasJson || !hasSse) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (req.headers as any)["accept"] = "application/json, text/event-stream";
+    }
+
     if (sessionId && sessions.has(sessionId)) {
       const state = sessions.get(sessionId)!;
       await state.transport.handleRequest(req, res, req.body);
