@@ -26,8 +26,17 @@ function safeName(input: string): string {
 }
 
 async function syncCursor(): Promise<void> {
-  const cwd = process.cwd();
-  const cursorDir = path.resolve(cwd, ".cursor");
+  // Default: write into the current working directory (this repo).
+  // Override: set CURSOR_TARGET_ROOT to write into another project.
+  //
+  // Example (PowerShell):
+  //   $env:CURSOR_TARGET_ROOT="C:\\path\\to\\other-project"
+  //   npm run cursor:sync-cursor
+  const targetRoot = process.env["CURSOR_TARGET_ROOT"]
+    ? path.resolve(process.env["CURSOR_TARGET_ROOT"])
+    : process.cwd();
+
+  const cursorDir = path.join(targetRoot, ".cursor");
   const skillsDir = path.join(cursorDir, "skills");
   const rulesDir = path.join(cursorDir, "rules");
 
