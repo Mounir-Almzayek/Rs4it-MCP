@@ -1,64 +1,60 @@
 /**
  * Admin credentials storage (Phase 10).
- * Username + bcrypt password hash only. Path via ADMIN_CREDENTIALS_PATH.
+ * DB-backed via Hub API (single admin user).
  */
-
-import path from "path";
-import fs from "fs/promises";
-import { hash, compare } from "bcryptjs";
-
-const SALT_ROUNDS = 8;
-const DEFAULT_PATH = path.join(process.cwd(), "..", "config", "admin-credentials.json");
 
 export interface StoredCredentials {
   username: string;
   passwordHash: string;
 }
 
-function getCredentialsPath(): string {
-  const env = process.env.ADMIN_CREDENTIALS_PATH;
-  if (env) return path.resolve(env);
-  return path.resolve(DEFAULT_PATH);
+function hubBaseUrl(): string {
+  return (process.env.ADMIN_HUB_BASE_URL ?? process.env.HUB_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+function hubSecretHeader(): Record<string, string> {
+  const secret = process.env.ADMIN_HUB_SECRET ?? process.env.MCP_ADMIN_API_SECRET ?? "";
+  return secret ? { "x-admin-secret": secret } : {};
 }
 
 export async function credentialsExist(): Promise<boolean> {
-  try {
-    await fs.access(getCredentialsPath());
-    return true;
-  } catch {
-    return false;
-  }
+  const res = await fetch(`${hubBaseUrl()}/api/admin/credentials/status`, {
+    headers: hubSecretHeader(),
+    cache: "no-store",
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { ok?: boolean; exists?: boolean };
+  return Boolean(data?.exists);
 }
 
 export async function getCredentials(): Promise<StoredCredentials | null> {
-  try {
-    const raw = await fs.readFile(getCredentialsPath(), "utf-8");
-    const data = JSON.parse(raw) as unknown;
-    if (!data || typeof data !== "object" || typeof (data as StoredCredentials).username !== "string" || typeof (data as StoredCredentials).passwordHash !== "string") {
-      return null;
-    }
-    return data as StoredCredentials;
-  } catch {
-    return null;
-  }
+  // Not exposed for security; return null.
+  return null;
 }
 
 export async function verifyCredentials(username: string, password: string): Promise<boolean> {
-  const stored = await getCredentials();
-  if (!stored) return false;
-  if (stored.username !== username) return false;
-  return compare(password, stored.passwordHash);
+  const res = await fetch(`${hubBaseUrl()}/api/admin/login`, {
+    method: "POST",
+    headers: { ...hubSecretHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+    cache: "no-store",
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { ok?: boolean };
+  return Boolean(data?.ok);
 }
 
 export async function saveCredentials(username: string, password: string): Promise<void> {
-  const passwordHash = await hash(password, SALT_ROUNDS);
-  const filePath = getCredentialsPath();
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(
-    filePath,
-    JSON.stringify({ username: username.trim(), passwordHash }, null, 2),
-    "utf-8"
-  );
+  const res = await fetch(`${hubBaseUrl()}/api/admin/setup`, {
+    method: "POST",
+    headers: { ...hubSecretHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to setup credentials");
+  }
 }
 
 export async function updateCredentials(options: {
@@ -66,18 +62,17 @@ export async function updateCredentials(options: {
   newPassword?: string;
   currentPassword: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const stored = await getCredentials();
-  if (!stored) return { success: false, error: "No credentials configured" };
-  const valid = await compare(options.currentPassword, stored.passwordHash);
-  if (!valid) return { success: false, error: "Current password is incorrect" };
-
-  const username = options.newUsername?.trim() ?? stored.username;
-  const password = options.newPassword ?? options.currentPassword;
-  if (username.length === 0) return { success: false, error: "Username cannot be empty" };
-  if (options.newPassword && options.newPassword.length < 6) {
-    return { success: false, error: "New password must be at least 6 characters" };
+  try {
+    const res = await fetch(`${hubBaseUrl()}/api/admin/credentials`, {
+      method: "PUT",
+      headers: { ...hubSecretHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+      cache: "no-store",
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!res.ok || !data?.ok) return { success: false, error: data?.error ?? "Failed to update credentials" };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
   }
-
-  await saveCredentials(username, password);
-  return { success: true };
 }

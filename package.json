@@ -9,7 +9,10 @@
     "start": "node dist/server/index.js",
     "start:server": "node dist/server/http-entry.js",
     "dev": "tsx src/server/index.ts",
-    "dev:server": "tsx src/server/http-entry.ts"
+    "dev:server": "tsx src/server/http-entry.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -18,10 +21,14 @@
     "@langchain/core": "^0.3.80",
     "@langchain/openai": "^0.3.17",
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@prisma/client": "^6.16.0",
+    "bcryptjs": "^3.0.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
+    "prisma": "^6.16.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   },
@@ -32,4 +39,8 @@
     "ai"
   ],
   "license": "UNLICENSED"
+  ,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
 }

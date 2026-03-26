@@ -2,17 +2,9 @@
  * Load role config and resolve effective roles (inheritance) for visibility (Phase 09).
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import type { RoleConfig, RoleDefinition } from "../types/roles.js";
-
-const DEFAULT_PATH = "config/roles.json";
-
-function getRolesConfigPath(): string {
-  const env = process.env["MCP_ROLES_CONFIG"];
-  if (env) return path.resolve(env);
-  return path.resolve(process.cwd(), DEFAULT_PATH);
-}
+import { prisma } from "../db/prisma.js";
+import type { Prisma } from "@prisma/client";
 
 let cachedConfig: RoleConfig | null = null;
 
@@ -21,33 +13,77 @@ export function clearRoleConfigCache(): void {
 }
 
 /**
- * Load role config from file. Cached for the process.
+ * Load role config from DB. Cached for the process.
  */
 export async function loadRoleConfig(): Promise<RoleConfig> {
   if (cachedConfig) return cachedConfig;
-  const filePath = getRolesConfigPath();
-  try {
-    const raw = await readFile(filePath, "utf-8");
-    const data = JSON.parse(raw) as unknown;
-    if (!data || typeof data !== "object" || !Array.isArray((data as RoleConfig).roles)) {
-      cachedConfig = { roles: [] };
-      return cachedConfig;
-    }
-    cachedConfig = data as RoleConfig;
-    return cachedConfig;
-  } catch {
-    cachedConfig = { roles: [] };
-    return cachedConfig;
+  const [roles, edges, setting] = await Promise.all([
+    prisma.role.findMany({ orderBy: { id: "asc" } }),
+    prisma.roleInheritance.findMany(),
+    prisma.appSetting.findUnique({ where: { key: "defaultRole" } }),
+  ]);
+  const inheritsByChild = new Map<string, string[]>();
+  for (const e of edges) {
+    const arr = inheritsByChild.get(e.childId) ?? [];
+    arr.push(e.parentId);
+    inheritsByChild.set(e.childId, arr);
   }
+  cachedConfig = {
+    defaultRole: setting?.value ?? undefined,
+    roles: roles.map((r: { id: string; name: string }) => ({
+      id: r.id,
+      name: r.name,
+      inherits: inheritsByChild.get(r.id),
+    })),
+  };
+  return cachedConfig;
 }
 
 /**
- * Persist role config to disk and clear cache.
+ * Persist role config to DB and clear cache.
  */
 export async function writeRoleConfig(config: RoleConfig): Promise<void> {
-  const filePath = getRolesConfigPath();
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(config, null, 2), "utf-8");
+  const roles = Array.isArray(config.roles) ? config.roles : [];
+  const roleIds = [...new Set(roles.map((r) => String(r.id ?? "").trim()).filter(Boolean))];
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Upsert roles
+    for (const r of roles) {
+      const id = String(r.id ?? "").trim();
+      if (!id) continue;
+      const name = (r.name && String(r.name).trim()) ? String(r.name).trim() : id;
+      await tx.role.upsert({
+        where: { id },
+        create: { id, name },
+        update: { name },
+      });
+    }
+
+    // Remove roles not present in new config (also removes inherit edges via cascade)
+    await tx.role.deleteMany({ where: { id: { notIn: roleIds } } });
+
+    // Rebuild inheritance edges
+    await tx.roleInheritance.deleteMany({});
+    for (const r of roles) {
+      const childId = String(r.id ?? "").trim();
+      if (!childId) continue;
+      const inherits = Array.isArray(r.inherits) ? r.inherits : [];
+      for (const p of inherits) {
+        const parentId = String(p ?? "").trim();
+        if (!parentId) continue;
+        await tx.roleInheritance.create({ data: { childId, parentId } });
+      }
+    }
+
+    // Default role setting
+    const defaultRole = config.defaultRole !== undefined ? String(config.defaultRole ?? "").trim() : "";
+    await tx.appSetting.upsert({
+      where: { key: "defaultRole" },
+      create: { key: "defaultRole", value: defaultRole || null },
+      update: { value: defaultRole || null },
+    });
+  });
+
   clearRoleConfigCache();
 }
 

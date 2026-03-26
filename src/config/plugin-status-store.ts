@@ -1,10 +1,8 @@
 /**
- * Plugin connection status (written by Hub at startup, read by Admin).
- * Allows verifying that each MCP plugin connected correctly and has its tools available.
+ * Plugin connection status (written by Hub at startup, read by Admin) — DB-backed.
  */
 
-import { writeFile, readFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { prisma } from "../db/prisma.js";
 
 export interface PluginToolRef {
   name: string;
@@ -61,46 +59,26 @@ export interface PluginStatusSnapshot {
   plugins: PluginConnectionEntry[];
 }
 
-const DEFAULT_FILENAME = "mcp_plugin_status.json";
-const DEFAULT_PATH = path.resolve(process.cwd(), "config", DEFAULT_FILENAME);
-
-export function getPluginStatusPath(): string {
-  const env = process.env["MCP_PLUGIN_STATUS_FILE"] ?? process.env["ADMIN_MCP_PLUGIN_STATUS_FILE"];
-  if (env) return path.resolve(env);
-  return DEFAULT_PATH;
-}
-
 /**
- * Write plugin connection status to file. Call from Hub after loadAllPlugins().
+ * Write plugin connection status to DB. Call from Hub after loadAllPlugins().
  */
 export async function writePluginStatus(entries: PluginConnectionEntry[]): Promise<void> {
-  const filePath = getPluginStatusPath();
-  const dir = path.dirname(filePath);
-  await mkdir(dir, { recursive: true });
-  const snapshot: PluginStatusSnapshot = {
-    updatedAt: new Date().toISOString(),
-    plugins: entries,
-  };
-  await writeFile(filePath, JSON.stringify(snapshot, null, 2), "utf-8");
+  const snapshot: PluginStatusSnapshot = { updatedAt: new Date().toISOString(), plugins: entries };
+  await prisma.pluginStatusSnapshot.upsert({
+    where: { key: "latest" },
+    create: { key: "latest", updatedAt: new Date(snapshot.updatedAt), plugins: snapshot.plugins as any },
+    update: { updatedAt: new Date(snapshot.updatedAt), plugins: snapshot.plugins as any },
+  });
 }
 
 /**
- * Read plugin status from file. Used by Admin API (server-side).
+ * Read plugin status from DB. Used by Hub APIs (server-side).
  */
 export async function readPluginStatus(): Promise<PluginStatusSnapshot | null> {
-  const filePath = getPluginStatusPath();
-  try {
-    const raw = await readFile(filePath, "utf-8");
-    const data = JSON.parse(raw) as unknown;
-    if (!data || typeof data !== "object" || !("plugins" in data)) return null;
-    const snap = data as { updatedAt?: string; plugins?: unknown[] };
-    return {
-      updatedAt: typeof snap.updatedAt === "string" ? snap.updatedAt : new Date().toISOString(),
-      plugins: Array.isArray(snap.plugins) ? snap.plugins.filter(isPluginConnectionEntry) : [],
-    };
-  } catch {
-    return null;
-  }
+  const row = await prisma.pluginStatusSnapshot.findUnique({ where: { key: "latest" } });
+  if (!row) return null;
+  const plugins = Array.isArray(row.plugins) ? (row.plugins as any[]).filter(isPluginConnectionEntry) : [];
+  return { updatedAt: row.updatedAt.toISOString(), plugins };
 }
 
 function isPluginConnectionEntry(x: unknown): x is PluginConnectionEntry {

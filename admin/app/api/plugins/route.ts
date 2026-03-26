@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readRegistry, writeRegistry, type DynamicPluginEntry } from "@/lib/registry";
+import type { DynamicPluginEntry } from "@/lib/registry";
 import { validateAllowedRoles } from "@/lib/validate";
 
 const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", Pragma: "no-cache" };
 
 export const dynamic = "force-dynamic";
 
+function hubBaseUrl(): string {
+  return (process.env.ADMIN_HUB_BASE_URL ?? process.env.HUB_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+function hubHeaders(): Record<string, string> {
+  const secret = process.env.ADMIN_HUB_SECRET ?? process.env.MCP_ADMIN_API_SECRET ?? "";
+  return secret ? { "x-admin-secret": secret } : {};
+}
+
 export async function GET() {
   try {
-    const registry = await readRegistry();
-    return NextResponse.json(registry.plugins, { headers: NO_STORE });
+    const res = await fetch(`${hubBaseUrl()}/api/plugins-config`, { headers: hubHeaders(), cache: "no-store" });
+    const payload = (await res.json()) as { ok?: boolean; plugins?: unknown };
+    const plugins = Array.isArray(payload?.plugins) ? payload.plugins : [];
+    return NextResponse.json(plugins, { headers: NO_STORE });
   } catch (e) {
     console.error(e);
     return NextResponse.json(
@@ -40,15 +51,22 @@ export async function POST(request: NextRequest) {
       source: body.source === "mcp" ? "mcp" : "admin",
       origin: body.origin,
     };
-    const registry = await readRegistry();
-    if (registry.plugins.some((p) => p.id === entry.id)) {
+    const res = await fetch(`${hubBaseUrl()}/api/plugins-config`, { headers: hubHeaders(), cache: "no-store" });
+    const payload = (await res.json()) as { ok?: boolean; plugins?: any[] };
+    const plugins = Array.isArray(payload?.plugins) ? payload.plugins : [];
+    if (plugins.some((p) => p.id === entry.id)) {
       return NextResponse.json(
         { error: "Plugin with this id already exists" },
         { status: 409 }
       );
     }
-    registry.plugins.push(entry);
-    await writeRegistry(registry);
+    plugins.push(entry as any);
+    await fetch(`${hubBaseUrl()}/api/plugins-config`, {
+      method: "PUT",
+      headers: { ...hubHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ plugins }),
+      cache: "no-store",
+    });
     return NextResponse.json(entry);
   } catch (e) {
     console.error(e);

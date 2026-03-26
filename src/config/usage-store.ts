@@ -1,11 +1,8 @@
 /**
- * Usage tracking (Phase 12).
- * Records each tool/skill/plugin invocation with tool name and caller (user name or anonymous).
- * Aggregated stats are read by the admin panel.
+ * Usage tracking (Phase 12) — DB-backed.
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { prisma } from "../db/prisma.js";
 
 export interface UsageEvent {
   toolName: string;
@@ -23,51 +20,7 @@ export interface UsageStats {
   recent: UsageEvent[];
 }
 
-const DEFAULT_FILENAME = "mcp_usage.json";
-const DEFAULT_PATH = path.resolve(process.cwd(), "config", DEFAULT_FILENAME);
 const MAX_EVENTS = 50_000;
-
-function getStorePath(): string {
-  const env = process.env["MCP_USAGE_FILE"];
-  if (env) return path.resolve(env);
-  return DEFAULT_PATH;
-}
-
-interface StoreData {
-  events: UsageEvent[];
-}
-
-async function loadEvents(): Promise<UsageEvent[]> {
-  const filePath = getStorePath();
-  let raw: string;
-  try {
-    raw = await readFile(filePath, "utf-8");
-  } catch {
-    return [];
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  if (!data || typeof data !== "object") return [];
-  const list = Array.isArray((data as StoreData).events) ? (data as StoreData).events : [];
-  return list.filter(
-    (e): e is UsageEvent =>
-      !!e &&
-      typeof e === "object" &&
-      typeof (e as UsageEvent).toolName === "string" &&
-      typeof (e as UsageEvent).timestamp === "string"
-  );
-}
-
-async function saveEvents(events: UsageEvent[]): Promise<void> {
-  const filePath = getStorePath();
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const payload = JSON.stringify({ events }, null, 2);
-  await writeFile(filePath, payload, "utf-8");
-}
 
 /**
  * Record one invocation. Fire-and-forget; safe to call from request path.
@@ -80,10 +33,26 @@ export function recordInvocation(toolName: string, userName?: string): void {
   };
   void (async () => {
     try {
-      const events = await loadEvents();
-      events.push(event);
-      const trimmed = events.length > MAX_EVENTS ? events.slice(-MAX_EVENTS) : events;
-      await saveEvents(trimmed);
+      await prisma.usageEvent.create({
+        data: {
+          toolName: event.toolName,
+          userName: event.userName ?? null,
+          timestamp: new Date(event.timestamp),
+        },
+      });
+      // Keep DB bounded (best-effort).
+      const count = await prisma.usageEvent.count();
+      if (count > MAX_EVENTS) {
+        const toDelete = count - MAX_EVENTS;
+        const oldest = await prisma.usageEvent.findMany({
+          orderBy: { timestamp: "asc" },
+          take: toDelete,
+          select: { id: true },
+        });
+        if (oldest.length > 0) {
+          await prisma.usageEvent.deleteMany({ where: { id: { in: oldest.map((x) => x.id) } } });
+        }
+      }
     } catch (err) {
       console.error("[rs4it-mcp] Usage record error:", err);
     }
@@ -97,11 +66,16 @@ export async function getUsageStats(options?: {
   recentLimit?: number;
   since?: string;
 }): Promise<UsageStats> {
-  let events = await loadEvents();
-  const since = options?.since;
-  if (since) {
-    events = events.filter((e) => e.timestamp >= since);
-  }
+  const since = options?.since ? new Date(options.since) : undefined;
+  const rows = await prisma.usageEvent.findMany({
+    where: since ? { timestamp: { gte: since } } : undefined,
+    orderBy: { timestamp: "asc" },
+  });
+  const events: UsageEvent[] = rows.map((r) => ({
+    toolName: r.toolName,
+    userName: r.userName ?? undefined,
+    timestamp: r.timestamp.toISOString(),
+  }));
   const byEntity: Record<string, EntityStats> = {};
   for (const e of events) {
     const name = e.toolName;

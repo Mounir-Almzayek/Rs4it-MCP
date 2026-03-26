@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readRegistry, writeRegistry, type DynamicRuleEntry } from "@/lib/registry";
+import type { DynamicRuleEntry } from "@/lib/registry";
 import { validateAllowedRoles } from "@/lib/validate";
+
+function hubBaseUrl(): string {
+  return (process.env.ADMIN_HUB_BASE_URL ?? process.env.HUB_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+function hubHeaders(): Record<string, string> {
+  const secret = process.env.ADMIN_HUB_SECRET ?? process.env.MCP_ADMIN_API_SECRET ?? "";
+  return secret ? { "x-admin-secret": secret } : {};
+}
+
+async function readHubRegistry(): Promise<any> {
+  const res = await fetch(`${hubBaseUrl()}/api/registry`, { headers: hubHeaders(), cache: "no-store" });
+  const payload = (await res.json()) as { ok?: boolean; registry?: any };
+  return payload.registry ?? { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
+}
+
+async function writeHubRegistry(registry: any): Promise<void> {
+  await fetch(`${hubBaseUrl()}/api/registry`, {
+    method: "PUT",
+    headers: { ...hubHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ registry }),
+    cache: "no-store",
+  });
+}
 
 export async function PUT(
   request: NextRequest,
@@ -17,9 +41,9 @@ export async function PUT(
       body.allowedRoles = rolesValidation.value;
     }
 
-    const registry = await readRegistry();
+    const registry = await readHubRegistry();
     registry.rules = Array.isArray(registry.rules) ? registry.rules : [];
-    const idx = registry.rules.findIndex((r) => r.name === id);
+    const idx = registry.rules.findIndex((r: any) => r.name === id);
     if (idx === -1) {
       return NextResponse.json({ error: "Rule not found" }, { status: 404 });
     }
@@ -40,7 +64,7 @@ export async function PUT(
       return NextResponse.json({ error: "Rule content cannot be empty" }, { status: 400 });
     }
     registry.rules[idx] = next;
-    await writeRegistry(registry);
+    await writeHubRegistry(registry);
     return NextResponse.json(registry.rules[idx]);
   } catch (e) {
     console.error(e);
@@ -54,14 +78,14 @@ export async function DELETE(
 ) {
   const id = decodeURIComponent((await params).id);
   try {
-    const registry = await readRegistry();
+    const registry = await readHubRegistry();
     registry.rules = Array.isArray(registry.rules) ? registry.rules : [];
-    const idx = registry.rules.findIndex((r) => r.name === id);
+    const idx = registry.rules.findIndex((r: any) => r.name === id);
     if (idx === -1) {
       return NextResponse.json({ error: "Rule not found" }, { status: 404 });
     }
     registry.rules.splice(idx, 1);
-    await writeRegistry(registry);
+    await writeHubRegistry(registry);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

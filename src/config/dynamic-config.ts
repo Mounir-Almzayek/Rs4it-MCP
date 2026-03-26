@@ -1,123 +1,227 @@
 /**
- * Load dynamic registry from file (Phase 08).
- * Used by the Hub to merge dynamic tools, skills, and plugins.
+ * Load dynamic registry from DB (Phase 08).
+ * Used by the Hub to merge dynamic tools, skills, plugins, prompts, resources, rules.
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import type { DynamicRegistry } from "../types/dynamic-registry.js";
-
-const DEFAULT_PATH = "config/dynamic-registry.json";
-
-/**
- * Resolve path: MCP_DYNAMIC_CONFIG env or default relative to cwd.
- */
-export function getDynamicRegistryPath(): string {
-  const env = process.env["MCP_DYNAMIC_CONFIG"];
-  if (env) return path.resolve(env);
-  return path.resolve(process.cwd(), DEFAULT_PATH);
-}
+import { prisma } from "../db/prisma.js";
 
 /**
- * Persist dynamic registry to disk (Phase 08/02).
+ * Persist dynamic registry to DB (Phase 08/02).
  * Used by MCP admin tools to make changes shared for all clients.
  */
 export async function writeDynamicRegistry(registry: DynamicRegistry): Promise<void> {
-  const filePath = getDynamicRegistryPath();
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(registry, null, 2), "utf-8");
+  const tools = Array.isArray(registry.tools) ? registry.tools : [];
+  const skills = Array.isArray(registry.skills) ? registry.skills : [];
+  const prompts = Array.isArray(registry.prompts) ? registry.prompts : [];
+  const resources = Array.isArray(registry.resources) ? registry.resources : [];
+  const rules = Array.isArray(registry.rules) ? registry.rules : [];
+  const plugins = Array.isArray(registry.plugins) ? registry.plugins : [];
+
+  await prisma.$transaction(async (tx) => {
+    await tx.registryTool.deleteMany({});
+    for (const t of tools) {
+      await tx.registryTool.create({
+        data: {
+          name: t.name,
+          description: t.description ?? "",
+          inputSchema: (t.inputSchema ?? {}) as any,
+          handlerRef: t.handlerRef,
+          enabled: Boolean(t.enabled),
+          allowedRoles: (t.allowedRoles ?? null) as any,
+          source: (t.source ?? "admin") as any,
+          origin: t.origin ?? null,
+        },
+      });
+    }
+
+    await tx.registrySkill.deleteMany({});
+    for (const s of skills) {
+      await tx.registrySkill.create({
+        data: {
+          name: s.name,
+          description: s.description ?? "",
+          instructions: s.instructions ?? "",
+          enabled: Boolean(s.enabled),
+          allowedRoles: (s.allowedRoles ?? null) as any,
+          source: (s.source ?? "admin") as any,
+          origin: s.origin ?? null,
+        },
+      });
+    }
+
+    await tx.registryPrompt.deleteMany({});
+    for (const p of prompts) {
+      await tx.registryPrompt.create({
+        data: {
+          name: p.name,
+          title: p.title ?? null,
+          description: p.description ?? "",
+          argsSchema: (p.argsSchema ?? null) as any,
+          template: p.template ?? "",
+          enabled: Boolean(p.enabled),
+          allowedRoles: (p.allowedRoles ?? null) as any,
+          source: (p.source ?? "admin") as any,
+          origin: p.origin ?? null,
+        },
+      });
+    }
+
+    await tx.registryResource.deleteMany({});
+    for (const r of resources) {
+      await tx.registryResource.create({
+        data: {
+          name: r.name,
+          uri: r.uri,
+          description: r.description ?? null,
+          mimeType: r.mimeType,
+          content: r.content ?? "",
+          enabled: Boolean(r.enabled),
+          allowedRoles: (r.allowedRoles ?? null) as any,
+          source: (r.source ?? "admin") as any,
+          origin: r.origin ?? null,
+        },
+      });
+    }
+
+    await tx.registryRule.deleteMany({});
+    for (const rr of rules) {
+      await tx.registryRule.create({
+        data: {
+          name: rr.name,
+          description: rr.description ?? "",
+          content: rr.content ?? "",
+          globs: rr.globs ?? null,
+          enabled: Boolean(rr.enabled),
+          allowedRoles: (rr.allowedRoles ?? null) as any,
+          source: (rr.source ?? "admin") as any,
+          origin: rr.origin ?? null,
+        },
+      });
+    }
+
+    // Plugins are DB-managed separately via PluginConfig.
+    // Keep registry.plugins as a compatibility mirror:
+    // - upsert PluginConfig rows by id
+    for (const pl of plugins) {
+      await tx.pluginConfig.upsert({
+        where: { id: pl.id },
+        create: {
+          id: pl.id,
+          name: pl.name,
+          command: pl.command,
+          args: (pl.args ?? []) as any,
+          description: pl.description ?? null,
+          cwd: pl.cwd ?? null,
+          env: (pl.env ?? null) as any,
+          timeout: pl.timeout ?? null,
+          enabled: Boolean(pl.enabled),
+          allowedRoles: (pl.allowedRoles ?? null) as any,
+          source: (pl.source ?? "admin") as any,
+          origin: pl.origin ?? null,
+        },
+        update: {
+          name: pl.name,
+          command: pl.command,
+          args: (pl.args ?? []) as any,
+          description: pl.description ?? null,
+          cwd: pl.cwd ?? null,
+          env: (pl.env ?? null) as any,
+          timeout: pl.timeout ?? null,
+          enabled: Boolean(pl.enabled),
+          allowedRoles: (pl.allowedRoles ?? null) as any,
+          source: (pl.source ?? "admin") as any,
+          origin: pl.origin ?? null,
+        },
+      });
+    }
+  });
 }
 
 /**
- * Load and parse dynamic registry. Returns empty registry if file missing or invalid.
+ * Load and parse dynamic registry from DB.
  */
 export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
-  const filePath = getDynamicRegistryPath();
-  let raw: string;
-  try {
-    raw = await readFile(filePath, "utf-8");
-  } catch {
-    return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(raw) as unknown;
-  } catch {
-    return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
-  }
-  if (!data || typeof data !== "object") return { tools: [], skills: [], plugins: [], prompts: [], resources: [], rules: [] };
-  const o = data as Record<string, unknown>;
-  const normalizeSource = <T extends { source?: string }>(arr: T[]): T[] =>
-    arr.map((e) => (e.source === "admin" || e.source === "mcp" ? e : { ...e, source: "admin" as const }));
+  const [tools, skills, prompts, resources, rules, plugins] = await Promise.all([
+    prisma.registryTool.findMany({ orderBy: { name: "asc" } }),
+    prisma.registrySkill.findMany({ orderBy: { name: "asc" } }),
+    prisma.registryPrompt.findMany({ orderBy: { name: "asc" } }),
+    prisma.registryResource.findMany({ orderBy: { name: "asc" } }),
+    prisma.registryRule.findMany({ orderBy: { name: "asc" } }),
+    prisma.pluginConfig.findMany({ orderBy: { id: "asc" } }),
+  ]);
+
   return {
-    tools: normalizeSource(Array.isArray(o.tools) ? o.tools.filter(isDynamicToolEntry) : []),
-    skills: normalizeSource(Array.isArray(o.skills) ? o.skills.filter(isDynamicSkillEntry) : []),
-    plugins: normalizeSource(Array.isArray(o.plugins) ? o.plugins.filter(isDynamicPluginEntry) : []),
-    prompts: normalizeSource(Array.isArray(o.prompts) ? o.prompts.filter(isDynamicPromptEntry) : []),
-    resources: normalizeSource(Array.isArray(o.resources) ? o.resources.filter(isDynamicResourceEntry) : []),
-    rules: normalizeSource(Array.isArray(o.rules) ? o.rules.filter(isDynamicRuleEntry) : []),
+    tools: tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: (t.inputSchema ?? {}) as any,
+      handlerRef: t.handlerRef,
+      enabled: t.enabled,
+      allowedRoles: (t.allowedRoles ?? undefined) as any,
+      source: (t.source === "mcp" ? "mcp" : "admin") as any,
+      origin: t.origin ?? undefined,
+      updatedAt: t.updatedAt.toISOString(),
+    })),
+    skills: skills.map((s) => ({
+      name: s.name,
+      description: s.description,
+      instructions: s.instructions,
+      enabled: s.enabled,
+      allowedRoles: (s.allowedRoles ?? undefined) as any,
+      source: (s.source === "mcp" ? "mcp" : "admin") as any,
+      origin: s.origin ?? undefined,
+      updatedAt: s.updatedAt.toISOString(),
+    })),
+    prompts: prompts.map((p) => ({
+      name: p.name,
+      title: p.title ?? undefined,
+      description: p.description,
+      argsSchema: (p.argsSchema ?? undefined) as any,
+      template: p.template,
+      enabled: p.enabled,
+      allowedRoles: (p.allowedRoles ?? undefined) as any,
+      source: (p.source === "mcp" ? "mcp" : "admin") as any,
+      origin: p.origin ?? undefined,
+      updatedAt: p.updatedAt.toISOString(),
+    })),
+    resources: resources.map((r) => ({
+      name: r.name,
+      uri: r.uri,
+      description: r.description ?? undefined,
+      mimeType: r.mimeType,
+      content: r.content,
+      enabled: r.enabled,
+      allowedRoles: (r.allowedRoles ?? undefined) as any,
+      source: (r.source === "mcp" ? "mcp" : "admin") as any,
+      origin: r.origin ?? undefined,
+      updatedAt: r.updatedAt.toISOString(),
+    })),
+    rules: rules.map((rr) => ({
+      name: rr.name,
+      description: rr.description,
+      content: rr.content,
+      enabled: rr.enabled,
+      globs: rr.globs ?? undefined,
+      allowedRoles: (rr.allowedRoles ?? undefined) as any,
+      source: (rr.source === "mcp" ? "mcp" : "admin") as any,
+      origin: rr.origin ?? undefined,
+      updatedAt: rr.updatedAt.toISOString(),
+    })),
+    plugins: plugins.map((pl) => ({
+      id: pl.id,
+      name: pl.name,
+      command: pl.command,
+      args: (pl.args ?? []) as any,
+      description: pl.description ?? undefined,
+      enabled: pl.enabled,
+      cwd: pl.cwd ?? undefined,
+      env: (pl.env ?? undefined) as any,
+      timeout: pl.timeout ?? undefined,
+      allowedRoles: (pl.allowedRoles ?? undefined) as any,
+      source: (pl.source === "mcp" ? "mcp" : "admin") as any,
+      origin: pl.origin ?? undefined,
+      updatedAt: pl.updatedAt.toISOString(),
+    })),
   };
-}
-
-function isDynamicPromptEntry(x: unknown): x is DynamicRegistry["prompts"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).name === "string" &&
-    typeof (x as Record<string, unknown>).template === "string" &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
-}
-
-function isDynamicResourceEntry(x: unknown): x is DynamicRegistry["resources"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).name === "string" &&
-    typeof (x as Record<string, unknown>).uri === "string" &&
-    typeof (x as Record<string, unknown>).mimeType === "string" &&
-    typeof (x as Record<string, unknown>).content === "string" &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
-}
-
-function isDynamicToolEntry(x: unknown): x is DynamicRegistry["tools"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).name === "string" &&
-    typeof (x as Record<string, unknown>).handlerRef === "string" &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
-}
-
-function isDynamicSkillEntry(x: unknown): x is DynamicRegistry["skills"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).name === "string" &&
-    typeof (x as Record<string, unknown>).instructions === "string" &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
-}
-
-function isDynamicPluginEntry(x: unknown): x is DynamicRegistry["plugins"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).id === "string" &&
-    typeof (x as Record<string, unknown>).command === "string" &&
-    Array.isArray((x as Record<string, unknown>).args) &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
-}
-
-function isDynamicRuleEntry(x: unknown): x is DynamicRegistry["rules"][0] {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Record<string, unknown>).name === "string" &&
-    typeof (x as Record<string, unknown>).content === "string" &&
-    typeof (x as Record<string, unknown>).enabled === "boolean"
-  );
 }
