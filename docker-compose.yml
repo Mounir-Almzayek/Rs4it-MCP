@@ -14,7 +14,7 @@
 services:
   hub:
     build:
-      context: .
+      context: ./apps/backend
       dockerfile: Dockerfile
     image: rs4it-mcp-hub:latest
     restart: unless-stopped
@@ -24,22 +24,19 @@ services:
       NODE_ENV: production
       PORT: 3000
       MCP_PORT: 3000
-      MCP_DYNAMIC_CONFIG: /app/config/dynamic-registry.json
-      MCP_ROLES_CONFIG: /app/config/roles.json
-      MCP_PLUGINS_CONFIG: /app/config/mcp_plugins.json
+      # Force an in-container DB location (don't inherit host .env DATABASE_URL)
+      DATABASE_URL: file:/app/config/rs4it.db
       MCP_WORKSPACE_ROOT: ${MCP_WORKSPACE_ROOT:-/workspace}
       BASE_URL: ${HUB_BASE_URL:-http://localhost:3000}
-      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
-      # Skill Compiler (OpenRouter)
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
-      MCP_OPENROUTER_API_KEY: ${MCP_OPENROUTER_API_KEY:-}
-      MCP_SKILL_COMPILER_MODEL: ${MCP_SKILL_COMPILER_MODEL:-}
-      # Protect /api/skill-compiler/* endpoints (Admin -> Hub)
+      # IMPORTANT:
+      # - When running behind a domain, set MCP_ALLOWED_HOSTS to that domain.
+      # - When running via docker-compose, internal service-to-service calls use host "hub",
+      #   so "hub" must be allowed or Admin setup/login will fail with "Invalid Host: hub".
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-hub}
       MCP_ADMIN_API_SECRET: ${MCP_ADMIN_API_SECRET:-}
-      MCP_SKILL_EXECUTIONS_FILE: ${MCP_SKILL_EXECUTIONS_FILE:-}
     volumes:
-      - config_data:/app/config
+      # DB-only volume (contains rs4it.db)
+      - hub_db:/app/config
       # Optional: mount workspace for file tools (create_file, read_file, run_command)
       - ${WORKSPACE_PATH:-./workspace}:/workspace
     healthcheck:
@@ -54,7 +51,7 @@ services:
 
   admin:
     build:
-      context: ./admin
+      context: ./apps/admin
       dockerfile: Dockerfile
     image: rs4it-mcp-admin:latest
     restart: unless-stopped
@@ -71,15 +68,8 @@ services:
       # If Hub protects admin APIs with MCP_ADMIN_API_SECRET, Admin must send it.
       MCP_ADMIN_API_SECRET: ${MCP_ADMIN_API_SECRET:-}
       ADMIN_HUB_SECRET: ${ADMIN_HUB_SECRET:-}
-      # Admin reads/writes same config as Hub via shared volume
-      ADMIN_REGISTRY_PATH: /config/dynamic-registry.json
-      MCP_ROLES_CONFIG: /config/roles.json
-      ADMIN_ROLES_CONFIG: /config/roles.json
-      ADMIN_CREDENTIALS_PATH: /config/admin-credentials.json
       # Required for admin auth (min 16 chars)
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
-    volumes:
-      - config_data:/config
     depends_on:
       hub:
         condition: service_healthy
@@ -93,8 +83,8 @@ services:
       - rs4it
 
 volumes:
-  config_data:
-    # Persists roles.json, dynamic-registry.json, mcp_plugins.json, admin-credentials.json
+  hub_db:
+    # Persists rs4it.db only
 
 networks:
   rs4it:

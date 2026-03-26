@@ -1,46 +1,21 @@
 {
-  "name": "rs4it-mcp",
-  "version": "0.1.0",
-  "description": "RS4IT MCP Hub — unified MCP server for company tools, skills, and external plugins",
+  "name": "rs4it-mcp-monorepo",
+  "private": true,
   "type": "module",
-  "main": "dist/server/index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/server/index.js",
-    "start:server": "node dist/server/http-entry.js",
-    "dev": "tsx src/server/index.ts",
-    "dev:server": "tsx src/server/http-entry.ts",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
-  },
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "@langchain/core": "^0.3.80",
-    "@langchain/openai": "^0.3.17",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "@prisma/client": "^6.16.0",
-    "bcryptjs": "^3.0.3",
-    "zod": "^3.23.0"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.0.0",
-    "prisma": "^6.16.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
-  },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "cursor",
-    "ai"
-  ],
-  "license": "UNLICENSED"
-  ,
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "dev:backend": "npm --prefix apps/backend run dev",
+    "dev:backend:http": "npm --prefix apps/backend run dev:server",
+    "build:backend": "npm --prefix apps/backend run build",
+    "start:backend": "npm --prefix apps/backend run start",
+    "start:backend:http": "npm --prefix apps/backend run start:server",
+
+    "dev:admin": "npm --prefix apps/admin run dev",
+    "build:admin": "npm --prefix apps/admin run build",
+    "start:admin": "npm --prefix apps/admin run start",
+
+    "prisma:generate": "npm --prefix apps/backend run prisma:generate",
+    "prisma:migrate": "npm --prefix apps/backend run prisma:migrate",
+    "prisma:studio": "npm --prefix apps/backend run prisma:studio"
   }
 }
+

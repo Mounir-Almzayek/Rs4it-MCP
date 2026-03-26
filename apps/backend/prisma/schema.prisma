@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model System2030Session {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  token             String
+  notificationToken String?
+  userId            Int?
+  programmer        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastMeAt          DateTime?
+  lastLoginAt       DateTime?
+
+  @@index([updatedAt])
+  @@index([lastMeAt])
+  @@index([lastLoginAt])
+}
+
+model Role {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inheritsFrom RoleInheritance[] @relation("RoleInheritance_child")
+  inheritedBy  RoleInheritance[] @relation("RoleInheritance_parent")
+}
+
+model RoleInheritance {
+  childId  String
+  parentId String
+
+  child  Role @relation("RoleInheritance_child", fields: [childId], references: [id], onDelete: Cascade)
+  parent Role @relation("RoleInheritance_parent", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@id([childId, parentId])
+  @@index([parentId])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String?
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastLoginAt  DateTime?
+}
+
+model RegistryTool {
+  name        String   @id
+  description String
+  inputSchema Json
+  handlerRef  String
+  enabled     Boolean  @default(true)
+  allowedRoles Json?
+  source      String   @default("admin")
+  origin      String?
+  updatedAt   DateTime @updatedAt
+}
+
+model RegistryResource {
+  name         String   @id
+  uri          String   @unique
+  description  String?
+  mimeType     String
+  content      String
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model RegistryRule {
+  name         String   @id
+  description  String
+  content      String
+  globs        String?
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model RegistryPrompt {
+  name         String   @id
+  description  String?
+  content      String
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model RegistrySkill {
+  name         String   @id
+  description  String?
+  /** Markdown content (Cursor-style). */
+  content      String
+  /**
+   * Optional parsed/normalized workflow extracted from markdown.\n   * Expected shape: { inputSchema?: object, steps: [{ tool: string, args: object }] }\n   */
+  definition   Json?
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model PluginConfig {
+  id           String   @id
+  name         String
+  command      String
+  args         Json
+  description  String?
+  cwd          String?
+  env          Json?
+  timeout      Int?
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model PluginStatusSnapshot {
+  key       String   @id
+  updatedAt DateTime @default(now())
+  plugins   Json
+}
+
+model McpUser {
+  name         String   @id
+  firstSeenAt  DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  requestCount Int      @default(0)
+}
+
+model UsageEvent {
+  id        Int      @id @default(autoincrement())
+  toolName  String
+  userName  String?
+  timestamp DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([toolName])
+}
+
