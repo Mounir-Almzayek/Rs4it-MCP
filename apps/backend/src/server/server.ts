@@ -124,9 +124,9 @@ function normalizePropertyToJsonSchema(prop: unknown): Record<string, unknown> {
     const description = typeof def["description"] === "string" ? def["description"] : undefined;
     const type =
       typeName === "ZodNumber" ? "number"
-      : typeName === "ZodBoolean" ? "boolean"
-      : typeName === "ZodArray" ? "array"
-      : "string";
+        : typeName === "ZodBoolean" ? "boolean"
+          : typeName === "ZodArray" ? "array"
+            : "string";
     return description ? { type, description } : { type };
   }
   if (typeof p["type"] === "string") {
@@ -269,12 +269,12 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
         console.error(`[rs4it-mcp] Skipping dynamic prompt "${entry.name}":`, e);
       }
     }
-    
+
     // Also expose skills as Prompts so they appear in Cursor UI slash commands
     for (const entry of (dynamic as any).skills as DynamicSkillEntry[] ?? []) {
       if (!entry?.enabled) continue;
       if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
-      const skillToolName = `skill:${entry.name}`;
+      const skillToolName = `skill_${entry.name}`;
       try {
         registerPrompt(
           skillToolName,
@@ -290,11 +290,11 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     }
   }
 
-  // Dynamic skills (DB-backed) exposed as tools with prefix "skill:".
+  // Dynamic skills (DB-backed) exposed as tools with prefix "skills_".
   for (const entry of (dynamic as any).skills as DynamicSkillEntry[] ?? []) {
     if (!entry?.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
-    const skillToolName = `skill:${entry.name}`;
+    const skillToolName = `skill_${entry.name}`;
     let def: any = entry.definition;
     if (!def && entry.content) {
       try {
@@ -1101,8 +1101,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
           inputSchema: jsonSchemaToZod((pt.inputSchema ?? {}) as Record<string, unknown>),
         } as Parameters<McpServer["registerTool"]>[1],
         async (args: unknown) => {
-        const hdrErr = headersValidationError(args);
-        if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
+          const hdrErr = headersValidationError(args);
+          if (hdrErr) return toolResultCast(errorResult(hdrErr.message));
           onToolInvoked?.(toolName);
           const result = await callPluginTool(pluginId, originalName, args as Record<string, unknown>);
           return toolResultCast({
