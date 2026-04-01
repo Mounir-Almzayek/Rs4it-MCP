@@ -274,7 +274,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     for (const entry of (dynamic as any).skills as DynamicSkillEntry[] ?? []) {
       if (!entry?.enabled) continue;
       if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
-      const skillToolName = `skill_${entry.name}`;
+      const skillToolName = `skills_${entry.name}`;
       try {
         registerPrompt(
           skillToolName,
@@ -294,7 +294,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
   for (const entry of (dynamic as any).skills as DynamicSkillEntry[] ?? []) {
     if (!entry?.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
-    const skillToolName = `skill_${entry.name}`;
+    const skillToolName = `skills_${entry.name}`;
     let def: any = entry.definition;
     if (!def && entry.content) {
       try {
