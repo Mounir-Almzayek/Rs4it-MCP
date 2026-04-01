@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { credentialsExist, saveCredentials } from "@/lib/credentials";
 import { createSessionCookie } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  const rl = checkRateLimit(request, { keyPrefix: "auth:setup", limit: 5, windowMs: 60_000 });
-  if (!rl.ok) {
-    const res = NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
-    res.headers.set("Retry-After", String(rl.retryAfterSeconds));
-    return res;
-  }
   try {
     if (await credentialsExist()) {
       return NextResponse.json(

@@ -1,7 +1,11 @@
 import { z } from "zod";
 import type { RegisteredTool, ToolCallResult } from "../types/tools.js";
 import { system2030Login, system2030Me } from "../integrations/system2030/client.js";
-import { getSystem2030SessionByEmail, upsertSystem2030Session } from "../integrations/system2030/store.js";
+import {
+  getSystem2030SessionByEmail,
+  listSystem2030Sessions,
+  upsertSystem2030Session,
+} from "../integrations/system2030/store.js";
 
 export const SYSTEM2030_AUTH_REFRESH_NAME = "system2030_auth_refresh" as const;
 
@@ -31,7 +35,11 @@ function pick(obj: Record<string, unknown>, fields: string[]): Record<string, un
 
 async function handler(args: System2030AuthRefreshArgs): Promise<ToolCallResult> {
   try {
-    const email = (args.email ?? process.env["SYSTEM2030_EMAIL"] ?? "").trim();
+    let email = (args.email ?? process.env["SYSTEM2030_EMAIL"] ?? "").trim();
+    if (!email) {
+      const latest = (await listSystem2030Sessions())[0];
+      email = latest?.email?.trim() ?? "";
+    }
     if (!email) return err('Missing "email" (or set SYSTEM2030_EMAIL).');
 
     const stored = await getSystem2030SessionByEmail(email);

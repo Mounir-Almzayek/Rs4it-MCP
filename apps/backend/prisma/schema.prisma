@@ -152,6 +152,34 @@ model McpUser {
   requestCount Int      @default(0)
 }
 
+model OauthClient {
+  clientId     String   @id
+  redirectUris Json     // String[]
+  createdAt    DateTime @default(now())
+}
+
+model OauthCode {
+  code         String   @id
+  clientId     String
+  redirectUri  String
+  email        String
+  role         String?
+  createdAt    DateTime @default(now())
+}
+
+model OauthToken {
+  token        String   @id
+  email        String
+  role         String?
+  createdAt    DateTime @default(now())
+}
+
+model RateLimitBucket {
+  key          String   @id
+  count        Int
+  resetAtMs    BigInt
+}
+
 model UsageEvent {
   id        Int      @id @default(autoincrement())
   toolName  String

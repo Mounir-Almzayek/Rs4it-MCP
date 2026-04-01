@@ -47,9 +47,6 @@ interface SessionState {
 }
 
 const sessions = new Map<SessionId, SessionState>();
-const oauthClients = new Map<string, { clientId: string; redirectUris: string[]; createdAt: number }>();
-const oauthCodes = new Map<string, { clientId: string; redirectUri: string; email: string; role?: string; createdAt: number }>();
-const oauthTokens = new Map<string, { email: string; role?: string; createdAt: number }>();
 
 /** When true, JSON-RPC -32603 responses include a short error message (for debugging). */
 function exposeErrorsToClient(): boolean {
@@ -65,7 +62,6 @@ function clientErrorDetail(err: unknown): string {
 }
 
 type RateLimitBucket = { count: number; resetAtMs: number };
-const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
 function getClientIp(req: IncomingMessage): string {
   const xff = req.headers["x-forwarded-for"];
@@ -75,17 +71,27 @@ function getClientIp(req: IncomingMessage): string {
   return "unknown";
 }
 
-function checkRateLimit(key: string, limit: number, windowMs: number): { ok: true } | { ok: false; retryAfterSeconds: number } {
+async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<{ ok: true } | { ok: false; retryAfterSeconds: number }> {
   const now = Date.now();
-  const existing = rateLimitBuckets.get(key);
-  if (!existing || existing.resetAtMs <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAtMs: now + windowMs });
+  const existing = await prisma.rateLimitBucket.findUnique({ where: { key } });
+  
+  if (!existing || Number(existing.resetAtMs) <= now) {
+    await prisma.rateLimitBucket.upsert({
+      where: { key },
+      create: { key, count: 1, resetAtMs: BigInt(now + windowMs) },
+      update: { count: 1, resetAtMs: BigInt(now + windowMs) },
+    });
     return { ok: true };
   }
+  
   if (existing.count >= limit) {
-    return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAtMs - now) / 1000)) };
+    return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((Number(existing.resetAtMs) - now) / 1000)) };
   }
-  existing.count += 1;
+  
+  await prisma.rateLimitBucket.update({
+    where: { key },
+    data: { count: { increment: 1 } },
+  });
   return { ok: true };
 }
 
@@ -182,12 +188,12 @@ function getBearerToken(req: IncomingMessage): string | undefined {
   return m?.[1]?.trim();
 }
 
-function getIdentityFromBearer(req: IncomingMessage): { email: string; role?: string } | null {
+async function getIdentityFromBearer(req: IncomingMessage): Promise<{ email: string; role?: string } | null> {
   const token = getBearerToken(req);
   if (!token) return null;
-  const data = oauthTokens.get(token);
+  const data = await prisma.oauthToken.findUnique({ where: { token } });
   if (!data) return null;
-  return { email: data.email, role: data.role };
+  return { email: data.email, role: data.role ?? undefined };
 }
 
 function isHtmlRequest(req: IncomingMessage): boolean {
@@ -348,7 +354,7 @@ async function handlePost(
     }
 
     if (!sessionId && req.body && isInitializeRequest(req.body)) {
-      const bearerIdentity = getIdentityFromBearer(req);
+      const bearerIdentity = await getIdentityFromBearer(req);
       const role = getRoleFromRequest(req) ?? getRoleFromCookies(req) ?? bearerIdentity?.role;
       const email = getEmailFromRequest(req) ?? getEmailFromCookies(req) ?? bearerIdentity?.email;
       const authOnce = getAuthOnceFromCookies(req);
@@ -538,7 +544,7 @@ async function main(): Promise<void> {
 
   // Centralized protection for admin APIs.
   // Route handlers still check `requireAdminSecret` (defense in depth), but this ensures new routes don't forget it.
-  app.use("/api", (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+  app.use("/api", async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const auth = requireAdminSecret(req);
     if (!auth.ok) {
       res.statusCode = auth.status;
@@ -547,7 +553,7 @@ async function main(): Promise<void> {
       return;
     }
     const ip = getClientIp(req);
-    const rl = checkRateLimit(`hub_api:${ip}`, 240, 60_000);
+    const rl = await checkRateLimit(`hub_api:${ip}`, 240, 60_000);
     if (!rl.ok) {
       res.statusCode = 429;
       res.setHeader("Content-Type", "application/json");
@@ -696,7 +702,7 @@ async function main(): Promise<void> {
     const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
     const redirectUris = Array.isArray(body["redirect_uris"]) ? (body["redirect_uris"] as unknown[]).map((x) => String(x)) : [];
     const clientId = `client_${randomUUID()}`;
-    oauthClients.set(clientId, { clientId, redirectUris, createdAt: Date.now() });
+    await prisma.oauthClient.create({ data: { clientId, redirectUris } });
     res.statusCode = 201;
     res.setHeader("Content-Type", "application/json");
     res.end(
@@ -715,13 +721,14 @@ async function main(): Promise<void> {
     const clientId = String(url.searchParams.get("client_id") ?? "");
     const redirectUri = String(url.searchParams.get("redirect_uri") ?? "");
     const state = String(url.searchParams.get("state") ?? "");
-    if (!clientId || !redirectUri || !oauthClients.has(clientId)) {
+    const client = await prisma.oauthClient.findUnique({ where: { clientId } });
+    if (!clientId || !redirectUri || !client) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "text/plain");
       res.end("Invalid OAuth authorize request");
       return;
     }
-    const identity = getIdentityFromBearer(req);
+    const identity = await getIdentityFromBearer(req);
     const email = identity?.email ?? getEmailFromCookies(req);
     if (!email) {
       const currentUrl = req.url ?? "";
@@ -732,7 +739,9 @@ async function main(): Promise<void> {
     }
     const role = identity?.role ?? getRoleFromCookies(req);
     const code = `code_${randomUUID()}`;
-    oauthCodes.set(code, { clientId, redirectUri, email, role: role ?? undefined, createdAt: Date.now() });
+    await prisma.oauthCode.create({
+      data: { code, clientId, redirectUri, email, role: role ?? null },
+    });
     const redirect = new URL(redirectUri);
     redirect.searchParams.set("code", code);
     if (state) redirect.searchParams.set("state", state);
@@ -772,16 +781,18 @@ async function main(): Promise<void> {
       res.end(JSON.stringify({ error: "invalid_request" }));
       return;
     }
-    const stored = oauthCodes.get(code);
+    const stored = await prisma.oauthCode.findUnique({ where: { code } });
     if (!stored || stored.clientId !== clientId || (redirectUri && stored.redirectUri !== redirectUri)) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "invalid_grant" }));
       return;
     }
-    oauthCodes.delete(code);
+    await prisma.oauthCode.delete({ where: { code } });
     const accessToken = `atk_${randomUUID()}`;
-    oauthTokens.set(accessToken, { email: stored.email, role: stored.role, createdAt: Date.now() });
+    await prisma.oauthToken.create({
+      data: { token: accessToken, email: stored.email, role: stored.role },
+    });
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(

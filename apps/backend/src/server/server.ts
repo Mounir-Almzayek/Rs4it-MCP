@@ -202,6 +202,13 @@ function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodObject<Record<st
   return z.object(shape);
 }
 
+function toMcpInputSchema(schema: unknown): z.ZodTypeAny {
+  if (schema && typeof schema === "object" && "safeParseAsync" in (schema as Record<string, unknown>)) {
+    return schema as z.ZodTypeAny;
+  }
+  return z.object((schema ?? {}) as Record<string, z.ZodTypeAny>);
+}
+
 /**
  * Creates and configures the MCP server: initialize, unified tools/list (local + skills + plugins + dynamic), tools/call routed by name.
  * If options.role is set, only entities allowed for that role (and inherited roles) are registered.
@@ -238,7 +245,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       name,
       {
         description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
+        inputSchema: toMcpInputSchema(tool.inputSchema),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
         const hdrErr = headersValidationError(args);
@@ -308,7 +315,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       skillToolName,
       {
         description: entry.description ?? `Skill: ${entry.name}`,
-        inputSchema: inputSchema as any,
+        inputSchema: jsonSchemaToZod(inputSchema),
       } as Parameters<McpServer["registerTool"]>[1],
       async (args: unknown) => {
         const hdrErr = headersValidationError(args);
