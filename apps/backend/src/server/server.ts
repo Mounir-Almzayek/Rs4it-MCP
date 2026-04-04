@@ -81,22 +81,36 @@ function resolveSkillArgs(template: Record<string, unknown>, input: Record<strin
   return out;
 }
 
+/**
+ * Optional ```json``` block may declare inputSchema and/or steps (tool workflow).
+ * Plain markdown-only skills are valid: no JSON block, or JSON without steps → steps default to [].
+ */
 function parseSkillMarkdownToDefinition(md: string): { inputSchema?: Record<string, unknown>; steps: any[] } {
   const text = String(md ?? "");
-  // Look for first ```json ... ``` codeblock and parse it.
   const m = text.match(/```json\s*([\s\S]*?)```/i);
-  if (!m) throw new Error('Skill markdown must include a ```json``` code block with { "steps": [...] }.');
-  const raw = m[1] ?? "";
-  const parsed = JSON.parse(raw);
-  if (!parsed || typeof parsed !== "object") throw new Error("Skill definition JSON must be an object.");
-  const o = parsed as any;
-  const steps = Array.isArray(o.steps) ? o.steps : null;
-  if (!steps) throw new Error('Skill definition JSON must include "steps": [...].');
-  const inputSchema =
-    o.inputSchema && typeof o.inputSchema === "object" && !Array.isArray(o.inputSchema)
-      ? (o.inputSchema as Record<string, unknown>)
-      : undefined;
-  return { inputSchema, steps };
+  if (!m) return { steps: [] };
+  const raw = (m[1] ?? "").trim();
+  if (!raw) return { steps: [] };
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { steps: [] };
+    const o = parsed as Record<string, unknown>;
+    const steps = Array.isArray(o.steps) ? o.steps : [];
+    const inputSchema =
+      o.inputSchema && typeof o.inputSchema === "object" && !Array.isArray(o.inputSchema)
+        ? (o.inputSchema as Record<string, unknown>)
+        : undefined;
+    return { inputSchema, steps };
+  } catch {
+    return { steps: [] };
+  }
+}
+
+/** Markdown body with optional workflow JSON fence removed (for markdown-only tool results). */
+function stripSkillJsonFence(md: string): string {
+  return String(md ?? "")
+    .replace(/```json\s*[\s\S]*?```/gi, "")
+    .trim();
 }
 
 export interface CreateServerOptions {
@@ -304,11 +318,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     const skillToolName = `skills_${entry.name}`;
     let def: any = entry.definition;
     if (!def && entry.content) {
-      try {
-        def = parseSkillMarkdownToDefinition(entry.content);
-      } catch (e) {
-        // keep def undefined; calling the tool will return a clear error
-      }
+      def = parseSkillMarkdownToDefinition(entry.content);
     }
     const inputSchema = (def?.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
     server.registerTool(
@@ -326,6 +336,14 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
           const localDef = def ?? entry.definition ?? (entry.content ? parseSkillMarkdownToDefinition(entry.content) : null);
           if (!localDef) throw new Error("Skill has no definition.");
           const steps = Array.isArray(localDef?.steps) ? localDef.steps : [];
+          if (steps.length === 0) {
+            const md =
+              stripSkillJsonFence(entry.content ?? "") || String(entry.content ?? "").trim();
+            return toolResultCast({
+              content: [{ type: "text", text: md || "(empty skill content)" }],
+              isError: false,
+            });
+          }
           const results: unknown[] = [];
           for (const step of steps) {
             const tool = String((step as any)?.tool ?? "").trim();
@@ -790,7 +808,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     const upsertSkillSchema = z.object({
       name: z.string().min(1).describe("Skill name (unique)."),
       description: z.string().optional().describe("Short description."),
-      content: z.string().min(1).describe("Markdown content containing steps json codeblock."),
+      content: z.string().min(1).describe("Markdown instructions. Optional ```json``` block may define inputSchema and steps."),
       enabled: z.boolean().optional().default(true),
       allowedRoles: z.array(z.string()).optional().describe("Roles allowed to see/use this skill. Empty/omitted = visible to all."),
     });

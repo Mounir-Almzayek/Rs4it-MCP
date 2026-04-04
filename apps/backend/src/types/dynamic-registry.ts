@@ -97,7 +97,7 @@ export interface DynamicSkillEntry {
   description?: string;
   /** Markdown content (Cursor-style). */
   content: string;
-  /** Optional parsed/normalized workflow extracted from markdown. */
+  /** Optional parsed workflow from optional ```json``` block in content (markdown-only skills use empty steps). */
   definition?: { inputSchema?: Record<string, unknown>; steps: DynamicSkillStep[] };
   enabled: boolean;
   updatedAt?: string;

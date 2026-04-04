@@ -113,8 +113,7 @@ model RegistrySkill {
   description  String?
   /** Markdown content (Cursor-style). */
   content      String
-  /**
-   * Optional parsed/normalized workflow extracted from markdown.\n   * Expected shape: { inputSchema?: object, steps: [{ tool: string, args: object }] }\n   */
+  /** Optional workflow from optional JSON fence in content; plain markdown skills omit or use empty steps. */
   definition   Json?
   enabled      Boolean  @default(true)
   allowedRoles Json?

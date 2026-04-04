@@ -34,18 +34,11 @@ async function fetchRoles(): Promise<RoleConfig> {
   return res.json();
 }
 
-const DEFAULT_MD = `# Skill
+const DEFAULT_MD = `# Skill title
 
-This skill runs a workflow of tool calls.
+Write instructions for the model here (Markdown). No JSON block is required.
 
-\`\`\`json
-{
-  "inputSchema": { "type": "object", "properties": {} },
-  "steps": [
-    { "tool": "create_file", "args": { "path": "$input.path", "content": "$input.content" } }
-  ]
-}
-\`\`\`
+Optional: add a \`\`\`json\`\`\` block only if you need a fixed sequence of Hub tools (\`steps\`) or \`inputSchema\`.
 `;
 
 export default function SkillsPage() {
@@ -146,8 +139,10 @@ export default function SkillsPage() {
         <CardHeader>
           <CardTitle>DB-backed skills (exposed as tools)</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Each skill is exposed to MCP clients as a tool named <span className="font-mono">skill:&lt;name&gt;</span>.
-            Steps run tools by name. You can reference input fields via strings like <span className="font-mono">$input.path</span>.
+            Each skill is exposed as <span className="font-mono">skills_&lt;name&gt;</span>. Content is Markdown; invoking the
+            tool returns that text unless you add an optional <span className="font-mono">json</span> block with{" "}
+            <span className="font-mono">steps</span> to run Hub tools in order (use <span className="font-mono">$input.field</span>{" "}
+            in step args).
           </p>
         </CardHeader>
         <CardContent>
