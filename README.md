@@ -1,6 +1,6 @@
 ## RS4IT MCP Hub
 
-RS4IT MCP Hub is a **Model Context Protocol (MCP)** server that exposes your organization’s tools and integrations to AI clients (e.g. Cursor) through a single endpoint.
+RS4IT MCP Hub is a **Model Context Protocol (MCP)** server that exposes your organization’s tools and integrations to AI clients (e.g. Cursor, Claude, VS Code with MCP) through a single endpoint.
 
 This repo is a small monorepo:
 
@@ -128,6 +128,19 @@ If you deploy the Hub behind a domain, set:
 - Run the Hub locally (`npm run dev:backend:http`)
 - Point Cursor to:
   - `http://localhost:3000/mcp`
+
+### Other MCP clients (Claude, Copilot, Codex, …)
+
+The Hub speaks **standard MCP over HTTP** at `/mcp`. Any product that supports MCP remote servers can use the **same URL** you give Cursor (replace host/port with your deployment):
+
+- **Local:** `http://localhost:3000/mcp`
+- **Deployed:** `https://<your-domain>/mcp` (set `HUB_BASE_URL` and `MCP_ALLOWED_HOSTS` as in Option A)
+
+**Claude Desktop:** add an MCP server entry in the app’s config (name + URL). Use the Hub URL above; add headers if your setup requires auth (e.g. `Authorization` or role headers your Hub expects).
+
+**VS Code / GitHub Copilot:** connect only if your VS Code build has MCP enabled for remote HTTP servers; point it at the same `/mcp` URL. Exact UI and feature flags depend on the VS Code version—treat it like any other MCP HTTP endpoint.
+
+**Tip:** If the client reports a configuration or TLS error, verify the URL, that the Hub is reachable from that machine, and that `MCP_ALLOWED_HOSTS` includes your public hostname when not using `localhost`.
 
 ---
 
