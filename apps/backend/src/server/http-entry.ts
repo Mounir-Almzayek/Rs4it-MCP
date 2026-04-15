@@ -35,6 +35,9 @@ import { registerRoleRoutes } from "./routes/roles.js";
 import { migrateLegacyJsonConfigIfNeeded } from "../bootstrap/legacy-json-migration.js";
 import { validateAllowedRoles } from "../config/roles.js";
 import { renderAuthPage } from "../web/auth/page.js";
+import { detectClient, generateClientConfig } from "../client-config/index.js";
+import { setSessionContext } from "../tools/sync-client-config.js";
+import { getWorkspaceRoot } from "../config/workspace.js";
 
 type SessionId = string;
 interface SessionState {
@@ -44,6 +47,7 @@ interface SessionState {
   system2030Email?: string;
   system2030LastMeAtMs?: number;
   skipSystem2030Check?: boolean;
+  clientType?: string;
 }
 
 const sessions = new Map<SessionId, SessionState>();
@@ -414,6 +418,25 @@ async function handlePost(
         const secure = process.env["NODE_ENV"] === "production";
         res.setHeader("Set-Cookie", clearAuthOnceCookie({ secure }));
         await state.server.connect(state.transport);
+
+        // Client config auto-generation
+        const initBody = req.body as Record<string, unknown> | undefined;
+        const clientInfoName = (initBody?.params as any)?.clientInfo?.name as string | undefined;
+        const detectedClient = detectClient(clientInfoName);
+        state.clientType = detectedClient;
+        setSessionContext(detectedClient, role ?? undefined);
+
+        if (detectedClient !== "unknown" && process.env["MCP_AUTO_CLIENT_CONFIG"] !== "false") {
+          const wsRoot = getWorkspaceRoot();
+          generateClientConfig(detectedClient, role ?? undefined, wsRoot)
+            .then((files) => {
+              console.log(`[client-config] Generated ${files.length} files for ${detectedClient} in ${wsRoot}`);
+            })
+            .catch((err) => {
+              console.error("[client-config] Auto-generation failed:", err instanceof Error ? err.message : err);
+            });
+        }
+
         await state.transport.handleRequest(req, res, req.body);
         trackMcpUserUsage(state.userName);
         return;
