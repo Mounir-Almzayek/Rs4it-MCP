@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Outfit, DM_Sans, JetBrains_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
-import { LayoutSwitcher } from "@/components/layout/layout-switcher";
 import { Providers } from "./providers";
 
 const outfit = Outfit({
@@ -46,7 +45,7 @@ export default function RootLayout({
         className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${ibmPlexArabic.variable} font-body`}
       >
         <Providers>
-          <LayoutSwitcher>{children}</LayoutSwitcher>
+          {children}
           <Toaster />
         </Providers>
       </body>
