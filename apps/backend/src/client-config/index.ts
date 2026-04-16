@@ -18,13 +18,14 @@ export async function generateClientConfig(
   clientType: ClientType,
   role: string | undefined,
   workspaceRoot: string,
+  options?: { dryRun?: boolean },
 ): Promise<GeneratedFile[]> {
   if (clientType === "unknown") return [];
   const generator = generators[clientType];
   if (!generator) return [];
 
   const content = await collectContent(role);
-  return generator.generate(content, { workspaceRoot });
+  return generator.generate(content, { workspaceRoot, dryRun: options?.dryRun });
 }
 
 export { detectClient } from "./detector.js";

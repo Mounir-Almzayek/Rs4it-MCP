@@ -18,6 +18,8 @@ export async function writeDynamicRegistry(registry: DynamicRegistry): Promise<v
   const plugins = Array.isArray(registry.plugins) ? registry.plugins : [];
   const prompts = Array.isArray((registry as any).prompts) ? (registry as any).prompts : [];
   const skills = Array.isArray((registry as any).skills) ? (registry as any).skills : [];
+  const subagents = Array.isArray((registry as any).subagents) ? (registry as any).subagents : [];
+  const commands = Array.isArray((registry as any).commands) ? (registry as any).commands : [];
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.registryTool.deleteMany({});
@@ -100,6 +102,39 @@ export async function writeDynamicRegistry(registry: DynamicRegistry): Promise<v
       });
     }
 
+    await tx.registrySubagent.deleteMany({});
+    for (const sa of subagents) {
+      await tx.registrySubagent.create({
+        data: {
+          name: String(sa.name),
+          description: sa.description ?? null,
+          content: String(sa.content ?? ""),
+          model: sa.model ?? null,
+          readonly: Boolean(sa.readonly),
+          isBackground: Boolean(sa.isBackground),
+          enabled: Boolean(sa.enabled),
+          allowedRoles: (sa.allowedRoles ?? null) as any,
+          source: (sa.source ?? "admin") as any,
+          origin: sa.origin ?? null,
+        },
+      });
+    }
+
+    await tx.registryCommand.deleteMany({});
+    for (const c of commands) {
+      await tx.registryCommand.create({
+        data: {
+          name: String(c.name),
+          description: c.description ?? null,
+          content: String(c.content ?? ""),
+          enabled: Boolean(c.enabled),
+          allowedRoles: (c.allowedRoles ?? null) as any,
+          source: (c.source ?? "admin") as any,
+          origin: c.origin ?? null,
+        },
+      });
+    }
+
     // Plugins are DB-managed separately via PluginConfig.
     // Keep registry.plugins as a compatibility mirror:
     // - upsert PluginConfig rows by id
@@ -142,13 +177,15 @@ export async function writeDynamicRegistry(registry: DynamicRegistry): Promise<v
  * Load and parse dynamic registry from DB.
  */
 export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
-  const [tools, resources, rules, plugins, prompts, skills] = await Promise.all([
+  const [tools, resources, rules, plugins, prompts, skills, subagents, commands] = await Promise.all([
     prisma.registryTool.findMany({ orderBy: { name: "asc" } }),
     prisma.registryResource.findMany({ orderBy: { name: "asc" } }),
     prisma.registryRule.findMany({ orderBy: { name: "asc" } }),
     prisma.pluginConfig.findMany({ orderBy: { id: "asc" } }),
     prisma.registryPrompt.findMany({ orderBy: { name: "asc" } }),
     prisma.registrySkill.findMany({ orderBy: { name: "asc" } }),
+    prisma.registrySubagent.findMany({ orderBy: { name: "asc" } }),
+    prisma.registryCommand.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   return {
@@ -221,6 +258,29 @@ export async function loadDynamicRegistry(): Promise<DynamicRegistry> {
       source: (s.source === "mcp" ? "mcp" : "admin") as any,
       origin: s.origin ?? undefined,
       updatedAt: s.updatedAt.toISOString(),
+    })),
+    subagents: subagents.map((sa: typeof subagents[number]) => ({
+      name: sa.name,
+      description: sa.description ?? undefined,
+      content: sa.content ?? "",
+      model: sa.model ?? undefined,
+      readonly: sa.readonly,
+      isBackground: sa.isBackground,
+      enabled: sa.enabled,
+      allowedRoles: (sa.allowedRoles ?? undefined) as any,
+      source: (sa.source === "mcp" ? "mcp" : "admin") as any,
+      origin: sa.origin ?? undefined,
+      updatedAt: sa.updatedAt.toISOString(),
+    })),
+    commands: commands.map((c: typeof commands[number]) => ({
+      name: c.name,
+      description: c.description ?? undefined,
+      content: c.content ?? "",
+      enabled: c.enabled,
+      allowedRoles: (c.allowedRoles ?? undefined) as any,
+      source: (c.source === "mcp" ? "mcp" : "admin") as any,
+      origin: c.origin ?? undefined,
+      updatedAt: c.updatedAt.toISOString(),
     })),
   };
 }

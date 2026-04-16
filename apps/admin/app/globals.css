@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    /* Dark Luxury — base */
-    --background: 240 6% 3.7%;         /* #09090b zinc-950 */
-    --foreground: 0 0% 98%;            /* #fafafa zinc-50 */
+    /* Clean + Editorial — light theme */
+    --background: 0 0% 100%;            /* #ffffff pure white */
+    --foreground: 0 0% 7%;              /* #111111 near-black */
 
-    --card: 240 5.9% 10%;              /* #18181b zinc-900 */
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 99%;                   /* #fcfcfc subtle off-white */
+    --card-foreground: 0 0% 7%;
 
-    --popover: 240 5.9% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
 
-    --primary: 29 47% 64%;             /* #d4a574 copper */
-    --primary-foreground: 240 6% 3.7%;
+    --primary: 0 0% 0%;                 /* #000000 pure black */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 3.7% 15.9%;       /* #27272a zinc-800 */
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;            /* #f5f5f5 warm gray */
+    --secondary-foreground: 0 0% 7%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;  /* #a1a1aa zinc-400 */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 220 9% 46%;     /* #6b7280 gray-500 */
 
-    --accent: 29 47% 64%;              /* copper */
-    --accent-foreground: 240 6% 3.7%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 7%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;           /* #ef4444 red */
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;            /* #22c55e green-500 */
-    --success-foreground: 0 0% 98%;
+    --success: 142 71% 45%;             /* #22c55e green */
+    --success-foreground: 0 0% 100%;
 
-    --border: 240 3.7% 15.9%;          /* zinc-800 */
-    --input: 240 3.7% 15.9%;
-    --ring: 29 47% 64%;                /* copper */
+    --border: 220 13% 91%;              /* #e5e7eb gray-200 */
+    --input: 220 13% 91%;
+    --ring: 0 0% 0%;                    /* black focus ring */
 
-    --border-subtle: 240 3.8% 46.1%;   /* zinc-600 for strong borders */
+    --border-subtle: 220 9% 46%;        /* gray-500 for emphasis */
 
-    --chart-1: 160 84% 39%;
-    --chart-2: 29 47% 64%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 189 94% 43%;
-    --chart-5: 347 77% 50%;
+    --chart-1: 220 70% 50%;             /* blue */
+    --chart-2: 0 0% 20%;                /* dark gray */
+    --chart-3: 142 71% 45%;             /* green */
+    --chart-4: 38 92% 50%;              /* amber */
+    --chart-5: 280 65% 60%;             /* purple */
 
-    --radius: 0.625rem;
-    --sidebar-width: 16rem;
+    --radius: 0.375rem;                 /* 6px — sharper, editorial */
+    --sidebar-width: 15rem;             /* 240px — slightly narrower */
   }
 }
 
@@ -58,27 +58,11 @@
   }
 }
 
-/* Glow effect utility */
-.glow-accent {
-  box-shadow: 0 0 20px rgba(212, 165, 116, 0.1);
-}
-
-.glow-accent-strong {
-  box-shadow: 0 0 30px rgba(212, 165, 116, 0.2);
-}
-
-/* Background gradient mesh */
-.bg-mesh {
-  background-image:
-    radial-gradient(at 100% 0%, rgba(212, 165, 116, 0.05) 0%, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(212, 165, 116, 0.03) 0%, transparent 50%);
-}
-
-/* Staggered card reveal */
+/* Staggered card reveal — subtle */
 @keyframes card-reveal {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -87,43 +71,41 @@
 }
 
 .animate-card-reveal {
-  animation: card-reveal 0.4s ease-out both;
+  animation: card-reveal 0.3s ease-out both;
 }
 
 /* Sidebar active bar */
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
 .sidebar-active-bar {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6));
-  background-size: 200% 200%;
-  animation: gradient-shift 3s ease infinite;
+  background: hsl(var(--foreground));
 }
 
 /* Smooth page transitions */
 .page-enter {
-  animation: page-fade-in 0.3s ease-out;
+  animation: page-fade-in 0.2s ease-out;
 }
 
 @keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling — minimal */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
+  background: hsl(var(--muted-foreground) / 0.2);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Selection color */
+::selection {
+  background: hsl(var(--foreground) / 0.08);
 }

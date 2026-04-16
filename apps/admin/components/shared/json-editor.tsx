@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ interface JsonEditorProps {
 }
 
 export function JsonEditor({ label, value, onChange, placeholder, className }: JsonEditorProps) {
+  const t = useTranslations("common");
   const [text, setText] = useState(() => JSON.stringify(value, null, 2));
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +30,7 @@ export function JsonEditor({ label, value, onChange, placeholder, className }: J
       setError(null);
       onChange(parsed);
     } catch {
-      setError("Invalid JSON");
+      setError(t("invalidJson"));
     }
   }
 

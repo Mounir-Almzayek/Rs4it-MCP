@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
 import { ResourcesTable } from "./_components/resources-table";
 import { ResourceDialog } from "./_components/resource-dialog";
 import { useResources } from "./_hooks/use-resources";
@@ -12,7 +14,10 @@ import type { DynamicResourceEntry } from "@/lib/dynamic-registry-types";
 
 function ResourcesContent() {
   const t = useTranslations("resources");
+  const tc = useTranslations("common");
   const searchParams = useSearchParams();
+
+  const [tab, setTab] = useState<EntityTab>("list");
 
   const {
     resourceRows,
@@ -88,21 +93,41 @@ function ResourcesContent() {
     });
   }, [deleteTarget, deleteMutation]);
 
+  const installedNames = useMemo(
+    () => new Set(resourceRows.map((r) => r.name)),
+    [resourceRows],
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
       />
 
-      <ResourcesTable
-        data={resourceRows}
-        roles={roles}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <ResourcesTable
+          data={resourceRows}
+          roles={roles}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="resource"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["resources"], ["registry"]]}
+        />
+      )}
 
       <ResourceDialog
         open={dialogOpen}

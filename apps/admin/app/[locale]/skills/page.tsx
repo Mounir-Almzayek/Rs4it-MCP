@@ -1,10 +1,15 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
+import { UploadDialog } from "./_components/upload-dialog";
 import { useToast } from "@/lib/toast";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 import { SkillsList } from "./_components/skills-list";
 import { SkillDialog } from "./_components/skill-dialog";
 import { useSkills } from "./_hooks/use-skills";
@@ -12,9 +17,13 @@ import type { SkillRow } from "./_hooks/use-skills";
 
 function SkillsContent() {
   const t = useTranslations("skills");
+  const tc = useTranslations("common");
   const toast = useToast();
 
   const { skills, roles, isLoading, saveAllMutation } = useSkills();
+
+  const [tab, setTab] = useState<EntityTab>("list");
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -22,6 +31,8 @@ function SkillsContent() {
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const installedNames = useMemo(() => new Set(skills.map((s) => s.name)), [skills]);
 
   const handleCreate = useCallback(() => {
     setEditing(null);
@@ -85,19 +96,42 @@ function SkillsContent() {
   }, [deleteTarget, skills, saveAllMutation]);
 
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
+        actions={
+          <Button variant="secondary" onClick={() => setUploadOpen(true)} className="gap-1.5">
+            <Upload className="h-4 w-4" />
+            {t("upload")}
+          </Button>
+        }
       />
 
-      <SkillsList
-        data={skills}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <SkillsList
+          data={skills}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="skill"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["skills"]]}
+        />
+      )}
+
+      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
 
       <SkillDialog
         open={dialogOpen}

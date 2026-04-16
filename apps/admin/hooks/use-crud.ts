@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/lib/toast";
 
 interface UseCrudOptions<T> {
@@ -26,12 +27,13 @@ export function useCrud<T extends { name: string }>({
 }: UseCrudOptions<T>): CrudResult<T> {
   const qc = useQueryClient();
   const toast = useToast();
+  const t = useTranslations("common");
 
   const query = useQuery<T[]>({
     queryKey: [queryKey],
     queryFn: async () => {
       const res = await fetch(endpoint);
-      if (!res.ok) throw new Error(`Failed to fetch ${queryKey}`);
+      if (!res.ok) throw new Error(t("crudFetchFailed", { key: queryKey }));
       const data = await res.json();
       return transform ? transform(data) : (data as T[]);
     },
@@ -46,12 +48,12 @@ export function useCrud<T extends { name: string }>({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Create failed");
+        throw new Error((err as { error?: string }).error ?? t("crudCreateFailed"));
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [queryKey] });
-      toast.add("success", "Created successfully");
+      toast.add("success", t("crudCreated"));
     },
     onError: (e: Error) => toast.add("error", e.message),
   });
@@ -84,12 +86,12 @@ export function useCrud<T extends { name: string }>({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Delete failed");
+        throw new Error((err as { error?: string }).error ?? t("crudDeleteFailed"));
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [queryKey] });
-      toast.add("success", "Deleted successfully");
+      toast.add("success", t("crudDeleted"));
     },
     onError: (e: Error) => toast.add("error", e.message),
   });

@@ -1,30 +1,41 @@
 import type { Metadata } from "next";
-import { Outfit, DM_Sans, JetBrains_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
 import { Providers } from "./providers";
 
-const outfit = Outfit({
-  subsets: ["latin"],
+const instrumentSerif = localFont({
+  src: "../public/fonts/InstrumentSerif-Regular.ttf",
   variable: "--font-display",
   display: "swap",
+  weight: "400",
 });
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    { path: "../public/fonts/Inter-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../public/fonts/Inter-Medium.ttf", weight: "500", style: "normal" },
+    { path: "../public/fonts/Inter-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "../public/fonts/Inter-Bold.ttf", weight: "700", style: "normal" },
+  ],
   variable: "--font-body",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+const jetbrainsMono = localFont({
+  src: "../public/fonts/JetBrainsMono-Regular.ttf",
   variable: "--font-mono",
   display: "swap",
+  weight: "400",
 });
 
-const ibmPlexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+const ibmPlexArabic = localFont({
+  src: [
+    { path: "../public/fonts/IBMPlexSansArabic-400.ttf", weight: "400", style: "normal" },
+    { path: "../public/fonts/IBMPlexSansArabic-500.ttf", weight: "500", style: "normal" },
+    { path: "../public/fonts/IBMPlexSansArabic-600.ttf", weight: "600", style: "normal" },
+    { path: "../public/fonts/IBMPlexSansArabic-700.ttf", weight: "700", style: "normal" },
+  ],
   variable: "--font-arabic",
   display: "swap",
 });
@@ -42,7 +53,7 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning>
       <body
-        className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${ibmPlexArabic.variable} font-body`}
+        className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${ibmPlexArabic.variable} font-body`}
       >
         <Providers>
           {children}

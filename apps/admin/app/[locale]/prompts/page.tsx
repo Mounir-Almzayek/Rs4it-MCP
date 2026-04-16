@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
 import { useToast } from "@/lib/toast";
 import { PromptsList } from "./_components/prompts-list";
 import { PromptDialog } from "./_components/prompt-dialog";
@@ -12,7 +14,10 @@ import type { PromptRow } from "./_hooks/use-prompts";
 
 function PromptsContent() {
   const t = useTranslations("prompts");
+  const tc = useTranslations("common");
   const toast = useToast();
+
+  const [tab, setTab] = useState<EntityTab>("list");
 
   const { prompts, roles, isLoading, saveAllMutation } = usePrompts();
 
@@ -84,20 +89,37 @@ function PromptsContent() {
     });
   }, [deleteTarget, prompts, saveAllMutation]);
 
+  const installedNames = useMemo(() => new Set(prompts.map((p) => p.name)), [prompts]);
+
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
       />
 
-      <PromptsList
-        data={prompts}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <PromptsList
+          data={prompts}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="prompt"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["prompts"], ["registry"]]}
+        />
+      )}
 
       <PromptDialog
         open={dialogOpen}

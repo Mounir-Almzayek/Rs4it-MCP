@@ -272,7 +272,9 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
 
   const dynamic = await loadDynamicRegistry();
 
-  const registerPrompt = (server as any).registerPrompt as undefined | ((name: string, meta: any, handler: any) => void);
+  const registerPrompt = typeof (server as any).registerPrompt === "function"
+    ? (server as any).registerPrompt.bind(server)
+    : undefined as undefined | ((name: string, meta: any, handler: any) => void);
   if (typeof registerPrompt === "function") {
     for (const entry of (dynamic as any).prompts as DynamicPromptEntry[] ?? []) {
       if (!entry?.enabled) continue;
@@ -1139,6 +1141,8 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     }
   }
 
+  const registeredResourceUris = new Set<string>();
+
   for (const plugin of getLoadedPlugins()) {
     if (role) {
       const allowed = pluginAllowedMap.get(plugin.id);
@@ -1148,6 +1152,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
       const pluginId = plugin.id;
       const originalUri = res.originalUri;
       const uri = res.uri;
+      registeredResourceUris.add(uri);
       server.registerResource(
         res.name,
         uri,
@@ -1173,6 +1178,7 @@ export async function createServer(options?: CreateServerOptions): Promise<McpSe
     if (!entry.enabled) continue;
     if (role && !(await isAllowedForRole(entry.allowedRoles, role))) continue;
     const uri = entry.uri;
+    if (registeredResourceUris.has(uri)) continue;
     const mimeType = entry.mimeType;
     const content = entry.content;
     try {

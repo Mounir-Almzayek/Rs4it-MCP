@@ -1,0 +1,27 @@
+{
+  "name": "rs4it-mcp-proxy",
+  "version": "1.0.0",
+  "description": "Lightweight stdio↔HTTP proxy for RS4IT MCP Hub — auto-syncs IDE config files on connect",
+  "type": "module",
+  "bin": {
+    "rs4it-mcp-proxy": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}

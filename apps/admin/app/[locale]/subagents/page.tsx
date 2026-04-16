@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
 import { useToast } from "@/lib/toast";
 import { SubagentsList } from "./_components/subagents-list";
 import { SubagentDialog } from "./_components/subagent-dialog";
@@ -12,7 +14,10 @@ import type { SubagentRow } from "./_hooks/use-subagents";
 
 function SubagentsContent() {
   const t = useTranslations("subagents");
+  const tc = useTranslations("common");
   const toast = useToast();
+
+  const [tab, setTab] = useState<EntityTab>("list");
 
   const { subagents, roles, isLoading, saveAllMutation } = useSubagents();
 
@@ -87,20 +92,37 @@ function SubagentsContent() {
     });
   }, [deleteTarget, subagents, saveAllMutation]);
 
+  const installedNames = useMemo(() => new Set(subagents.map((s) => s.name)), [subagents]);
+
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
       />
 
-      <SubagentsList
-        data={subagents}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <SubagentsList
+          data={subagents}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="subagent"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["subagents"], ["registry"]]}
+        />
+      )}
 
       <SubagentDialog
         open={dialogOpen}

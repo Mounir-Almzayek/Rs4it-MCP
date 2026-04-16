@@ -15,12 +15,12 @@ interface PageHeaderProps {
 export function PageHeader({ title, createLabel, onCreate, actions, className }: PageHeaderProps) {
   return (
     <div className={cn("flex items-center justify-between", className)}>
-      <h2 className="font-display text-2xl font-bold tracking-tight">{title}</h2>
+      <h2 className="font-display text-2xl tracking-tight text-foreground">{title}</h2>
       <div className="flex items-center gap-2">
         {actions}
         {onCreate && createLabel && (
-          <Button onClick={onCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />
+          <Button onClick={onCreate} size="sm" className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
             {createLabel}
           </Button>
         )}

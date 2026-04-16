@@ -10,8 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Outfit", "IBM Plex Sans Arabic", "sans-serif"],
-        body: ["DM Sans", "IBM Plex Sans Arabic", "sans-serif"],
+        display: ["Instrument Serif", "IBM Plex Sans Arabic", "Georgia", "serif"],
+        body: ["Inter", "IBM Plex Sans Arabic", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
@@ -56,7 +56,7 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       animation: {
-        "card-reveal": "card-reveal 0.4s ease-out both",
+        "card-reveal": "card-reveal 0.3s ease-out both",
       },
     },
   },

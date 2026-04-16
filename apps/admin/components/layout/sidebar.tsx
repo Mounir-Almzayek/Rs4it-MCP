@@ -6,7 +6,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import {
   LayoutDashboard, Wrench, Sparkles, Puzzle, MessageSquare, Bot,
   TerminalSquare, FileText, BookOpen, Shield, Grid3X3, Users,
-  BarChart3, LineChart, ListTree, Activity, Settings, RefreshCw,
+  BarChart3, LineChart, Settings, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +46,6 @@ const navGroups: NavGroup[] = [
     labelKey: "systemGroup",
     items: [
       { href: "/sync", labelKey: "sync", icon: RefreshCw },
-      { href: "/registry", labelKey: "registry", icon: ListTree },
-      { href: "/status", labelKey: "status", icon: Activity },
       { href: "/settings", labelKey: "settings", icon: Settings },
     ],
   },
@@ -58,41 +56,38 @@ export function Sidebar() {
   const t = useTranslations("nav");
 
   return (
-    <aside className="flex h-full w-[var(--sidebar-width)] flex-col border-e border-border bg-card/50 backdrop-blur-sm">
+    <aside className="flex h-full w-[var(--sidebar-width)] flex-col border-e border-border bg-background">
       {/* Logo */}
-      <div className="border-b border-border p-4">
-        <Link href="/" className="flex flex-col items-center gap-2">
-          <div className="relative">
-            <Image
-              src="/icon.svg"
-              alt="RS4IT MCP Hub"
-              width={36}
-              height={36}
-              className="rounded-lg"
-            />
-            <div className="absolute -inset-1 -z-10 rounded-xl bg-primary/10 blur-sm" />
-          </div>
-          <span className="text-center text-[11px] font-medium text-muted-foreground leading-tight">
+      <div className="border-b border-border px-4 py-5">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image
+            src="/icon.svg"
+            alt="RS4IT MCP Hub"
+            width={28}
+            height={28}
+            className="rounded"
+          />
+          <span className="font-display text-base text-foreground">
             MCP Hub
           </span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto p-3">
+      <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
         {/* Dashboard */}
         <div>
           <Link
             href="/"
             className={cn(
-              "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+              "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
               pathname === "/"
-                ? "bg-primary/10 text-primary glow-accent"
+                ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}
           >
             {pathname === "/" && (
-              <div className="sidebar-active-bar absolute inset-y-1 start-0 w-[3px] rounded-full" />
+              <div className="sidebar-active-bar absolute inset-y-1 start-0 w-[2px] rounded-full" />
             )}
             <LayoutDashboard className="h-4 w-4 shrink-0" />
             {t("dashboard")}
@@ -102,7 +97,7 @@ export function Sidebar() {
         {/* Groups */}
         {navGroups.map((group) => (
           <div key={group.labelKey} className="flex flex-col gap-0.5">
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+            <p className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               {t(group.labelKey)}
             </p>
             {group.items.map((item) => {
@@ -114,14 +109,14 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all duration-200",
+                    "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                     isActive
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-secondary text-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
                   {isActive && (
-                    <div className="sidebar-active-bar absolute inset-y-0.5 start-0 w-[3px] rounded-full" />
+                    <div className="sidebar-active-bar absolute inset-y-0.5 start-0 w-[2px] rounded-full" />
                   )}
                   <item.icon className="h-4 w-4 shrink-0" />
                   {t(item.labelKey)}

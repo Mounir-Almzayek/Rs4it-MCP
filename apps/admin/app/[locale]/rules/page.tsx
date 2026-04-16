@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
 import { RulesTable } from "./_components/rules-table";
 import { RuleDialog } from "./_components/rule-dialog";
 import { useRules } from "./_hooks/use-rules";
@@ -12,7 +14,10 @@ import type { DynamicRuleEntry } from "@/lib/dynamic-registry-types";
 
 function RulesContent() {
   const t = useTranslations("rules");
+  const tc = useTranslations("common");
   const searchParams = useSearchParams();
+
+  const [tab, setTab] = useState<EntityTab>("list");
 
   const {
     rules,
@@ -88,21 +93,38 @@ function RulesContent() {
     });
   }, [deleteTarget, deleteMutation]);
 
+  const installedNames = useMemo(() => new Set(rules.map((r) => r.name)), [rules]);
+
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
       />
 
-      <RulesTable
-        data={rules}
-        roles={roles}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <RulesTable
+          data={rules}
+          roles={roles}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="rule"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["rules"], ["registry"]]}
+        />
+      )}
 
       <RuleDialog
         open={dialogOpen}

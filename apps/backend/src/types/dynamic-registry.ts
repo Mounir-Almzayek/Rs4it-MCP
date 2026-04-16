@@ -107,6 +107,34 @@ export interface DynamicSkillEntry {
   origin?: string;
 }
 
+/** Dynamic subagent: reusable specialist profile for delegated tasks. */
+export interface DynamicSubagentEntry {
+  name: string;
+  description?: string;
+  /** Full markdown body used as the subagent prompt/instructions. */
+  content: string;
+  model?: string;
+  readonly?: boolean;
+  isBackground?: boolean;
+  enabled: boolean;
+  updatedAt?: string;
+  allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
+}
+
+/** Dynamic command: explicit slash-command style instruction block. */
+export interface DynamicCommandEntry {
+  name: string;
+  description?: string;
+  content: string;
+  enabled: boolean;
+  updatedAt?: string;
+  allowedRoles?: string[];
+  source?: RegistrySource;
+  origin?: string;
+}
+
 /** Full dynamic registry file. */
 export interface DynamicRegistry {
   tools: DynamicToolEntry[];
@@ -115,4 +143,6 @@ export interface DynamicRegistry {
   rules: DynamicRuleEntry[];
   prompts: DynamicPromptEntry[];
   skills: DynamicSkillEntry[];
+  subagents: DynamicSubagentEntry[];
+  commands: DynamicCommandEntry[];
 }

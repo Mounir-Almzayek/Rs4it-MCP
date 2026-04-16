@@ -39,7 +39,7 @@ export function Dialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/30"
         onClick={() => onOpenChange(false)}
         aria-hidden
       />
@@ -48,7 +48,7 @@ export function Dialog({
         aria-modal
         aria-labelledby={title ? "dialog-title" : undefined}
         className={cn(
-          "relative z-50 max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg border bg-card p-6 shadow-lg",
+          "relative z-50 max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg border border-border bg-background p-6 shadow-sm",
           className
         )}
         onClick={(e) => e.stopPropagation()}

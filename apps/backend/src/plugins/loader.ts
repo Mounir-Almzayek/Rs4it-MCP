@@ -19,45 +19,68 @@ function dedupePluginConfigs(configs: PluginConfig[]): PluginConfig[] {
 }
 
 async function syncPluginRegistryContent(plugins: LoadedPlugin[], pluginAllowedMap: Map<string, string[]>): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await tx.registryResource.deleteMany({ where: { source: "mcp" } });
-    await tx.registryPrompt.deleteMany({ where: { source: "mcp" } });
+  const resourcesData: Array<{
+    name: string;
+    uri: string;
+    description: string | null;
+    mimeType: string;
+    content: string;
+    enabled: boolean;
+    allowedRoles: any;
+    source: "mcp";
+    origin: string;
+  }> = [];
+  const promptsData: Array<{
+    name: string;
+    description: string | null;
+    content: string;
+    enabled: boolean;
+    allowedRoles: any;
+    source: "mcp";
+    origin: string;
+  }> = [];
 
-    for (const plugin of plugins) {
-      const allowedRoles = pluginAllowedMap.get(plugin.id) ?? [];
-      for (const r of plugin.resources) {
-        const out = plugin.readResource ? await plugin.readResource(r.originalUri) : { contents: [] as Array<{ text?: string }> };
-        const text = (out.contents ?? []).map((c) => c.text ?? "").filter(Boolean).join("\n").trim();
-        await tx.registryResource.create({
-          data: {
-            name: r.name,
-            uri: r.uri,
-            description: r.description ?? null,
-            mimeType: r.mimeType ?? "text/plain",
-            content: text,
-            enabled: true,
-            allowedRoles: (allowedRoles.length > 0 ? allowedRoles : null) as any,
-            source: "mcp",
-            origin: plugin.id,
-          },
-        });
-      }
-      for (const p of plugin.prompts) {
-        const prompt = plugin.readPrompt ? await plugin.readPrompt(p.originalName) : { content: "" };
-        await tx.registryPrompt.create({
-          data: {
-            name: p.name,
-            description: prompt.description ?? p.description ?? null,
-            content: prompt.content ?? "",
-            enabled: true,
-            allowedRoles: (allowedRoles.length > 0 ? allowedRoles : null) as any,
-            source: "mcp",
-            origin: plugin.id,
-          },
-        });
-      }
+  for (const plugin of plugins) {
+    const allowedRoles = pluginAllowedMap.get(plugin.id) ?? [];
+    for (const r of plugin.resources) {
+      const out = plugin.readResource ? await plugin.readResource(r.originalUri) : { contents: [] as Array<{ text?: string }> };
+      const text = (out.contents ?? []).map((c) => c.text ?? "").filter(Boolean).join("\n").trim();
+      resourcesData.push({
+        name: r.name,
+        uri: r.uri,
+        description: r.description ?? null,
+        mimeType: r.mimeType ?? "text/plain",
+        content: text,
+        enabled: true,
+        allowedRoles: (allowedRoles.length > 0 ? allowedRoles : null) as any,
+        source: "mcp",
+        origin: plugin.id,
+      });
     }
-  });
+    for (const p of plugin.prompts) {
+      const prompt = plugin.readPrompt ? await plugin.readPrompt(p.originalName) : { content: "" };
+      promptsData.push({
+        name: p.name,
+        description: prompt.description ?? p.description ?? null,
+        content: prompt.content ?? "",
+        enabled: true,
+        allowedRoles: (allowedRoles.length > 0 ? allowedRoles : null) as any,
+        source: "mcp",
+        origin: plugin.id,
+      });
+    }
+  }
+
+  await prisma.registryResource.deleteMany({ where: { source: "mcp" } });
+  await prisma.registryPrompt.deleteMany({ where: { source: "mcp" } });
+
+  const BATCH_SIZE = 100;
+  for (let i = 0; i < resourcesData.length; i += BATCH_SIZE) {
+    await prisma.registryResource.createMany({ data: resourcesData.slice(i, i + BATCH_SIZE) });
+  }
+  for (let i = 0; i < promptsData.length; i += BATCH_SIZE) {
+    await prisma.registryPrompt.createMany({ data: promptsData.slice(i, i + BATCH_SIZE) });
+  }
 }
 
 /**

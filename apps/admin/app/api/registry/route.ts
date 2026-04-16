@@ -23,7 +23,10 @@ export async function GET(_request: NextRequest) {
     if (!res.ok || payload?.ok === false) {
       return NextResponse.json({ error: String(payload?.error ?? "Failed to read registry") }, { status: 500, headers: NO_STORE_HEADERS });
     }
-    return NextResponse.json(payload.registry ?? { tools: [], plugins: [], resources: [], rules: [], prompts: [], skills: [] }, { headers: NO_STORE_HEADERS });
+    return NextResponse.json(
+      payload.registry ?? { tools: [], plugins: [], resources: [], rules: [], prompts: [], skills: [], subagents: [], commands: [] },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (e) {
     console.error(e);
     return NextResponse.json(

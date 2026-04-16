@@ -23,12 +23,45 @@ export interface SkillInfo {
   content: string;
 }
 
+export interface PromptInfo {
+  name: string;
+  description?: string;
+  content: string;
+}
+
+export interface ResourceInfo {
+  name: string;
+  uri: string;
+  description?: string;
+  mimeType: string;
+  content: string;
+}
+
+export interface SubagentInfo {
+  name: string;
+  description?: string;
+  content: string;
+  model?: string;
+  readonly?: boolean;
+  isBackground?: boolean;
+}
+
+export interface CommandInfo {
+  name: string;
+  description?: string;
+  content: string;
+}
+
 export interface ContentPayload {
   hubName: string;
   hubVersion: string;
   rules: RuleInfo[];
   tools: ToolInfo[];
   skills: SkillInfo[];
+  prompts: PromptInfo[];
+  resources: ResourceInfo[];
+  subagents: SubagentInfo[];
+  commands: CommandInfo[];
 }
 
 export interface GeneratedFile {
@@ -39,4 +72,6 @@ export interface GeneratedFile {
 export interface GeneratorOptions {
   workspaceRoot: string;
   force?: boolean;
+  /** When true, skip writing files and cleanup — just return the generated file list. */
+  dryRun?: boolean;
 }

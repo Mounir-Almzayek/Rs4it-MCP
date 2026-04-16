@@ -122,6 +122,31 @@ model RegistrySkill {
   updatedAt    DateTime @updatedAt
 }
 
+model RegistrySubagent {
+  name         String   @id
+  description  String?
+  content      String
+  model        String?
+  readonly     Boolean  @default(false)
+  isBackground Boolean  @default(false)
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
+model RegistryCommand {
+  name         String   @id
+  description  String?
+  content      String
+  enabled      Boolean  @default(true)
+  allowedRoles Json?
+  source       String   @default("admin")
+  origin       String?
+  updatedAt    DateTime @updatedAt
+}
+
 model PluginConfig {
   id           String   @id
   name         String
@@ -187,5 +212,28 @@ model UsageEvent {
 
   @@index([timestamp])
   @@index([toolName])
+}
+
+model SyncState {
+  filePath    String   @id
+  entityType  String
+  entityName  String
+  contentHash String
+  dbHash      String?
+  syncedAt    DateTime @default(now())
+
+  @@index([entityType])
+}
+
+model InstalledPackage {
+  id          String   @id @default(cuid())
+  type        String
+  name        String
+  version     String
+  sourceRepo  String
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([type, name])
 }
 

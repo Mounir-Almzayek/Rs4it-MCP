@@ -34,11 +34,16 @@ services:
       #   so "hub" must be allowed or Admin setup/login will fail with "Invalid Host: hub".
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-hub}
       MCP_ADMIN_API_SECRET: ${MCP_ADMIN_API_SECRET:-}
+      # Require auth (/auth + cookies or bearer) before MCP initialize unless explicitly enabled.
+      MCP_ALLOW_UNAUTHENTICATED_INIT: ${MCP_ALLOW_UNAUTHENTICATED_INIT:-false}
+      # Optional role only when unauthenticated init is explicitly enabled; no default role.
+      MCP_GUEST_ROLE: ${MCP_GUEST_ROLE:-}
     volumes:
       # DB-only volume (contains rs4it.db)
       - hub_db:/app/config
-      # Optional: mount workspace for file tools (create_file, read_file, run_command)
-      - ${WORKSPACE_PATH:-./workspace}:/workspace
+      # Mount the repository root so generated Cursor config lands in project .cursor/*
+      # and file tools can operate against the actual project files.
+      - ${WORKSPACE_PATH:-.}:/workspace
     healthcheck:
       # GET /mcp returns 400 (no session) or 405; either means server is up
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/mcp',r=>{const ok=[400,405].includes(r.statusCode); process.exit(ok?0:1)}).on('error',()=>process.exit(1))"]

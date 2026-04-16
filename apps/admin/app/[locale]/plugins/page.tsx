@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { EntityTabs, type EntityTab } from "@/components/shared/entity-tabs";
+import { MarketplaceTab } from "@/components/shared/marketplace-tab";
 import { useToast } from "@/lib/toast";
 import { PluginsTable } from "./_components/plugins-table";
 import { PluginDialog } from "./_components/plugin-dialog";
@@ -13,8 +15,11 @@ import type { DynamicPluginEntry } from "@/lib/dynamic-registry-types";
 
 function PluginsContent() {
   const t = useTranslations("plugins");
+  const tc = useTranslations("common");
   const toast = useToast();
   const searchParams = useSearchParams();
+
+  const [tab, setTab] = useState<EntityTab>("list");
 
   const {
     plugins,
@@ -112,23 +117,40 @@ function PluginsContent() {
     });
   }, [deleteTarget, deleteMutation]);
 
+  const installedNames = useMemo(() => new Set(plugins.map((p) => p.name)), [plugins]);
+
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-6">
       <PageHeader
         title={t("title")}
         createLabel={t("create")}
         onCreate={handleCreate}
       />
 
-      <PluginsTable
-        data={plugins}
-        roles={roles}
-        connectionById={connectionById}
-        pluginStatus={pluginStatus}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDeleteRequest}
+      <EntityTabs
+        tab={tab}
+        onTabChange={setTab}
+        listLabel={t("title")}
+        marketplaceLabel={tc("marketplace")}
       />
+
+      {tab === "list" ? (
+        <PluginsTable
+          data={plugins}
+          roles={roles}
+          connectionById={connectionById}
+          pluginStatus={pluginStatus}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDeleteRequest}
+        />
+      ) : (
+        <MarketplaceTab
+          type="plugin"
+          installedNames={installedNames}
+          queryKeysToInvalidate={[["plugins"], ["plugin-status"]]}
+        />
+      )}
 
       <PluginDialog
         open={dialogOpen}
